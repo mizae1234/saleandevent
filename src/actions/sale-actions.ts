@@ -46,9 +46,28 @@ export async function createSale(data: CreateSaleInput) {
             // 3. คำนวณยอดสุทธิ
             const totalAmount = subtotal + adjustmentTotal - (data.discount || 0);
 
-            // 4. สร้าง Sale record
+            // 4. สร้าง billCode แบบ {EventCode}-{running}
+            let billCode: string | null = null;
+            if (data.eventId) {
+                const event = await tx.event.findUnique({
+                    where: { id: data.eventId },
+                    select: { code: true }
+                });
+
+                if (event?.code) {
+                    // นับจำนวน sales ที่มีอยู่แล้วใน event นี้
+                    const existingSalesCount = await tx.sale.count({
+                        where: { eventId: data.eventId }
+                    });
+                    const runningNumber = (existingSalesCount + 1).toString().padStart(4, '0');
+                    billCode = `${event.code}-${runningNumber}`;
+                }
+            }
+
+            // 5. สร้าง Sale record
             const sale = await tx.sale.create({
                 data: {
+                    billCode: billCode,
                     eventId: data.eventId || null,
                     branchId: data.branchId || null,
                     totalAmount: totalAmount,
@@ -58,7 +77,7 @@ export async function createSale(data: CreateSaleInput) {
                 }
             });
 
-            // 5. สร้าง SaleItem records
+            // 6. สร้าง SaleItem records
             for (const item of data.items) {
                 const itemTotal = (item.unitPrice - (item.discount || 0)) * item.quantity;
 
