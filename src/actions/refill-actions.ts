@@ -137,3 +137,76 @@ export async function getActiveEventsForRefill() {
 
     return events;
 }
+
+/**
+ * ดึงคำขอเบิกที่รออนุมัติ (สำหรับ Admin)
+ */
+export async function getPendingRefillRequests() {
+    const requests = await db.stockRequest.findMany({
+        where: {
+            status: 'pending'
+        },
+        include: {
+            event: {
+                select: {
+                    id: true,
+                    name: true,
+                    code: true,
+                    location: true,
+                }
+            },
+            items: {
+                include: {
+                    product: {
+                        select: {
+                            barcode: true,
+                            name: true,
+                            code: true,
+                            size: true,
+                        }
+                    }
+                }
+            }
+        },
+        orderBy: { createdAt: 'asc' }
+    });
+
+    return requests;
+}
+
+/**
+ * อนุมัติคำขอเบิก
+ */
+export async function approveRefillRequest(id: string) {
+    const request = await db.stockRequest.update({
+        where: { id },
+        data: {
+            status: 'approved',
+            approvedAt: new Date(),
+        }
+    });
+
+    revalidatePath('/pc/refill');
+    revalidatePath('/events/approvals/refill');
+    revalidatePath('/warehouse/packing');
+
+    return request;
+}
+
+/**
+ * ปฏิเสธคำขอเบิก
+ */
+export async function rejectRefillRequest(id: string, reason?: string) {
+    const request = await db.stockRequest.update({
+        where: { id },
+        data: {
+            status: 'rejected',
+        }
+    });
+
+    revalidatePath('/pc/refill');
+    revalidatePath('/events/approvals/refill');
+
+    return request;
+}
+

@@ -54,6 +54,7 @@ export const MENU_SECTIONS: MenuSection[] = [
             { title: "ภาพรวมกิจกรรม", href: "/events", icon: Calendar },
             { title: "ขอเปิด Event ใหม่", href: "/events/create", icon: PlusCircle },
             { title: "รออนุมัติ", href: "/events/approvals", icon: Clock },
+            { title: "อนุมัติเบิกของเพิ่ม", href: "/events/approvals/refill", icon: RefreshCw },
             { title: "บันทึกค่าใช้จ่าย", href: "/events/expenses", icon: Receipt },
         ],
     },
