@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { Package, MapPin, Calendar, ArrowRight, RefreshCw } from "lucide-react";
+import { Package, MapPin, Calendar, ArrowRight, RefreshCw, Truck } from "lucide-react";
 import Link from "next/link";
 
 async function getPackingEvents() {
@@ -53,10 +53,43 @@ async function getApprovedRefillRequests() {
     return requests;
 }
 
+async function getPackedRefillRequests() {
+    const requests = await db.stockRequest.findMany({
+        where: {
+            status: 'packed'
+        },
+        include: {
+            event: {
+                select: {
+                    id: true,
+                    name: true,
+                    code: true,
+                    location: true,
+                }
+            },
+            items: {
+                include: {
+                    product: {
+                        select: {
+                            barcode: true,
+                            name: true,
+                            code: true,
+                            size: true,
+                        }
+                    }
+                }
+            }
+        },
+        orderBy: { createdAt: 'asc' }
+    });
+    return requests;
+}
+
 export default async function WarehousePackingPage() {
-    const [events, refillRequests] = await Promise.all([
+    const [events, refillRequests, packedRefillRequests] = await Promise.all([
         getPackingEvents(),
-        getApprovedRefillRequests()
+        getApprovedRefillRequests(),
+        getPackedRefillRequests()
     ]);
 
     const packingEvents = events.filter(e => e.status === 'packing');
@@ -70,12 +103,12 @@ export default async function WarehousePackingPage() {
                 <p className="text-slate-500">รายการ Event และคำขอเบิกเพิ่มที่รอการจัดเตรียมสินค้าจากคลัง</p>
             </div>
 
-            {/* Refill Requests Section */}
+            {/* Refill Requests Section - Waiting for Packing */}
             {refillRequests.length > 0 && (
                 <section>
                     <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
                         <RefreshCw className="h-5 w-5 text-blue-500" />
-                        คำขอเบิกเพิ่ม ({refillRequests.length})
+                        คำขอเบิกเพิ่ม - รอแพค ({refillRequests.length})
                     </h2>
 
                     <div className="space-y-3">
@@ -185,12 +218,62 @@ export default async function WarehousePackingPage() {
                 )}
             </section>
 
+            {/* Packed Refill Requests (Ready to Ship) */}
+            {packedRefillRequests.length > 0 && (
+                <section>
+                    <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                        <Truck className="h-5 w-5 text-emerald-500" />
+                        เบิกเพิ่ม - แพคเสร็จแล้ว รอจัดส่ง ({packedRefillRequests.length})
+                    </h2>
+
+                    <div className="space-y-3">
+                        {packedRefillRequests.map((request) => {
+                            const totalItems = request.items.reduce((sum, i) => sum + i.quantity, 0);
+                            return (
+                                <div
+                                    key={request.id}
+                                    className="block rounded-xl bg-white p-5 shadow-sm border-l-4 border-emerald-500"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded">
+                                                    <RefreshCw className="h-3 w-3" />
+                                                    เบิกเพิ่ม
+                                                </span>
+                                                <h3 className="font-semibold text-slate-900">{request.event.name}</h3>
+                                                <span className="text-xs font-mono text-slate-400">{request.event.code}</span>
+                                            </div>
+                                            <div className="flex items-center gap-4 text-sm text-slate-500">
+                                                <span className="flex items-center gap-1">
+                                                    <MapPin className="h-4 w-4" />
+                                                    {request.event.location}
+                                                </span>
+                                                <span className="flex items-center gap-1">
+                                                    <Package className="h-4 w-4" />
+                                                    {request.items.length} รายการ ({totalItems} ชิ้น)
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-emerald-100 text-emerald-800">
+                                                พร้อมจัดส่ง
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
+            )}
+
             {/* Packed Events (Ready to Ship) */}
             {packedEvents.length > 0 && (
                 <section>
                     <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
                         <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                        แพคเสร็จแล้ว - รอจัดส่ง ({packedEvents.length})
+                        Event แพคเสร็จแล้ว - รอจัดส่ง ({packedEvents.length})
                     </h2>
 
                     <div className="space-y-3">
@@ -238,4 +321,5 @@ export default async function WarehousePackingPage() {
         </div>
     );
 }
+
 

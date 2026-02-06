@@ -7,12 +7,13 @@ export async function POST(
 ) {
     try {
         const { id } = await params;
+        const body = await request.json().catch(() => ({}));
 
-        // Update status to packing (or directly to shipped for simplicity)
+        // Update status to 'packed' (ready for shipping)
         const updated = await db.stockRequest.update({
             where: { id },
             data: {
-                status: 'packing',
+                status: 'packed',
             }
         });
 
@@ -25,3 +26,4 @@ export async function POST(
         );
     }
 }
+
