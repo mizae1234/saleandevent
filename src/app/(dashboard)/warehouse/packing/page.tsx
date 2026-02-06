@@ -85,11 +85,44 @@ async function getPackedRefillRequests() {
     return requests;
 }
 
+async function getShippedRefillRequests() {
+    const requests = await db.stockRequest.findMany({
+        where: {
+            status: 'shipped'
+        },
+        include: {
+            event: {
+                select: {
+                    id: true,
+                    name: true,
+                    code: true,
+                    location: true,
+                }
+            },
+            items: {
+                include: {
+                    product: {
+                        select: {
+                            barcode: true,
+                            name: true,
+                            code: true,
+                            size: true,
+                        }
+                    }
+                }
+            }
+        },
+        orderBy: { shippedAt: 'desc' }
+    });
+    return requests;
+}
+
 export default async function WarehousePackingPage() {
-    const [events, refillRequests, packedRefillRequests] = await Promise.all([
+    const [events, refillRequests, packedRefillRequests, shippedRefillRequests] = await Promise.all([
         getPackingEvents(),
         getApprovedRefillRequests(),
-        getPackedRefillRequests()
+        getPackedRefillRequests(),
+        getShippedRefillRequests()
     ]);
 
     const packingEvents = events.filter(e => e.status === 'packing');
@@ -328,6 +361,72 @@ export default async function WarehousePackingPage() {
                                         </div>
                                     </div>
                                 </Link>
+                            );
+                        })}
+                    </div>
+                </section>
+            )}
+
+            {/* Shipped Refill Requests - Already Shipped */}
+            {shippedRefillRequests.length > 0 && (
+                <section>
+                    <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                        <Truck className="h-5 w-5 text-purple-500" />
+                        เบิกเพิ่ม - ส่งแล้ว ({shippedRefillRequests.length})
+                    </h2>
+
+                    <div className="space-y-3">
+                        {shippedRefillRequests.map((request) => {
+                            const totalItems = request.items.reduce((sum, i) => sum + i.quantity, 0);
+                            return (
+                                <div
+                                    key={request.id}
+                                    className="rounded-xl bg-white p-5 shadow-sm border-l-4 border-purple-400 opacity-75"
+                                >
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                                                    <RefreshCw className="h-3 w-3" />
+                                                    เบิกเพิ่ม
+                                                </span>
+                                                <h3 className="font-semibold text-slate-900">{request.event.name}</h3>
+                                                <span className="text-xs font-mono text-slate-400">{request.event.code}</span>
+                                            </div>
+                                            <div className="flex items-center gap-4 text-sm text-slate-500">
+                                                <span className="flex items-center gap-1">
+                                                    <MapPin className="h-4 w-4" />
+                                                    {request.event.location}
+                                                </span>
+                                                <span className="flex items-center gap-1">
+                                                    <Package className="h-4 w-4" />
+                                                    {request.items.length} รายการ ({totalItems} ชิ้น)
+                                                </span>
+                                                {request.shippedAt && (
+                                                    <span className="text-xs text-slate-400">
+                                                        ส่ง: {format(new Date(request.shippedAt), 'd MMM HH:mm', { locale: th })}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-purple-100 text-purple-800">
+                                            <Truck className="mr-1 h-3 w-3" />
+                                            ส่งแล้ว
+                                        </span>
+                                    </div>
+                                    {/* Items List */}
+                                    <div className="border-t border-slate-100 pt-3 mt-2">
+                                        <p className="text-xs text-slate-500 mb-2 font-medium">รายการที่ส่ง:</p>
+                                        <div className="grid gap-1">
+                                            {request.items.map((item) => (
+                                                <div key={item.id} className="flex items-center justify-between text-sm">
+                                                    <span className="text-slate-600">{item.product.name}</span>
+                                                    <span className="font-medium text-purple-600">{item.quantity} ชิ้น</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
                             );
                         })}
                     </div>
