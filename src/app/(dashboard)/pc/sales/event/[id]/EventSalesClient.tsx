@@ -125,7 +125,7 @@ export function EventSalesClient({ event, sales }: Props) {
                     <p className="text-sm text-slate-500">สินค้าขายได้</p>
                     <p className="text-2xl font-bold text-slate-900">{totalItems} ชิ้น</p>
                 </div>
-                <div className="bg-white rounded-xl p-4 shadow-sm border-l-4 border-emerald-500">
+                <div className="bg-white rounded-xl p-4 shadow-sm bg-gradient-to-r from-emerald-50 to-white">
                     <p className="text-sm text-slate-500">ยอดวันนี้</p>
                     <p className="text-2xl font-bold text-emerald-600">฿{todayTotal.toLocaleString()}</p>
                     <p className="text-xs text-slate-400">{todaySales.length} บิล</p>
@@ -140,7 +140,7 @@ export function EventSalesClient({ event, sales }: Props) {
                         <select
                             value={dateFilter}
                             onChange={(e) => setDateFilter(e.target.value)}
-                            className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="px-3 py-2 bg-slate-50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         >
                             <option value="">ทุกวัน</option>
                             {uniqueDates.map(date => (
@@ -165,23 +165,23 @@ export function EventSalesClient({ event, sales }: Props) {
             </div>
 
             {/* Sales Table */}
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <table className="w-full">
-                    <thead className="bg-slate-50 border-b">
-                        <tr>
-                            <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">เลขบิล</th>
-                            <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">วันที่/เวลา</th>
-                            <th className="text-right px-4 py-3 text-sm font-medium text-slate-600">รายการ</th>
-                            <th className="text-right px-4 py-3 text-sm font-medium text-slate-600">ส่วนลด</th>
-                            <th className="text-right px-4 py-3 text-sm font-medium text-slate-600">ยอดรวม</th>
-                            <th className="text-center px-4 py-3 text-sm font-medium text-slate-600">สถานะ</th>
-                            <th className="text-center px-4 py-3 text-sm font-medium text-slate-600"></th>
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr className="bg-[#EFF4FA] text-slate-700">
+                            <th className="text-left px-4 py-3 text-sm font-bold border border-slate-200 border-t-0 border-l-0">เลขบิล</th>
+                            <th className="text-left px-4 py-3 text-sm font-bold border border-slate-200 border-t-0">วันที่/เวลา</th>
+                            <th className="text-right px-4 py-3 text-sm font-bold border border-slate-200 border-t-0">รายการ</th>
+                            <th className="text-right px-4 py-3 text-sm font-bold border border-slate-200 border-t-0">ส่วนลด</th>
+                            <th className="text-right px-4 py-3 text-sm font-bold border border-slate-200 border-t-0">ยอดรวม</th>
+                            <th className="text-center px-4 py-3 text-sm font-bold border border-slate-200 border-t-0">สถานะ</th>
+                            <th className="text-center px-4 py-3 text-sm font-bold border border-slate-200 border-t-0 border-r-0"></th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y">
+                    <tbody>
                         {filteredSales.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="text-center py-12 text-slate-400">
+                                <td colSpan={7} className="text-center py-12 text-slate-400 border border-slate-200">
                                     <Receipt className="h-12 w-12 mx-auto mb-3 text-slate-300" />
                                     ไม่มีรายการขาย
                                 </td>
@@ -189,12 +189,10 @@ export function EventSalesClient({ event, sales }: Props) {
                         ) : (
                             filteredSales.map((sale) => (
                                 <tr key={sale.id} className="hover:bg-slate-50">
-                                    <td className="px-4 py-3">
-                                        <span className="font-mono text-sm font-medium text-slate-900">
-                                            {sale.billCode || sale.id.slice(0, 8)}
-                                        </span>
+                                    <td className="px-4 py-3 border border-slate-200 border-l-0 text-sm font-medium text-slate-900">
+                                        {sale.billCode || sale.id.slice(0, 8)}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className="px-4 py-3 border border-slate-200">
                                         <div className="text-sm text-slate-900">
                                             {format(new Date(sale.soldAt), 'd MMM yyyy', { locale: th })}
                                         </div>
@@ -202,7 +200,7 @@ export function EventSalesClient({ event, sales }: Props) {
                                             {format(new Date(sale.soldAt), 'HH:mm น.')}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-right">
+                                    <td className="px-4 py-3 text-right border border-slate-200">
                                         <span className="text-sm text-slate-600">
                                             {sale.items.length} รายการ
                                         </span>
@@ -210,7 +208,7 @@ export function EventSalesClient({ event, sales }: Props) {
                                             {sale.items.reduce((sum, i) => sum + i.quantity, 0)} ชิ้น
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-right">
+                                    <td className="px-4 py-3 text-right border border-slate-200">
                                         {sale.discount && parseFloat(sale.discount.toString()) > 0 ? (
                                             <span className="text-sm text-red-500">
                                                 -฿{parseFloat(sale.discount.toString()).toLocaleString()}
@@ -219,33 +217,50 @@ export function EventSalesClient({ event, sales }: Props) {
                                             <span className="text-sm text-slate-300">-</span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <span className={`text-sm font-semibold ${sale.status === 'cancelled' ? 'text-slate-400 line-through' : 'text-emerald-600'}`}>
+                                    <td className="px-4 py-3 text-right border border-slate-200">
+                                        <span className={`text-sm font-bold ${sale.status === 'cancelled' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
                                             ฿{parseFloat(sale.totalAmount.toString()).toLocaleString()}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 text-center">
+                                    <td className="px-4 py-3 text-center border border-slate-200">
                                         {sale.status === 'cancelled' ? (
-                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-red-100 text-red-600">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
                                                 ยกเลิก
                                             </span>
                                         ) : (
-                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-600">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
                                                 สำเร็จ
                                             </span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-center">
+                                    <td className="px-4 py-3 text-center border border-slate-200 border-r-0">
                                         <Link
                                             href={`/pc/sales/${sale.id}`}
-                                            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                            className="text-slate-400 hover:text-emerald-600 transition-colors"
                                         >
                                             <Eye className="h-4 w-4" />
-                                            ดู
                                         </Link>
                                     </td>
                                 </tr>
                             ))
+                        )}
+                        {/* Summary Footer Row matching the style */}
+                        {filteredSales.length > 0 && (
+                            <tr className="bg-[#EFF4FA] font-bold text-slate-900">
+                                <td colSpan={2} className="px-4 py-3 border border-slate-200 border-l-0 text-right">
+                                    Grand Total
+                                </td>
+                                <td className="px-4 py-3 border border-slate-200 text-right">
+                                    {filteredSales.reduce((sum, s) => sum + s.items.length, 0)} รายการ
+                                </td>
+                                <td className="px-4 py-3 border border-slate-200 text-right">
+                                    {/* Discount sum if needed, or stick to total amount */}
+                                </td>
+                                <td className="px-4 py-3 border border-slate-200 text-right">
+                                    ฿{filteredSales.reduce((sum, s) => sum + (s.status !== 'cancelled' ? parseFloat(s.totalAmount.toString()) : 0), 0).toLocaleString()}
+                                </td>
+                                <td colSpan={2} className="px-4 py-3 border border-slate-200 border-r-0"></td>
+                            </tr>
                         )}
                     </tbody>
                 </table>
