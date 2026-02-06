@@ -235,7 +235,7 @@ export default async function WarehousePackingPage() {
                                     href={`/warehouse/packing/refill/${request.id}/shipping`}
                                     className="block rounded-xl bg-white p-5 shadow-sm hover:shadow-md transition-shadow border-l-4 border-emerald-500"
                                 >
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between mb-3">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-3 mb-2">
                                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded">
@@ -261,6 +261,18 @@ export default async function WarehousePackingPage() {
                                                 พร้อมจัดส่ง
                                             </span>
                                             <ArrowRight className="h-5 w-5 text-slate-400" />
+                                        </div>
+                                    </div>
+                                    {/* Items List */}
+                                    <div className="border-t border-slate-100 pt-3 mt-2">
+                                        <p className="text-xs text-slate-500 mb-2 font-medium">รายการที่ขอเบิกเพิ่ม:</p>
+                                        <div className="grid gap-1">
+                                            {request.items.map((item) => (
+                                                <div key={item.id} className="flex items-center justify-between text-sm">
+                                                    <span className="text-slate-600">{item.product.name}</span>
+                                                    <span className="font-medium text-emerald-600">{item.quantity} ชิ้น</span>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 </Link>
