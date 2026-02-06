@@ -28,7 +28,7 @@ interface Props {
 
 export function SalesEventListClient({ events }: Props) {
     const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState<'all' | 'selling' | 'closed'>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'closed'>('all');
 
     const filteredEvents = useMemo(() => {
         return events.filter(event => {
@@ -76,11 +76,11 @@ export function SalesEventListClient({ events }: Props) {
                     <Filter className="h-4 w-4 text-slate-400" />
                     <select
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value as 'all' | 'selling' | 'closed')}
+                        onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'closed')}
                         className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     >
                         <option value="all">ทั้งหมด</option>
-                        <option value="selling">กำลังขาย</option>
+                        <option value="active">กำลังขาย</option>
                         <option value="closed">ปิดแล้ว</option>
                     </select>
                 </div>
@@ -124,11 +124,11 @@ export function SalesEventListClient({ events }: Props) {
                                             <h3 className="font-semibold text-slate-900 group-hover:text-emerald-600 transition-colors">
                                                 {event.name}
                                             </h3>
-                                            <span className={`text-xs px-2 py-0.5 rounded-full ${event.status === 'selling'
-                                                    ? 'bg-emerald-100 text-emerald-600'
-                                                    : 'bg-slate-100 text-slate-600'
+                                            <span className={`text-xs px-2 py-0.5 rounded-full ${event.status === 'active'
+                                                ? 'bg-emerald-100 text-emerald-600'
+                                                : 'bg-slate-100 text-slate-600'
                                                 }`}>
-                                                {event.status === 'selling' ? 'กำลังขาย' : 'ปิดแล้ว'}
+                                                {event.status === 'active' ? 'กำลังขาย' : 'ปิดแล้ว'}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-3 text-sm text-slate-500 mt-1">

@@ -5,7 +5,7 @@ async function getEventsWithSales() {
     // Get only events with selling or closed status that have sales
     const events = await db.event.findMany({
         where: {
-            status: { in: ['selling', 'closed'] }
+            status: { in: ['active', 'closed'] }
         },
         include: {
             sales: {
