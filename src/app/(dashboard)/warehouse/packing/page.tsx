@@ -232,7 +232,7 @@ export default async function WarehousePackingPage() {
                             return (
                                 <Link
                                     key={request.id}
-                                    href={`/events/${request.event.id}/shipping`}
+                                    href={`/warehouse/packing/refill/${request.id}/shipping`}
                                     className="block rounded-xl bg-white p-5 shadow-sm hover:shadow-md transition-shadow border-l-4 border-emerald-500"
                                 >
                                     <div className="flex items-center justify-between">
