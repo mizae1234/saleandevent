@@ -7,7 +7,7 @@ import Link from "next/link";
 async function getActiveEventsWithSales() {
     const events = await db.event.findMany({
         where: {
-            status: { in: ['selling', 'approved', 'packing', 'shipped', 'received'] }
+            status: { in: ['active', 'selling', 'approved', 'packing', 'shipped', 'received'] }
         },
         include: {
             sales: {
