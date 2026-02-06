@@ -179,73 +179,88 @@ export function SaleDetailClient({ sale }: Props) {
                 </div>
             )}
 
-            {/* Items List */}
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="px-4 py-3 border-b bg-slate-50">
-                    <h2 className="font-medium text-slate-900">รายการสินค้า ({sale.items.length})</h2>
-                </div>
-                <div className="divide-y">
-                    {sale.items.map(item => (
-                        <div key={item.id} className="p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
-                                    <Tag className="h-5 w-5 text-slate-500" />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <p className="font-medium text-slate-900">{item.product.name}</p>
-                                        {item.isFreebie && (
-                                            <span className="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded">
-                                                ของแถม
-                                            </span>
-                                        )}
+            {/* Items List - Grid Style */}
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr className="bg-[#EFF4FA] text-slate-700">
+                            <th className="text-left px-4 py-3 text-sm font-bold border border-slate-200 border-t-0 border-l-0">สินค้า</th>
+                            <th className="text-center px-4 py-3 text-sm font-bold border border-slate-200 border-t-0">ราคา/หน่วย</th>
+                            <th className="text-center px-4 py-3 text-sm font-bold border border-slate-200 border-t-0">จำนวน</th>
+                            <th className="text-right px-4 py-3 text-sm font-bold border border-slate-200 border-t-0 border-r-0">รวม</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {sale.items.map((item) => (
+                            <tr key={item.id} className="hover:bg-slate-50">
+                                <td className="px-4 py-3 border border-slate-200 border-l-0">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 flex-shrink-0">
+                                            <Package className="h-4 w-4 text-slate-500" />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-medium text-slate-900 line-clamp-1 text-sm">{item.product.name}</p>
+                                                {item.isFreebie && (
+                                                    <span className="text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded flex-shrink-0">
+                                                        ของแถม
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                <span>{item.product.code || item.barcode}</span>
+                                                {(item.product.size || item.product.color) && (
+                                                    <span>
+                                                        {item.product.size && `Size: ${item.product.size}`}
+                                                        {item.product.size && item.product.color && ' • '}
+                                                        {item.product.color && `${item.product.color}`}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                                        <span className="flex items-center gap-1">
-                                            <Hash className="h-3 w-3" />
-                                            {item.product.code || item.barcode}
-                                        </span>
-                                        {(item.product.size || item.product.color) && (
-                                            <span>
-                                                {item.product.size && `Size: ${item.product.size}`}
-                                                {item.product.size && item.product.color && ' • '}
-                                                {item.product.color && `สี: ${item.product.color}`}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <p className="font-medium text-slate-900">
+                                </td>
+                                <td className="px-4 py-3 text-center border border-slate-200 text-sm md:text-base">
+                                    ฿{parseFloat(item.unitPrice.toString()).toLocaleString()}
+                                </td>
+                                <td className="px-4 py-3 text-center border border-slate-200 text-sm md:text-base">
+                                    {item.quantity}
+                                </td>
+                                <td className="px-4 py-3 text-right border border-slate-200 border-r-0 font-medium text-slate-900">
                                     ฿{parseFloat(item.totalAmount.toString()).toLocaleString()}
-                                </p>
-                                <p className="text-sm text-slate-500">
-                                    {item.quantity} x ฿{parseFloat(item.unitPrice.toString()).toLocaleString()}
-                                </p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
+                                </td>
+                            </tr>
+                        ))}
 
-            {/* Summary */}
-            <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-                <div className="flex justify-between text-slate-600">
-                    <span>รวมสินค้า</span>
-                    <span>฿{subtotal.toLocaleString()}</span>
-                </div>
-                {sale.discount && parseFloat(sale.discount.toString()) > 0 && (
-                    <div className="flex justify-between text-red-500">
-                        <span>ส่วนลด</span>
-                        <span>-฿{parseFloat(sale.discount.toString()).toLocaleString()}</span>
-                    </div>
-                )}
-                <div className="flex justify-between text-lg font-bold pt-3 border-t">
-                    <span>ยอดสุทธิ</span>
-                    <span className={isCancelled ? 'text-slate-400 line-through' : 'text-emerald-600'}>
-                        ฿{parseFloat(sale.totalAmount.toString()).toLocaleString()}
-                    </span>
-                </div>
+                        {/* Summary Footer as part of table */}
+                        <tr className="bg-[#EFF4FA]">
+                            <td colSpan={3} className="px-4 py-3 border border-slate-200 border-l-0 text-right font-bold text-slate-900">
+                                รวมสินค้า
+                            </td>
+                            <td className="px-4 py-3 border border-slate-200 border-r-0 text-right font-bold text-slate-900">
+                                ฿{subtotal.toLocaleString()}
+                            </td>
+                        </tr>
+                        {sale.discount && parseFloat(sale.discount.toString()) > 0 && (
+                            <tr className="bg-red-50">
+                                <td colSpan={3} className="px-4 py-3 border border-slate-200 border-l-0 text-right font-bold text-red-600">
+                                    ส่วนลด
+                                </td>
+                                <td className="px-4 py-3 border border-slate-200 border-r-0 text-right font-bold text-red-600">
+                                    -฿{parseFloat(sale.discount.toString()).toLocaleString()}
+                                </td>
+                            </tr>
+                        )}
+                        <tr className="bg-emerald-50">
+                            <td colSpan={3} className="px-4 py-3 border border-slate-200 border-l-0 text-right font-bold text-emerald-900 text-lg">
+                                ยอดสุทธิ
+                            </td>
+                            <td className={`px-4 py-3 border border-slate-200 border-r-0 text-right font-bold text-lg ${isCancelled ? 'text-slate-400 line-through' : 'text-emerald-700'}`}>
+                                ฿{parseFloat(sale.totalAmount.toString()).toLocaleString()}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     );
