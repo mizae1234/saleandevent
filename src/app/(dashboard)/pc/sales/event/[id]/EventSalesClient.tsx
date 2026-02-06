@@ -41,9 +41,12 @@ export function EventSalesClient({ event, sales }: Props) {
     const [dateFilter, setDateFilter] = useState<string>('');
 
     // Calculate stats
-    const totalSales = sales.reduce((sum, s) => sum + parseFloat(s.totalAmount.toString()), 0);
-    const totalItems = sales.reduce((sum, s) => sum + s.items.reduce((is, i) => is + i.quantity, 0), 0);
-    const todaySales = sales.filter(s =>
+    // Calculate stats (exclude cancelled)
+    const validSales = sales.filter(s => s.status !== 'cancelled');
+    const totalSales = validSales.reduce((sum, s) => sum + parseFloat(s.totalAmount.toString()), 0);
+    const totalItems = validSales.reduce((sum, s) => sum + s.items.reduce((is, i) => is + i.quantity, 0), 0);
+
+    const todaySales = validSales.filter(s =>
         format(new Date(s.soldAt), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
     );
     const todayTotal = todaySales.reduce((sum, s) => sum + parseFloat(s.totalAmount.toString()), 0);
@@ -115,7 +118,7 @@ export function EventSalesClient({ event, sales }: Props) {
             <div className="grid grid-cols-4 gap-4">
                 <div className="bg-white rounded-xl p-4 shadow-sm">
                     <p className="text-sm text-slate-500">บิลทั้งหมด</p>
-                    <p className="text-2xl font-bold text-slate-900">{sales.length}</p>
+                    <p className="text-2xl font-bold text-slate-900">{validSales.length}</p>
                 </div>
                 <div className="bg-white rounded-xl p-4 shadow-sm">
                     <p className="text-sm text-slate-500">ยอดรวม</p>
