@@ -230,9 +230,10 @@ export default async function WarehousePackingPage() {
                         {packedRefillRequests.map((request) => {
                             const totalItems = request.items.reduce((sum, i) => sum + i.quantity, 0);
                             return (
-                                <div
+                                <Link
                                     key={request.id}
-                                    className="block rounded-xl bg-white p-5 shadow-sm border-l-4 border-emerald-500"
+                                    href={`/events/${request.event.id}/shipping`}
+                                    className="block rounded-xl bg-white p-5 shadow-sm hover:shadow-md transition-shadow border-l-4 border-emerald-500"
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="flex-1">
@@ -259,11 +260,13 @@ export default async function WarehousePackingPage() {
                                             <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-emerald-100 text-emerald-800">
                                                 พร้อมจัดส่ง
                                             </span>
+                                            <ArrowRight className="h-5 w-5 text-slate-400" />
                                         </div>
                                     </div>
-                                </div>
+                                </Link>
                             );
                         })}
+
                     </div>
                 </section>
             )}
