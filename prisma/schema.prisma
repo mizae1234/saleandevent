@@ -1,0 +1,545 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Event {
+  id                    String          @id @default(uuid()) @db.Uuid
+  code                  String          @unique @db.VarChar(20)
+  name                  String          @db.VarChar(255)
+  location              String          @db.VarChar(255)
+  startDate             DateTime        @map("start_date") @db.Date
+  endDate               DateTime        @map("end_date") @db.Date
+  status                String          @default("draft") @db.VarChar(50)
+  responsiblePersonId   String?         @map("responsible_person_id") @db.Uuid
+  responsiblePersonName String?         @map("responsible_person_name") @db.VarChar(255)
+  version               Int             @default(1)
+  
+  // Audit fields
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy             String?         @map("created_by") @db.Uuid
+  updatedBy             String?         @map("updated_by") @db.Uuid
+  
+  // Relations
+  attendance            Attendance[]
+  deliveryNotes         DeliveryNote[]
+  expenses              EventExpense[]
+  logs                  EventLog[]
+  staff                 EventStaff[]
+  stock                 EventStock[]
+  returnSummaries       ReturnSummary[]
+  sales                 Sale[]
+  movements             StockMovement[]
+  requests              StockRequest[]
+
+  @@index([status])
+  @@index([startDate])
+  @@index([responsiblePersonId])
+  @@map("events")
+}
+
+model EventLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  eventId   String   @map("event_id") @db.Uuid
+  action    String   @db.VarChar(50)
+  details   Json
+  changedBy String   @map("changed_by") @db.Uuid
+  changedAt DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
+  
+  event     Event    @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
+  @@map("event_logs")
+}
+
+model Product {
+  barcode                 String                   @id @db.VarChar(50)
+  code                    String?                  @db.VarChar(50)
+  name                    String                   @db.VarChar(255)
+  size                    String?                  @db.VarChar(20)
+  price                   Decimal?                 @default(0) @db.Decimal(10, 2)
+  category                String?                  @db.VarChar(50)
+  producttype             String?                  @db.VarChar(250)
+  color                   String?                  @db.VarChar(250)
+  status                  String                   @default("active") @db.VarChar(20)
+  
+  // Audit fields
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy               String?                  @map("created_by") @db.Uuid
+  updatedBy               String?                  @map("updated_by") @db.Uuid
+  
+  // Relations
+  branchStock             BranchStock[]
+  branchStockRequestItems BranchStockRequestItem[]
+  eventStock              EventStock[]
+  returnItems             ReturnItem[]
+  saleItems               SaleItem[]
+  stockMovements          StockMovement[]
+  stockRequestItems       StockRequestItem[]
+  warehouseStock          WarehouseStock?
+
+  @@map("products")
+}
+
+model Branch {
+  id             String               @id @default(uuid()) @db.Uuid
+  code           String               @unique @db.VarChar(20)
+  name           String               @db.VarChar(255)
+  location       String               @db.VarChar(255)
+  managerId      String?              @map("manager_id") @db.Uuid
+  managerName    String?              @map("manager_name") @db.VarChar(255)
+  phone          String?              @db.VarChar(50)
+  status         String               @default("active") @db.VarChar(50)
+  
+  // Audit fields
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy      String?              @map("created_by") @db.Uuid
+  updatedBy      String?              @map("updated_by") @db.Uuid
+  
+  // Relations
+  stock          BranchStock[]
+  stockRequests  BranchStockRequest[]
+  stockMovements StockMovement[]
+
+  @@map("branches")
+}
+
+model BranchStock {
+  id          String   @id @default(uuid()) @db.Uuid
+  branchId    String   @map("branch_id") @db.Uuid
+  barcode     String   @map("barcode") @db.VarChar(50)
+  quantity    Int      @default(0)
+  
+  // Audit fields
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  
+  // Relations
+  product     Product  @relation(fields: [barcode], references: [barcode])
+  branch      Branch   @relation(fields: [branchId], references: [id])
+
+  @@unique([branchId, barcode])
+  @@map("branch_stock")
+}
+
+model WarehouseStock {
+  barcode          String   @id @db.VarChar(50)
+  quantity         Int      @default(0)
+  reservedQuantity Int      @default(0) @map("reserved_quantity")
+  
+  // Audit fields
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy        String?  @map("created_by") @db.Uuid
+  updatedBy        String?  @map("updated_by") @db.Uuid
+  
+  // Relations
+  product          Product  @relation(fields: [barcode], references: [barcode])
+
+  @@map("warehouse_stock")
+}
+
+model EventStock {
+  id               String   @id @default(uuid()) @db.Uuid
+  eventId          String   @map("event_id") @db.Uuid
+  barcode          String   @db.VarChar(50)
+  quantity         Int      @default(0)
+  soldQuantity     Int      @default(0) @map("sold_quantity")
+  returnedQuantity Int      @default(0) @map("returned_quantity")
+  
+  // Audit fields
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy        String?  @map("created_by") @db.Uuid
+  updatedBy        String?  @map("updated_by") @db.Uuid
+  
+  // Relations
+  product          Product  @relation(fields: [barcode], references: [barcode])
+  event            Event    @relation(fields: [eventId], references: [id])
+
+  @@unique([eventId, barcode])
+  @@index([eventId])
+  @@map("event_stock")
+}
+
+model StockMovement {
+  id           String   @id @default(uuid()) @db.Uuid
+  movementType String   @map("movement_type") @db.VarChar(50)
+  barcode      String   @db.VarChar(50)
+  quantity     Int
+  fromLocation String?  @map("from_location") @db.VarChar(100)
+  toLocation   String?  @map("to_location") @db.VarChar(100)
+  channelType  String?  @default("event") @map("channel_type") @db.VarChar(20)
+  eventId      String?  @map("event_id") @db.Uuid
+  branchId     String?  @map("branch_id") @db.Uuid
+  notes        String?
+  
+  // Audit fields
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy    String?  @map("created_by") @db.Uuid
+  updatedBy    String?  @map("updated_by") @db.Uuid
+  
+  // Relations
+  product      Product  @relation(fields: [barcode], references: [barcode])
+  branch       Branch?  @relation(fields: [branchId], references: [id])
+  event        Event?   @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
+  @@index([barcode])
+  @@index([createdAt(sort: Desc)])
+  @@map("stock_movements")
+}
+
+model StockRequest {
+  id               String             @id @default(uuid()) @db.Uuid
+  eventId          String             @map("event_id") @db.Uuid
+  status           String             @default("pending") @db.VarChar(50)
+  approvedAt       DateTime?          @map("approved_at") @db.Timestamptz(6)
+  approvedBy       String?            @map("approved_by") @db.VarChar(100)
+  rejectedAt       DateTime?          @map("rejected_at") @db.Timestamptz(6)
+  rejectedBy       String?            @map("rejected_by") @db.VarChar(100)
+  shipmentProvider String?            @map("shipment_provider") @db.VarChar(100)
+  trackingNo       String?            @map("tracking_no") @db.VarChar(100)
+  shippedAt        DateTime?          @map("shipped_at") @db.Timestamptz(6)
+  receivedAt       DateTime?          @map("received_at") @db.Timestamptz(6)
+  
+  // Audit fields
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy        String?            @map("created_by") @db.Uuid
+  updatedBy        String?            @map("updated_by") @db.Uuid
+  
+  // Relations
+  deliveryNotes    DeliveryNote[]
+  items            StockRequestItem[]
+  event            Event              @relation(fields: [eventId], references: [id])
+
+  @@map("stock_requests")
+}
+
+model StockRequestItem {
+  id               String       @id @default(uuid()) @db.Uuid
+  requestId        String       @map("request_id") @db.Uuid
+  barcode          String       @db.VarChar(50)
+  productName      String?      @map("product_name") @db.VarChar(255)
+  size             String?      @db.VarChar(20)
+  quantity         Int          @map("qty_requested")
+  packedQuantity   Int?         @default(0) @map("qty_packed")
+  receivedQuantity Int?         @default(0) @map("qty_received")
+  remarks          String?
+  
+  // Audit fields
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy        String?      @map("created_by") @db.Uuid
+  updatedBy        String?      @map("updated_by") @db.Uuid
+  
+  // Relations
+  product          Product      @relation(fields: [barcode], references: [barcode])
+  request          StockRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@map("stock_request_items")
+}
+
+model Sale {
+  id          String     @id @default(uuid()) @db.Uuid
+  eventId     String?    @map("event_id") @db.Uuid
+  branchId    String?    @map("branch_id") @db.Uuid
+  staffId     String?    @map("staff_id") @db.Uuid
+  totalAmount Decimal    @map("total_amount") @db.Decimal(10, 2)
+  discount    Decimal    @default(0) @db.Decimal(10, 2)
+  status      String     @default("active") @db.VarChar(20)  // active, cancelled
+  cancelledAt DateTime?  @map("cancelled_at") @db.Timestamptz(6)
+  cancelledBy String?    @map("cancelled_by") @db.Uuid
+  cancelReason String?   @map("cancel_reason")
+  soldAt      DateTime   @default(now()) @map("sold_at") @db.Timestamptz(6)
+  
+  // Audit fields
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?    @map("created_by") @db.Uuid
+  updatedBy   String?    @map("updated_by") @db.Uuid
+  
+  // Relations
+  items       SaleItem[]
+  event       Event?     @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
+  @@index([soldAt(sort: Desc)])
+  @@map("sales")
+}
+
+model SaleItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  saleId      String   @map("sale_id") @db.Uuid
+  barcode     String   @db.VarChar(50)
+  quantity    Int
+  unitPrice   Decimal  @map("unit_price") @db.Decimal(10, 2)
+  totalAmount Decimal  @map("total_amount") @db.Decimal(10, 2)
+  isFreebie   Boolean  @default(false) @map("is_freebie")
+  
+  // Audit fields
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  
+  // Relations
+  product     Product  @relation(fields: [barcode], references: [barcode])
+  sale        Sale     @relation(fields: [saleId], references: [id])
+
+  @@map("sale_items")
+}
+
+model EventExpense {
+  id          String   @id @default(uuid()) @db.Uuid
+  eventId     String   @map("event_id") @db.Uuid
+  category    String   @db.VarChar(50)
+  amount      Decimal  @db.Decimal(10, 2)
+  description String?
+  receiptUrl  String?  @map("receipt_url")
+  status      String   @default("draft") @db.VarChar(50)
+  
+  // Audit fields
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  
+  // Relations
+  event       Event    @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
+  @@index([status])
+  @@map("event_expenses")
+}
+
+model Staff {
+  id               String       @id @default(uuid()) @db.Uuid
+  name             String       @db.VarChar(255)
+  role             String       @default("PC") @db.VarChar(50)
+  phone            String?      @db.VarChar(50)
+  paymentType      String       @default("daily") @map("payment_type") @db.VarChar(50)
+  dailyRate        Decimal?     @map("daily_rate") @db.Decimal(10, 2)
+  commissionAmount Decimal?     @map("commission_amount") @db.Decimal(10, 2)
+  status           String       @default("active") @db.VarChar(20)
+  
+  // Audit fields
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy        String?      @map("created_by") @db.Uuid
+  updatedBy        String?      @map("updated_by") @db.Uuid
+  
+  // Relations
+  attendance       Attendance[]
+  assignments      EventStaff[]
+
+  @@index([status])
+  @@map("staff")
+}
+
+model EventStaff {
+  id                 String   @id @default(uuid()) @db.Uuid
+  eventId            String   @map("event_id") @db.Uuid
+  staffId            String   @map("staff_id") @db.Uuid
+  assignedAt         DateTime @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  commissionOverride Decimal? @map("commission_override") @db.Decimal(10, 2)
+  role               String?  @default("PC")
+  isMain             Boolean  @default(false) @map("is_main")
+  
+  // Audit fields
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy          String?  @map("created_by") @db.Uuid
+  updatedBy          String?  @map("updated_by") @db.Uuid
+  
+  // Relations
+  event              Event    @relation(fields: [eventId], references: [id])
+  staff              Staff    @relation(fields: [staffId], references: [id])
+
+  @@unique([eventId, staffId])
+  @@index([eventId])
+  @@index([staffId])
+  @@map("event_staff")
+}
+
+model Attendance {
+  id          String   @id @default(uuid()) @db.Uuid
+  eventId     String   @map("event_id") @db.Uuid
+  staffId     String   @map("staff_id") @db.Uuid
+  date        DateTime @db.Date
+  hoursWorked Decimal  @default(8) @map("hours_worked") @db.Decimal(4, 2)
+  notes       String?
+  
+  // Audit fields
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?  @map("created_by") @db.Uuid
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  
+  // Relations
+  event       Event    @relation(fields: [eventId], references: [id])
+  staff       Staff    @relation(fields: [staffId], references: [id])
+
+  @@unique([eventId, staffId, date])
+  @@index([eventId])
+  @@map("attendance")
+}
+
+model DeliveryNote {
+  id                 String        @id @default(uuid()) @db.Uuid
+  eventId            String        @map("event_id") @db.Uuid
+  stockRequestId     String?       @map("stock_request_id") @db.Uuid
+  deliveryNoteNumber String        @unique @map("delivery_note_number") @db.VarChar(100)
+  preparedAt         DateTime      @default(now()) @map("prepared_at") @db.Timestamptz(6)
+  status             String        @default("pending") @db.VarChar(50)
+  dispatchedAt       DateTime?     @map("dispatched_at") @db.Timestamptz(6)
+  deliveredAt        DateTime?     @map("delivered_at") @db.Timestamptz(6)
+  
+  // Audit fields
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy          String?       @map("created_by") @db.Uuid
+  updatedBy          String?       @map("updated_by") @db.Uuid
+  
+  // Relations
+  event              Event         @relation(fields: [eventId], references: [id])
+  stockRequest       StockRequest? @relation(fields: [stockRequestId], references: [id])
+
+  @@index([eventId])
+  @@index([status])
+  @@map("delivery_notes")
+}
+
+model ReturnSummary {
+  id          String       @id @default(uuid()) @db.Uuid
+  eventId     String       @map("event_id") @db.Uuid
+  submittedAt DateTime     @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  confirmedAt DateTime?    @map("confirmed_at") @db.Timestamptz(6)
+  confirmedBy String?      @map("confirmed_by") @db.VarChar(100)
+  
+  // Audit fields
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?      @map("created_by") @db.Uuid
+  updatedBy   String?      @map("updated_by") @db.Uuid
+  
+  // Relations
+  items       ReturnItem[]
+  event       Event        @relation(fields: [eventId], references: [id])
+
+  @@map("return_summaries")
+}
+
+model ReturnItem {
+  id                String        @id @default(uuid()) @db.Uuid
+  returnSummaryId   String        @map("return_summary_id") @db.Uuid
+  barcode           String        @db.VarChar(50)
+  soldQuantity      Int           @default(0) @map("sold_quantity")
+  remainingQuantity Int           @default(0) @map("remaining_quantity")
+  damagedQuantity   Int           @default(0) @map("damaged_quantity")
+  missingQuantity   Int           @default(0) @map("missing_quantity")
+  
+  // Audit fields
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy         String?       @map("created_by") @db.Uuid
+  updatedBy         String?       @map("updated_by") @db.Uuid
+  
+  // Relations
+  product           Product       @relation(fields: [barcode], references: [barcode])
+  returnSummary     ReturnSummary @relation(fields: [returnSummaryId], references: [id], onDelete: Cascade)
+
+  @@map("return_items")
+}
+
+model Promotion {
+  id          String    @id @default(uuid()) @db.Uuid
+  code        String    @unique @db.VarChar(50)
+  name        String    @db.VarChar(255)
+  description String?
+  type        String    @db.VarChar(50)
+  startDate   DateTime  @map("start_date") @db.Date
+  endDate     DateTime? @map("end_date") @db.Date
+  isActive    Boolean   @default(true) @map("is_active")
+  config      Json
+  
+  // Audit fields
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?   @map("created_by") @db.Uuid
+  updatedBy   String?   @map("updated_by") @db.Uuid
+
+  @@map("promotions")
+}
+
+model BranchStockRequest {
+  id          String                   @id @default(uuid()) @db.Uuid
+  branchId    String                   @map("branch_id") @db.Uuid
+  status      String                   @default("pending") @db.VarChar(50)
+  notes       String?
+  requestDate DateTime                 @default(now()) @map("request_date") @db.Timestamptz(6)
+  approvedAt  DateTime?                @map("approved_at") @db.Timestamptz(6)
+  approvedBy  String?                  @map("approved_by") @db.VarChar(100)
+  
+  // Audit fields
+  createdAt   DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?                  @map("created_by") @db.Uuid
+  updatedBy   String?                  @map("updated_by") @db.Uuid
+  
+  // Relations
+  items       BranchStockRequestItem[]
+  branch      Branch                   @relation(fields: [branchId], references: [id])
+
+  @@map("branch_stock_requests")
+}
+
+model BranchStockRequestItem {
+  id          String             @id @default(uuid()) @db.Uuid
+  requestId   String             @map("request_id") @db.Uuid
+  barcode     String             @db.VarChar(50)
+  productName String?            @map("product_name") @db.VarChar(255)
+  size        String?            @db.VarChar(20)
+  quantity    Int
+  
+  // Audit fields
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy   String?            @map("created_by") @db.Uuid
+  updatedBy   String?            @map("updated_by") @db.Uuid
+  
+  // Relations
+  product     Product            @relation(fields: [barcode], references: [barcode])
+  request     BranchStockRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("branch_stock_request_items")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String?  @map("password_hash")
+  name         String   @map("full_name")
+  role         String
+  status       String   @default("active")
+  
+  // Audit fields
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy    String?  @map("created_by") @db.Uuid
+  updatedBy    String?  @map("updated_by") @db.Uuid
+
+  @@map("users")
+}
