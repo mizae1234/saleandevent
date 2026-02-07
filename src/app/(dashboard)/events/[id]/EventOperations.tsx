@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { closeEvent } from "@/actions/event-actions";
-import { Package, Power, CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { closeEventManual } from "@/actions/event-actions";
+import { Package, Power, CheckCircle, AlertTriangle, Loader2, DollarSign } from "lucide-react";
 import Link from "next/link";
 import {
     AlertDialog,
@@ -30,7 +30,7 @@ export function EventOperations({ eventId, status }: Props) {
     const handleCloseEvent = () => {
         startTransition(async () => {
             try {
-                await closeEvent(eventId);
+                await closeEventManual(eventId);
             } catch (e) {
                 console.error(e);
                 alert("Failed to close event");
@@ -39,10 +39,8 @@ export function EventOperations({ eventId, status }: Props) {
     };
 
     const isPackable = status === "approved" || status === "packing";
-    // Show 'Close Event' if shipped or ready to sell/completed (if we want to allow re-closing or just showing specific states)
-    // Actually, usually 'shipped' -> 'completed'.
-    // If status is 'shipped', allow closing.
-    const isCloseable = status === "shipped";
+    // Allow closing only when returned (after stock is cleared)
+    const isCloseable = status === "returned";
     const isClosed = status === "completed";
 
     return (
@@ -75,6 +73,19 @@ export function EventOperations({ eventId, status }: Props) {
                     </div>
                 ) : null}
 
+                {/* Returned Status Info */}
+                {status === 'returned' && (
+                    <div className="mb-3 p-3 rounded-lg bg-amber-50 border border-amber-100">
+                        <div className="flex items-center gap-2 mb-1">
+                            <CheckCircle className="h-4 w-4 text-amber-600" />
+                            <p className="font-medium text-amber-900 text-sm">คืนของแล้ว</p>
+                        </div>
+                        <p className="text-xs text-amber-700">
+                            ตรวจสอบค่าใช้จ่ายและเคลียร์เอกสารก่อนปิดงาน
+                        </p>
+                    </div>
+                )}
+
                 {/* Close Event Button */}
                 {isCloseable && (
                     <AlertDialog>
@@ -87,16 +98,16 @@ export function EventOperations({ eventId, status }: Props) {
                                     <Power className="h-5 w-5" />
                                 </div>
                                 <div className="text-left">
-                                    <h4 className="font-medium text-slate-900">ปิดอีเวนท์</h4>
-                                    <p className="text-xs text-slate-500">เมื่อจบงานและคืนของครบแล้ว</p>
+                                    <h4 className="font-medium text-slate-900">ปิดงานสมบูรณ์</h4>
+                                    <p className="text-xs text-slate-500">เมื่อตรวจสอบทุกอย่างครบแล้ว</p>
                                 </div>
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
-                                <AlertDialogTitle>ยืนยันปิดอีเวนท์?</AlertDialogTitle>
+                                <AlertDialogTitle>ยืนยันปิดงานสมบูรณ์?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    การปิดอีเวนท์หมายถึงงานเสร็จสิ้นสมบูรณ์แล้ว คุณจะไม่สามารถแก้ไขข้อมูลได้อีก
+                                    การปิดงานหมายถึงทุกขั้นตอนเสร็จสิ้น (คืนของ, เคลียร์ค่าใช้จ่าย) คุณจะไม่สามารถแก้ไขข้อมูลได้อีก
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -119,12 +130,6 @@ export function EventOperations({ eventId, status }: Props) {
                             <h4 className="font-medium text-slate-700">ปิดงานแล้ว</h4>
                             <p className="text-xs text-slate-500">งานเสร็จสิ้นสมบูรณ์</p>
                         </div>
-                    </div>
-                )}
-
-                {!isPackable && !isCloseable && !isClosed && status !== 'packed' && (
-                    <div className="text-center py-4 text-sm text-slate-400">
-                        ไม่มีการดำเนินการในขั้นตอนนี้
                     </div>
                 )}
             </div>

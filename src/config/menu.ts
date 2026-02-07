@@ -45,7 +45,7 @@ export const MENU_SECTIONS: MenuSection[] = [
             { title: "รับสินค้าเข้า", href: "/pc/receive", icon: PackageCheck },
             { title: "สต็อกหน้าร้าน", href: "/pc/stock", icon: Store },
             { title: "เบิกของเพิ่ม", href: "/pc/refill", icon: RefreshCw },
-            { title: "ปิดยอด/ส่งคืน", href: "/pc/closing", icon: LogOut },
+            { title: "ปิดยอด/ส่งคืน", href: "/pc/close", icon: LogOut },
         ],
     },
     {
@@ -63,7 +63,7 @@ export const MENU_SECTIONS: MenuSection[] = [
         items: [
             { title: "งานรอแพ็ค", href: "/warehouse/packing", icon: Package },
             { title: "รายการจัดส่ง", href: "/warehouse/shipments", icon: Truck },
-            { title: "รับคืนสินค้า", href: "/warehouse/returns", icon: Undo2 },
+            { title: "รับคืนสินค้า", href: "/warehouse/return", icon: Undo2 },
             { title: "คลังสินค้าหลัก", href: "/warehouse/stock", icon: Warehouse },
         ],
     },

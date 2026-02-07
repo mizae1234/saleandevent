@@ -670,3 +670,349 @@ export async function closeEvent(eventId: string) {
     }
 }
 
+/**
+ * Close event stock - creates ReturnSummary with damaged/missing items
+ * Changes status from 'active' to 'pending_return'
+ */
+export async function closeEventStock(
+    eventId: string,
+    items: { barcode: string; damaged: number; missing: number }[]
+) {
+    try {
+        await db.$transaction(async (tx: Prisma.TransactionClient) => {
+            // 1. Get event stock with sales data
+            const event = await tx.event.findUnique({
+                where: { id: eventId },
+                include: {
+                    stock: true,
+                    sales: {
+                        where: { status: 'active' },
+                        include: { items: true }
+                    }
+                }
+            });
+
+            if (!event) throw new Error("ไม่พบ Event");
+            if (event.status !== 'active') throw new Error("Event นี้ไม่สามารถปิดยอดได้");
+
+            // 2. Calculate sold quantities
+            const soldByBarcode = new Map<string, number>();
+            event.sales.forEach(sale => {
+                sale.items.forEach(item => {
+                    const current = soldByBarcode.get(item.barcode) || 0;
+                    soldByBarcode.set(item.barcode, current + item.quantity);
+                });
+            });
+
+            // 3. Create ReturnSummary
+            const returnSummary = await tx.returnSummary.create({
+                data: {
+                    eventId,
+                    submittedAt: new Date()
+                }
+            });
+
+            // 4. Create ReturnItems
+            for (const stock of event.stock) {
+                const itemData = items.find(i => i.barcode === stock.barcode) || { damaged: 0, missing: 0 };
+                const soldQty = soldByBarcode.get(stock.barcode) || 0;
+                const remainingQty = stock.quantity - soldQty - itemData.damaged - itemData.missing;
+
+                await tx.returnItem.create({
+                    data: {
+                        returnSummaryId: returnSummary.id,
+                        barcode: stock.barcode,
+                        soldQuantity: soldQty,
+                        remainingQuantity: remainingQty,
+                        damagedQuantity: itemData.damaged,
+                        missingQuantity: itemData.missing
+                    }
+                });
+            }
+
+            // 5. Update event status
+            await tx.event.update({
+                where: { id: eventId },
+                data: { status: 'pending_return' }
+            });
+
+            // 6. Log the action
+            await tx.eventLog.create({
+                data: {
+                    eventId,
+                    action: 'Stock Closed',
+                    details: {
+                        closedAt: new Date().toISOString(),
+                        returnSummaryId: returnSummary.id,
+                        totalItems: event.stock.length,
+                        totalDamaged: items.reduce((sum, i) => sum + i.damaged, 0),
+                        totalMissing: items.reduce((sum, i) => sum + i.missing, 0)
+                    },
+                    changedBy: "00000000-0000-0000-0000-000000000000",
+                }
+            });
+        });
+
+        revalidatePath(`/events/${eventId}`);
+        revalidatePath("/events");
+        revalidatePath("/pc/close");
+        return { success: true };
+    } catch (error: any) {
+        console.error("Failed to close event stock:", error);
+        throw new Error(`Failed to close event stock: ${error.message || error}`);
+    }
+}
+
+/**
+ * Create return shipment - changes status from 'pending_return' to 'returning'
+ */
+export async function createReturnShipment(
+    eventId: string,
+    shipmentData: { provider: string; trackingNo?: string }
+) {
+    try {
+        await db.$transaction(async (tx: Prisma.TransactionClient) => {
+            // Verify event is pending return
+            const event = await tx.event.findUnique({
+                where: { id: eventId }
+            });
+
+            if (!event) throw new Error("ไม่พบ Event");
+            if (event.status !== 'pending_return') {
+                throw new Error("Event นี้ไม่อยู่ในสถานะรอส่งคืน");
+            }
+
+            // Update event status
+            await tx.event.update({
+                where: { id: eventId },
+                data: { status: 'returning' }
+            });
+
+            // Log the shipment
+            await tx.eventLog.create({
+                data: {
+                    eventId,
+                    action: 'Return Shipped',
+                    details: {
+                        shippedAt: new Date().toISOString(),
+                        provider: shipmentData.provider,
+                        trackingNo: shipmentData.trackingNo
+                    },
+                    changedBy: "00000000-0000-0000-0000-000000000000",
+                }
+            });
+        });
+
+        revalidatePath(`/events/${eventId}`);
+        revalidatePath("/events");
+        revalidatePath("/pc/close");
+        revalidatePath("/warehouse/return");
+        return { success: true };
+    } catch (error: any) {
+        console.error("Failed to create return shipment:", error);
+        throw new Error(`Failed to create return shipment: ${error.message || error}`);
+    }
+}
+
+/**
+ * Confirm return received - adds stock back to warehouse and completes event
+ */
+export async function confirmReturnReceived(eventId: string) {
+    try {
+        await db.$transaction(async (tx: Prisma.TransactionClient) => {
+            // 1. Get event and return summary
+            const event = await tx.event.findUnique({
+                where: { id: eventId },
+                include: {
+                    returnSummaries: {
+                        orderBy: { createdAt: 'desc' },
+                        take: 1,
+                        include: { items: true }
+                    }
+                }
+            });
+
+            if (!event) throw new Error("ไม่พบ Event");
+            if (event.status !== 'returning') {
+                throw new Error("Event นี้ไม่อยู่ในสถานะกำลังส่งคืน");
+            }
+
+            const returnSummary = event.returnSummaries[0];
+            if (!returnSummary) throw new Error("ไม่พบรายการส่งคืน");
+
+            // 2. Add remaining quantities back to warehouse stock
+            for (const item of returnSummary.items) {
+                if (item.remainingQuantity > 0) {
+                    await tx.warehouseStock.upsert({
+                        where: { barcode: item.barcode },
+                        create: {
+                            barcode: item.barcode,
+                            quantity: item.remainingQuantity
+                        },
+                        update: {
+                            quantity: { increment: item.remainingQuantity }
+                        }
+                    });
+                }
+            }
+
+            // 3. Update return summary
+            await tx.returnSummary.update({
+                where: { id: returnSummary.id },
+                data: {
+                    confirmedAt: new Date(),
+                    confirmedBy: 'Warehouse'
+                }
+            });
+
+            // 4. Clear event stock (since returned)
+            await tx.eventStock.deleteMany({
+                where: { eventId }
+            });
+
+            // 5. Update event status to returned (wait for admin to close)
+            await tx.event.update({
+                where: { id: eventId },
+                data: { status: 'returned' }
+            });
+
+            // 6. Log the action
+            await tx.eventLog.create({
+                data: {
+                    eventId,
+                    action: 'Return Received',
+                    details: {
+                        receivedAt: new Date().toISOString(),
+                        totalItemsReturned: returnSummary.items.reduce((sum, i) => sum + i.remainingQuantity, 0)
+                    },
+                    changedBy: "00000000-0000-0000-0000-000000000000",
+                }
+            });
+        });
+
+        revalidatePath(`/events/${eventId}`);
+        revalidatePath("/events");
+        revalidatePath("/warehouse/return");
+        revalidatePath("/warehouse/stock");
+        return { success: true };
+    } catch (error: any) {
+        console.error("Failed to confirm return:", error);
+        throw new Error(`Failed to confirm return: ${error.message || error}`);
+    }
+}
+
+/**
+ * Manually close event (Admin only) - Final step after expenses are cleared
+ */
+export async function closeEventManual(eventId: string) {
+    try {
+        await db.$transaction(async (tx: Prisma.TransactionClient) => {
+            // Verify event is returned
+            const event = await tx.event.findUnique({
+                where: { id: eventId }
+            });
+
+            if (!event) throw new Error("ไม่พบ Event");
+            if (event.status !== 'returned') {
+                throw new Error("Event ต้องอยู่ในสถานะ 'Returned' ถึงจะปิดงานได้");
+            }
+
+            // Update event status to completed
+            await tx.event.update({
+                where: { id: eventId },
+                data: { status: 'completed' }
+            });
+
+            // Log the completion
+            await tx.eventLog.create({
+                data: {
+                    eventId,
+                    action: 'Event Closed (Manual)',
+                    details: { closedAt: new Date().toISOString() },
+                    changedBy: "00000000-0000-0000-0000-000000000000",
+                }
+            });
+        });
+
+        revalidatePath(`/events/${eventId}`);
+        revalidatePath("/events");
+        return { success: true };
+    } catch (error: any) {
+        console.error("Failed to close event:", error);
+        throw new Error(`Failed to close event: ${error.message || error}`);
+    }
+}
+/**
+ * Add expense to event
+ */
+export async function addEventExpense(
+    eventId: string,
+    data: {
+        category: string;
+        amount: number;
+        description: string;
+    }
+) {
+    try {
+        await db.$transaction(async (tx: Prisma.TransactionClient) => {
+            await tx.eventExpense.create({
+                data: {
+                    eventId,
+                    category: data.category,
+                    amount: data.amount,
+                    description: data.description,
+                    status: 'approved', // Auto approve for now as requested by PC/Responsible person
+                    createdBy: "00000000-0000-0000-0000-000000000000"
+                }
+            });
+
+            // Log
+            await tx.eventLog.create({
+                data: {
+                    eventId,
+                    action: 'Add Expense',
+                    details: { ...data, addedAt: new Date().toISOString() },
+                    changedBy: "00000000-0000-0000-0000-000000000000",
+                }
+            });
+        });
+
+        revalidatePath(`/events/${eventId}`);
+        return { success: true };
+    } catch (error: any) {
+        console.error("Failed to add expense:", error);
+        throw new Error(`Failed to add expense: ${error.message || error}`);
+    }
+}
+
+/**
+ * Remove expense from event
+ */
+export async function removeEventExpense(
+    expenseId: string,
+    eventId: string
+) {
+    try {
+        await db.$transaction(async (tx: Prisma.TransactionClient) => {
+            await tx.eventExpense.delete({
+                where: { id: expenseId }
+            });
+
+            // Log
+            await tx.eventLog.create({
+                data: {
+                    eventId,
+                    action: 'Remove Expense',
+                    details: { expenseId, removedAt: new Date().toISOString() },
+                    changedBy: "00000000-0000-0000-0000-000000000000",
+                }
+            });
+        });
+
+        revalidatePath(`/events/${eventId}`);
+        return { success: true };
+    } catch (error: any) {
+        console.error("Failed to remove expense:", error);
+        throw new Error(`Failed to remove expense: ${error.message || error}`);
+    }
+}

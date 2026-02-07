@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { EventActions } from "./EventActions";
 import { EventStatusStepper } from "./EventStatusStepper";
 import { EventOperations } from "./EventOperations";
+import { EventExpenses } from "./EventExpenses";
 
 async function getEventDetails(id: string) {
     const event = await db.event.findUnique({
@@ -23,6 +24,9 @@ async function getEventDetails(id: string) {
             },
             logs: {
                 orderBy: { changedAt: 'desc' }
+            },
+            expenses: {
+                orderBy: { createdAt: 'desc' }
             }
         }
     });
@@ -58,6 +62,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         completed: "bg-purple-100 text-purple-800",
     };
 
+    // Find Head PC name
+    const headPC = event.staff.find(s => s.role === 'Head')?.staff.name;
+    const responsibleName = headPC || event.responsiblePersonName || "ยังไม่ระบุ";
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -87,7 +95,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                         <span>•</span>
                         <span className="flex items-center gap-1.5">
                             <Users className="h-4 w-4" />
-                            ผู้รับผิดชอบ: {event.responsiblePersonName || "ยังไม่ระบุ"}
+                            ผู้รับผิดชอบ: {responsibleName}
                         </span>
                     </div>
                 </div>
@@ -226,6 +234,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                             <p className="text-center text-slate-400 py-4">ยังไม่มีพนักงาน</p>
                         )}
                     </div>
+
+                    {/* Expenses - New Feature */}
+                    <EventExpenses eventId={event.id} expenses={event.expenses || []} />
 
                     {/* Event Logs */}
                     <div className="rounded-xl bg-white p-6 shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)]">
