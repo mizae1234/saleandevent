@@ -8,50 +8,44 @@ export async function GET(
     try {
         const { id } = await params;
 
-        const event = await db.event.findUnique({
+        const event = await db.salesChannel.findUnique({
             where: { id },
             include: {
                 staff: true,
-                requests: {
+                stock: true,
+                stockRequests: {
                     include: {
-                        items: true
-                    }
-                }
-            }
+                        allocations: true,
+                        shipment: true,
+                        receiving: true,
+                    },
+                    orderBy: { createdAt: 'desc' },
+                },
+            },
         });
 
         if (!event) {
             return NextResponse.json({ error: "Event not found" }, { status: 404 });
         }
 
-        // Transform data for easy consumption by the edit form
-        const response = {
+        return NextResponse.json({
             id: event.id,
+            type: event.type,
             name: event.name,
             code: event.code,
             location: event.location,
+            phone: event.phone,
             status: event.status,
-            startDate: event.startDate.toISOString(),
-            endDate: event.endDate.toISOString(),
-            staff: event.staff.map(s => ({
+            salesTarget: event.salesTarget,
+            startDate: event.startDate?.toISOString() || null,
+            endDate: event.endDate?.toISOString() || null,
+            staff: event.staff.map((s: any) => ({
                 staffId: s.staffId,
-                role: s.role
+                role: s.role,
             })),
-            // First request is products, second is equipment (based on create logic)
-            products: event.requests[0]?.items?.map(item => ({
-                barcode: item.barcode,
-                quantity: item.quantity,
-                productName: item.productName,
-                size: item.size
-            })) || [],
-            equipment: event.requests[1]?.items?.map(item => ({
-                barcode: item.barcode,
-                quantity: item.quantity,
-                productName: item.productName
-            })) || []
-        };
-
-        return NextResponse.json(response);
+            stock: event.stock,
+            stockRequests: event.stockRequests,
+        });
     } catch (error) {
         console.error("Failed to fetch event:", error);
         return NextResponse.json({ error: "Failed to fetch event" }, { status: 500 });

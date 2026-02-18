@@ -8,21 +8,20 @@ interface SaleItemInput {
     barcode: string;
     quantity: number;
     unitPrice: number;
-    discount?: number; // ส่วนลดรายชิ้น
+    discount?: number;
     isFreebie?: boolean;
 }
 
 interface AdjustmentInput {
     description: string;
-    amount: number; // บวก/ลบ
+    amount: number;
 }
 
 interface CreateSaleInput {
-    eventId?: string;
-    branchId?: string;
+    channelId?: string;
     items: SaleItemInput[];
     adjustments?: AdjustmentInput[];
-    discount?: number; // ส่วนลดท้ายบิล
+    discount?: number;
 }
 
 export async function createSale(data: CreateSaleInput) {
@@ -46,21 +45,20 @@ export async function createSale(data: CreateSaleInput) {
             // 3. คำนวณยอดสุทธิ
             const totalAmount = subtotal + adjustmentTotal - (data.discount || 0);
 
-            // 4. สร้าง billCode แบบ {EventCode}-{running}
+            // 4. สร้าง billCode แบบ {ChannelCode}-{running}
             let billCode: string | null = null;
-            if (data.eventId) {
-                const event = await tx.event.findUnique({
-                    where: { id: data.eventId },
+            if (data.channelId) {
+                const channel = await tx.salesChannel.findUnique({
+                    where: { id: data.channelId },
                     select: { code: true }
                 });
 
-                if (event?.code) {
-                    // นับจำนวน sales ที่มีอยู่แล้วใน event นี้
+                if (channel?.code) {
                     const existingSalesCount = await tx.sale.count({
-                        where: { eventId: data.eventId }
+                        where: { channelId: data.channelId }
                     });
                     const runningNumber = (existingSalesCount + 1).toString().padStart(4, '0');
-                    billCode = `${event.code}-${runningNumber}`;
+                    billCode = `${channel.code}-${runningNumber}`;
                 }
             }
 
@@ -68,12 +66,11 @@ export async function createSale(data: CreateSaleInput) {
             const sale = await tx.sale.create({
                 data: {
                     billCode: billCode,
-                    eventId: data.eventId || null,
-                    branchId: data.branchId || null,
+                    channelId: data.channelId || null,
                     totalAmount: totalAmount,
                     discount: data.discount || 0,
                     soldAt: new Date(),
-                    createdBy: "00000000-0000-0000-0000-000000000000", // TODO: ใช้ user จริง
+                    createdBy: "00000000-0000-0000-0000-000000000000",
                 }
             });
 
@@ -93,11 +90,11 @@ export async function createSale(data: CreateSaleInput) {
                     }
                 });
 
-                // 6. อัปเดต EventStock (หักสต็อก)
-                if (data.eventId && !item.isFreebie) {
-                    await tx.eventStock.updateMany({
+                // อัปเดต ChannelStock (หักสต็อก)
+                if (data.channelId && !item.isFreebie) {
+                    await tx.channelStock.updateMany({
                         where: {
-                            eventId: data.eventId,
+                            channelId: data.channelId,
                             barcode: item.barcode,
                         },
                         data: {
@@ -107,17 +104,17 @@ export async function createSale(data: CreateSaleInput) {
                 }
             }
 
-            // 7. บันทึก EventLog (ถ้าเป็น Event sale)
-            if (data.eventId) {
-                await tx.eventLog.create({
+            // 7. บันทึก ChannelLog (ถ้ามี channelId)
+            if (data.channelId) {
+                await tx.channelLog.create({
                     data: {
-                        eventId: data.eventId,
+                        channelId: data.channelId,
                         action: 'Sale Recorded',
                         details: {
                             saleId: sale.id,
                             totalAmount: totalAmount,
                             itemCount: data.items.length,
-                            adjustments: data.adjustments || [],
+                            adjustments: (data.adjustments || []) as unknown as Prisma.InputJsonValue,
                         },
                         changedBy: "00000000-0000-0000-0000-000000000000",
                     }
@@ -129,8 +126,8 @@ export async function createSale(data: CreateSaleInput) {
 
         revalidatePath("/pc/pos");
         revalidatePath("/pc/sales");
-        if (data.eventId) {
-            revalidatePath(`/pc/pos/event/${data.eventId}`);
+        if (data.channelId) {
+            revalidatePath(`/pc/pos/channel/${data.channelId}`);
         }
 
         return { success: true, saleId: result.id };
@@ -140,11 +137,11 @@ export async function createSale(data: CreateSaleInput) {
     }
 }
 
-// ดึงรายการขายตาม Event (เฉพาะ active)
-export async function getSalesByEvent(eventId: string) {
+// ดึงรายการขายตาม Channel (เฉพาะ active)
+export async function getSalesByChannel(channelId: string) {
     const sales = await db.sale.findMany({
         where: {
-            eventId,
+            channelId,
             status: 'active'
         },
         include: {
@@ -169,7 +166,7 @@ export async function getSaleById(saleId: string) {
                     product: true
                 }
             },
-            event: true
+            channel: true
         }
     });
     return sale;
@@ -179,7 +176,6 @@ export async function getSaleById(saleId: string) {
 export async function cancelSale(saleId: string, reason: string) {
     try {
         const result = await db.$transaction(async (tx: Prisma.TransactionClient) => {
-            // 1. ดึงข้อมูลบิล
             const sale = await tx.sale.findUnique({
                 where: { id: saleId },
                 include: { items: true }
@@ -193,24 +189,23 @@ export async function cancelSale(saleId: string, reason: string) {
                 throw new Error('Sale is already cancelled');
             }
 
-            // 2. อัปเดต status เป็น cancelled
             await tx.sale.update({
                 where: { id: saleId },
                 data: {
                     status: 'cancelled',
                     cancelledAt: new Date(),
-                    cancelledBy: "00000000-0000-0000-0000-000000000000", // TODO: ใช้ user จริง
+                    cancelledBy: "00000000-0000-0000-0000-000000000000",
                     cancelReason: reason
                 }
             });
 
-            // 3. คืนสต็อก (ถ้าเป็น Event sale)
-            if (sale.eventId) {
+            // คืนสต็อก
+            if (sale.channelId) {
                 for (const item of sale.items) {
                     if (!item.isFreebie) {
-                        await tx.eventStock.updateMany({
+                        await tx.channelStock.updateMany({
                             where: {
-                                eventId: sale.eventId,
+                                channelId: sale.channelId,
                                 barcode: item.barcode,
                             },
                             data: {
@@ -220,10 +215,9 @@ export async function cancelSale(saleId: string, reason: string) {
                     }
                 }
 
-                // 4. บันทึก EventLog
-                await tx.eventLog.create({
+                await tx.channelLog.create({
                     data: {
-                        eventId: sale.eventId,
+                        channelId: sale.channelId,
                         action: 'Sale Cancelled',
                         details: {
                             saleId: saleId,
@@ -240,9 +234,9 @@ export async function cancelSale(saleId: string, reason: string) {
         });
 
         revalidatePath("/pc/sales");
-        if (result.eventId) {
-            revalidatePath(`/pc/sales/event/${result.eventId}`);
-            revalidatePath(`/pc/pos/event/${result.eventId}`);
+        if (result.channelId) {
+            revalidatePath(`/pc/sales/channel/${result.channelId}`);
+            revalidatePath(`/pc/pos/channel/${result.channelId}`);
         }
 
         return { success: true };
@@ -252,11 +246,11 @@ export async function cancelSale(saleId: string, reason: string) {
     }
 }
 
-// ดึง Active Events สำหรับหน้าเลือก
-export async function getActiveEventsWithSales() {
-    const events = await db.event.findMany({
+// ดึง Active Channels สำหรับหน้าเลือก
+export async function getActiveChannelsWithSales() {
+    const channels = await db.salesChannel.findMany({
         where: {
-            status: { in: ['selling', 'approved', 'packing', 'shipped', 'received'] }
+            status: { in: ['selling', 'approved', 'packing', 'shipped', 'received', 'active'] }
         },
         include: {
             sales: {
@@ -273,9 +267,9 @@ export async function getActiveEventsWithSales() {
                 }
             }
         },
-        orderBy: { startDate: 'desc' }
+        orderBy: { createdAt: 'desc' }
     });
-    return events;
+    return channels;
 }
 
 // ดึงรายการขายทั้งหมด
@@ -288,7 +282,7 @@ export async function getAllSales(limit: number = 50) {
                     product: true
                 }
             },
-            event: true
+            channel: true
         },
         orderBy: { soldAt: 'desc' },
         take: limit

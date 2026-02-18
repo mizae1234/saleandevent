@@ -31,13 +31,13 @@ interface RequestItem {
 
 interface StockRequest {
     id: string;
-    eventId: string;
+    channelId: string;
     status: string;
     createdAt: Date;
     approvedAt: Date | null;
     shippedAt: Date | null;
     receivedAt: Date | null;
-    event: Event;
+    channel: Event;
     items: RequestItem[];
 }
 
@@ -60,7 +60,7 @@ export function RefillListClient({ requests, events }: Props) {
 
     // Filter requests
     const filteredRequests = requests.filter(r => {
-        if (eventFilter && r.eventId !== eventFilter) return false;
+        if (eventFilter && r.channelId !== eventFilter) return false;
         if (statusFilter && r.status !== statusFilter) return false;
         return true;
     });
@@ -163,10 +163,10 @@ export function RefillListClient({ requests, events }: Props) {
                                 return (
                                     <tr key={request.id} className="hover:bg-slate-50">
                                         <td className="px-4 py-3 border border-slate-200 border-l-0">
-                                            <div className="font-medium text-slate-900">{request.event.name}</div>
+                                            <div className="font-medium text-slate-900">{request.channel.name}</div>
                                             <div className="text-xs text-slate-400 flex items-center gap-1">
                                                 <MapPin className="h-3 w-3" />
-                                                {request.event.location}
+                                                {request.channel.location}
                                             </div>
                                         </td>
                                         <td className="px-4 py-3 text-center border border-slate-200">

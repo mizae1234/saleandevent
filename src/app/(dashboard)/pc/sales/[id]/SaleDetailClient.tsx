@@ -42,7 +42,7 @@ interface Sale {
     soldAt: Date;
     cancelledAt: Date | null;
     cancelReason: string | null;
-    event: {
+    channel: {
         id: string;
         name: string;
         location: string;
@@ -69,7 +69,7 @@ export function SaleDetailClient({ sale }: Props) {
         setIsLoading(true);
         try {
             await cancelSale(sale.id, cancelReason);
-            router.push(`/pc/sales/event/${sale.event?.id}`);
+            router.push(`/pc/sales/channel/${sale.channel?.id}`);
             router.refresh();
         } catch (error: any) {
             alert('ไม่สามารถยกเลิกบิลได้: ' + error.message);
@@ -88,7 +88,7 @@ export function SaleDetailClient({ sale }: Props) {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Link
-                        href={sale.event ? `/pc/sales/event/${sale.event.id}` : '/pc/sales'}
+                        href={sale.channel ? `/pc/sales/channel/${sale.channel.id}` : '/pc/sales'}
                         className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 transition-colors"
                     >
                         <ArrowLeft className="h-5 w-5 text-slate-600" />
@@ -153,12 +153,12 @@ export function SaleDetailClient({ sale }: Props) {
             </div>
 
             {/* Event Info */}
-            {sale.event && (
+            {sale.channel && (
                 <div className="bg-white rounded-xl p-4 shadow-sm flex items-center gap-3">
                     <Package className="h-5 w-5 text-emerald-600" />
                     <div>
-                        <p className="font-medium text-slate-900">{sale.event.name}</p>
-                        <p className="text-sm text-slate-500">{sale.event.location}</p>
+                        <p className="font-medium text-slate-900">{sale.channel.name}</p>
+                        <p className="text-sm text-slate-500">{sale.channel.location}</p>
                     </div>
                 </div>
             )}

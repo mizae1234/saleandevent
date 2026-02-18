@@ -1,439 +1,78 @@
 import { db } from "@/lib/db";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { Package, MapPin, Calendar, ArrowRight, RefreshCw, Truck } from "lucide-react";
+import { Package, Upload, ArrowRight, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 
-async function getPackingEvents() {
-    const events = await db.event.findMany({
-        where: {
-            status: { in: ['packing', 'packed'] }
-        },
-        include: {
-            requests: {
-                include: {
-                    items: true
-                }
-            }
-        },
-        orderBy: { startDate: 'asc' }
-    });
-    return events;
-}
-
-async function getApprovedRefillRequests() {
-    const requests = await db.stockRequest.findMany({
-        where: {
-            status: 'approved'
-        },
-        include: {
-            event: {
-                select: {
-                    id: true,
-                    name: true,
-                    code: true,
-                    location: true,
-                }
-            },
-            items: {
-                include: {
-                    product: {
-                        select: {
-                            barcode: true,
-                            name: true,
-                            code: true,
-                            size: true,
-                        }
-                    }
-                }
-            }
-        },
-        orderBy: { approvedAt: 'asc' }
-    });
-    return requests;
-}
-
-async function getPackedRefillRequests() {
-    const requests = await db.stockRequest.findMany({
-        where: {
-            status: 'packed'
-        },
-        include: {
-            event: {
-                select: {
-                    id: true,
-                    name: true,
-                    code: true,
-                    location: true,
-                }
-            },
-            items: {
-                include: {
-                    product: {
-                        select: {
-                            barcode: true,
-                            name: true,
-                            code: true,
-                            size: true,
-                        }
-                    }
-                }
-            }
-        },
-        orderBy: { createdAt: 'asc' }
-    });
-    return requests;
-}
-
-async function getShippedRefillRequests() {
-    const requests = await db.stockRequest.findMany({
-        where: {
-            status: 'shipped'
-        },
-        include: {
-            event: {
-                select: {
-                    id: true,
-                    name: true,
-                    code: true,
-                    location: true,
-                }
-            },
-            items: {
-                include: {
-                    product: {
-                        select: {
-                            barcode: true,
-                            name: true,
-                            code: true,
-                            size: true,
-                        }
-                    }
-                }
-            }
-        },
-        orderBy: { shippedAt: 'desc' }
-    });
-    return requests;
-}
-
 export default async function WarehousePackingPage() {
-    const [events, refillRequests, packedRefillRequests, shippedRefillRequests] = await Promise.all([
-        getPackingEvents(),
-        getApprovedRefillRequests(),
-        getPackedRefillRequests(),
-        getShippedRefillRequests()
-    ]);
+    // Show approved and allocated requests (ready for packing/allocation)
+    const requests = await db.stockRequest.findMany({
+        where: {
+            status: { in: ['approved', 'allocated', 'packed'] },
+        },
+        include: {
+            channel: true,
+            allocations: true,
+        },
+        orderBy: { updatedAt: 'desc' },
+    });
 
-    const packingEvents = events.filter(e => e.status === 'packing');
-    const packedEvents = events.filter(e => e.status === 'packed');
+    const statusConfig: Record<string, { label: string; color: string; action: string }> = {
+        approved: { label: 'รอจัดสรร', color: 'bg-amber-100 text-amber-700', action: 'อัพโหลด Excel' },
+        allocated: { label: 'จัดสรรแล้ว', color: 'bg-indigo-100 text-indigo-700', action: 'แพ็คสินค้า' },
+        packed: { label: 'แพ็คแล้ว', color: 'bg-emerald-100 text-emerald-700', action: 'ดูรายละเอียด' },
+    };
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900">งานรอแพ็ค</h1>
-                <p className="text-slate-500">รายการ Event และคำขอเบิกเพิ่มที่รอการจัดเตรียมสินค้าจากคลัง</p>
+        <div className="p-6 max-w-4xl mx-auto">
+            <div className="mb-6">
+                <h1 className="text-2xl font-bold text-slate-900">คลัง — จัดสรร & แพ็คสินค้า</h1>
+                <p className="text-sm text-slate-500">{requests.length} รายการ</p>
             </div>
 
-            {/* Refill Requests Section - Waiting for Packing */}
-            {refillRequests.length > 0 && (
-                <section>
-                    <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                        <RefreshCw className="h-5 w-5 text-blue-500" />
-                        คำขอเบิกเพิ่ม - รอแพค ({refillRequests.length})
-                    </h2>
+            {requests.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
+                    <Package className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500">ไม่มีคำขอ</p>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {requests.map(req => {
+                        const config = statusConfig[req.status] || { label: req.status, color: 'bg-slate-100 text-slate-600', action: '' };
+                        const allocatedTotal = req.allocations.reduce((s, a) => s + a.packedQuantity, 0);
+                        const targetUrl = req.status === 'approved'
+                            ? `/warehouse/allocate/${req.id}`
+                            : `/channels/${req.id}/packing`;
 
-                    <div className="space-y-3">
-                        {refillRequests.map((request) => {
-                            const totalItems = request.items.reduce((sum, i) => sum + i.quantity, 0);
-                            return (
-                                <Link
-                                    key={request.id}
-                                    href={`/warehouse/packing/refill/${request.id}`}
-                                    className="block rounded-xl bg-white p-5 shadow-sm hover:shadow-md transition-shadow border-l-4 border-blue-500"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
-                                                    <RefreshCw className="h-3 w-3" />
-                                                    เบิกเพิ่ม
-                                                </span>
-                                                <h3 className="font-semibold text-slate-900">{request.event.name}</h3>
-                                                <span className="text-xs font-mono text-slate-400">{request.event.code}</span>
-                                            </div>
-                                            <div className="flex items-center gap-4 text-sm text-slate-500">
-                                                <span className="flex items-center gap-1">
-                                                    <MapPin className="h-4 w-4" />
-                                                    {request.event.location}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Package className="h-4 w-4" />
-                                                    {request.items.length} รายการ ({totalItems} ชิ้น)
-                                                </span>
-                                                <span className="text-xs text-slate-400">
-                                                    อนุมัติ: {format(new Date(request.approvedAt!), 'd MMM', { locale: th })}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800">
-                                                รอแพค
+                        return (
+                            <Link key={req.id} href={targetUrl} className="block bg-white border border-slate-200 rounded-xl p-4 hover:border-indigo-300 transition-colors">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className="font-semibold text-slate-900">{req.channel.name}</h3>
+                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${req.requestType === 'INITIAL' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                                                {req.requestType === 'INITIAL' ? 'เริ่มต้น' : 'เพิ่มเติม'}
                                             </span>
-                                            <ArrowRight className="h-5 w-5 text-slate-400" />
-                                        </div>
-                                    </div>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                </section>
-            )}
-
-            {/* Packing Queue */}
-            <section>
-                <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-amber-500"></div>
-                    Event รอแพค ({packingEvents.length})
-                </h2>
-
-                {packingEvents.length === 0 ? (
-                    <div className="rounded-xl bg-white p-12 text-center shadow-sm">
-                        <Package className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                        <p className="text-slate-500">ไม่มี Event รอแพค</p>
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {packingEvents.map((event) => {
-                            const totalItems = event.requests.reduce(
-                                (sum, req) => sum + req.items.reduce((s, item) => s + item.quantity, 0),
-                                0
-                            );
-                            return (
-                                <Link
-                                    key={event.id}
-                                    href={`/events/${event.id}/packing`}
-                                    className="block rounded-xl bg-white p-5 shadow-sm hover:shadow-md transition-shadow"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <h3 className="font-semibold text-slate-900">{event.name}</h3>
-                                                <span className="text-xs font-mono text-slate-400">{event.code}</span>
-                                            </div>
-                                            <div className="flex items-center gap-4 text-sm text-slate-500">
-                                                <span className="flex items-center gap-1">
-                                                    <MapPin className="h-4 w-4" />
-                                                    {event.location}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Calendar className="h-4 w-4" />
-                                                    {format(new Date(event.startDate), "d MMM")} - {format(new Date(event.endDate), "d MMM")}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Package className="h-4 w-4" />
-                                                    {totalItems} ชิ้น
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-amber-100 text-amber-800">
-                                                รอแพค
+                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${config.color}`}>
+                                                {config.label}
                                             </span>
-                                            <ArrowRight className="h-5 w-5 text-slate-400" />
                                         </div>
+                                        <p className="text-sm text-slate-500">
+                                            {req.channel.code} · ขอ {req.requestedTotalQuantity} ชิ้น
+                                            {allocatedTotal > 0 && ` · จัดสรร ${allocatedTotal} ชิ้น`}
+                                        </p>
+                                        <p className="text-xs text-slate-400 mt-1">{format(req.createdAt, 'd MMM yy HH:mm', { locale: th })}</p>
                                     </div>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                )}
-            </section>
-
-            {/* Packed Refill Requests (Ready to Ship) */}
-            {packedRefillRequests.length > 0 && (
-                <section>
-                    <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                        <Truck className="h-5 w-5 text-emerald-500" />
-                        เบิกเพิ่ม - แพคเสร็จแล้ว รอจัดส่ง ({packedRefillRequests.length})
-                    </h2>
-
-                    <div className="space-y-3">
-                        {packedRefillRequests.map((request) => {
-                            const totalItems = request.items.reduce((sum, i) => sum + i.quantity, 0);
-                            return (
-                                <Link
-                                    key={request.id}
-                                    href={`/warehouse/packing/refill/${request.id}/shipping`}
-                                    className="block rounded-xl bg-white p-5 shadow-sm hover:shadow-md transition-shadow border-l-4 border-emerald-500"
-                                >
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded">
-                                                    <RefreshCw className="h-3 w-3" />
-                                                    เบิกเพิ่ม
-                                                </span>
-                                                <h3 className="font-semibold text-slate-900">{request.event.name}</h3>
-                                                <span className="text-xs font-mono text-slate-400">{request.event.code}</span>
-                                            </div>
-                                            <div className="flex items-center gap-4 text-sm text-slate-500">
-                                                <span className="flex items-center gap-1">
-                                                    <MapPin className="h-4 w-4" />
-                                                    {request.event.location}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Package className="h-4 w-4" />
-                                                    {request.items.length} รายการ ({totalItems} ชิ้น)
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-emerald-100 text-emerald-800">
-                                                พร้อมจัดส่ง
-                                            </span>
-                                            <ArrowRight className="h-5 w-5 text-slate-400" />
-                                        </div>
-                                    </div>
-                                    {/* Items List */}
-                                    <div className="border-t border-slate-100 pt-3 mt-2">
-                                        <p className="text-xs text-slate-500 mb-2 font-medium">รายการที่ขอเบิกเพิ่ม:</p>
-                                        <div className="grid gap-1">
-                                            {request.items.map((item) => (
-                                                <div key={item.id} className="flex items-center justify-between text-sm">
-                                                    <span className="text-slate-600">{item.product.name}</span>
-                                                    <span className="font-medium text-emerald-600">{item.quantity} ชิ้น</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </Link>
-                            );
-                        })}
-
-                    </div>
-                </section>
-            )}
-
-            {/* Packed Events (Ready to Ship) */}
-            {packedEvents.length > 0 && (
-                <section>
-                    <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                        Event แพคเสร็จแล้ว - รอจัดส่ง ({packedEvents.length})
-                    </h2>
-
-                    <div className="space-y-3">
-                        {packedEvents.map((event) => {
-                            const totalItems = event.requests.reduce(
-                                (sum, req) => sum + req.items.reduce((s, item) => s + item.quantity, 0),
-                                0
-                            );
-                            return (
-                                <Link
-                                    key={event.id}
-                                    href={`/events/${event.id}/shipping`}
-                                    className="block rounded-xl bg-white p-5 shadow-sm hover:shadow-md transition-shadow border-l-4 border-green-500"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <h3 className="font-semibold text-slate-900">{event.name}</h3>
-                                                <span className="text-xs font-mono text-slate-400">{event.code}</span>
-                                            </div>
-                                            <div className="flex items-center gap-4 text-sm text-slate-500">
-                                                <span className="flex items-center gap-1">
-                                                    <MapPin className="h-4 w-4" />
-                                                    {event.location}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Package className="h-4 w-4" />
-                                                    {totalItems} ชิ้น
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-green-100 text-green-800">
-                                                พร้อมจัดส่ง
-                                            </span>
-                                            <ArrowRight className="h-5 w-5 text-slate-400" />
-                                        </div>
-                                    </div>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                </section>
-            )}
-
-            {/* Shipped Refill Requests - Already Shipped */}
-            {shippedRefillRequests.length > 0 && (
-                <section>
-                    <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                        <Truck className="h-5 w-5 text-purple-500" />
-                        เบิกเพิ่ม - ส่งแล้ว ({shippedRefillRequests.length})
-                    </h2>
-
-                    <div className="space-y-3">
-                        {shippedRefillRequests.map((request) => {
-                            const totalItems = request.items.reduce((sum, i) => sum + i.quantity, 0);
-                            return (
-                                <div
-                                    key={request.id}
-                                    className="rounded-xl bg-white p-5 shadow-sm border-l-4 border-purple-400 opacity-75"
-                                >
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">
-                                                    <RefreshCw className="h-3 w-3" />
-                                                    เบิกเพิ่ม
-                                                </span>
-                                                <h3 className="font-semibold text-slate-900">{request.event.name}</h3>
-                                                <span className="text-xs font-mono text-slate-400">{request.event.code}</span>
-                                            </div>
-                                            <div className="flex items-center gap-4 text-sm text-slate-500">
-                                                <span className="flex items-center gap-1">
-                                                    <MapPin className="h-4 w-4" />
-                                                    {request.event.location}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Package className="h-4 w-4" />
-                                                    {request.items.length} รายการ ({totalItems} ชิ้น)
-                                                </span>
-                                                {request.shippedAt && (
-                                                    <span className="text-xs text-slate-400">
-                                                        ส่ง: {format(new Date(request.shippedAt), 'd MMM HH:mm', { locale: th })}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-purple-100 text-purple-800">
-                                            <Truck className="mr-1 h-3 w-3" />
-                                            ส่งแล้ว
-                                        </span>
-                                    </div>
-                                    {/* Items List */}
-                                    <div className="border-t border-slate-100 pt-3 mt-2">
-                                        <p className="text-xs text-slate-500 mb-2 font-medium">รายการที่ส่ง:</p>
-                                        <div className="grid gap-1">
-                                            {request.items.map((item) => (
-                                                <div key={item.id} className="flex items-center justify-between text-sm">
-                                                    <span className="text-slate-600">{item.product.name}</span>
-                                                    <span className="font-medium text-purple-600">{item.quantity} ชิ้น</span>
-                                                </div>
-                                            ))}
-                                        </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-indigo-600 font-medium">{config.action}</span>
+                                        <ArrowRight className="h-4 w-4 text-slate-400" />
                                     </div>
                                 </div>
-                            );
-                        })}
-                    </div>
-                </section>
+                            </Link>
+                        );
+                    })}
+                </div>
             )}
         </div>
     );
 }
-
-

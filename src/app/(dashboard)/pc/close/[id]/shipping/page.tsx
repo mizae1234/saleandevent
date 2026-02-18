@@ -7,7 +7,7 @@ import { notFound, redirect } from "next/navigation";
 import { ReturnShippingForm } from "./ReturnShippingForm";
 
 async function getEventForReturnShipping(id: string) {
-    const event = await db.event.findUnique({
+    const event = await db.salesChannel.findUnique({
         where: { id },
         include: {
             returnSummaries: {
@@ -133,7 +133,7 @@ export default async function ReturnShippingPage({ params }: Props) {
             </div>
 
             {/* Shipping Form */}
-            <ReturnShippingForm eventId={event.id} />
+            <ReturnShippingForm channelId={event.id} />
         </div>
     );
 }

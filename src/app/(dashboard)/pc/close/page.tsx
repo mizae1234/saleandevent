@@ -5,7 +5,7 @@ import { Package, MapPin, ArrowRight, Calendar, TrendingUp, Store } from "lucide
 import Link from "next/link";
 
 async function getActiveEventsForClose() {
-    const events = await db.event.findMany({
+    const events = await db.salesChannel.findMany({
         where: {
             status: 'active'
         },
@@ -91,7 +91,7 @@ export default async function CloseEventListPage() {
                                     </div>
                                     <div className="flex items-center gap-2 text-sm text-slate-600">
                                         <Calendar className="h-4 w-4 text-slate-400" />
-                                        {format(new Date(event.startDate), "d MMM", { locale: th })} - {format(new Date(event.endDate), "d MMM yyyy", { locale: th })}
+                                        {format(new Date(event.startDate!), "d MMM", { locale: th })} - {format(new Date(event.endDate!), "d MMM yyyy", { locale: th })}
                                     </div>
                                 </div>
 

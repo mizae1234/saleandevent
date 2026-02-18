@@ -14,14 +14,14 @@ export function ShipmentsFilter({ events }: Props) {
     const searchParams = useSearchParams();
 
     const [search, setSearch] = useState(searchParams.get("search") || "");
-    const [eventId, setEventId] = useState(searchParams.get("eventId") || "");
+    const [channelId, setChannelId] = useState(searchParams.get("channelId") || "");
     const [dateFrom, setDateFrom] = useState(searchParams.get("dateFrom") || "");
     const [dateTo, setDateTo] = useState(searchParams.get("dateTo") || "");
 
     const applyFilters = () => {
         const params = new URLSearchParams();
         if (search) params.set("search", search);
-        if (eventId) params.set("eventId", eventId);
+        if (channelId) params.set("channelId", channelId);
         if (dateFrom) params.set("dateFrom", dateFrom);
         if (dateTo) params.set("dateTo", dateTo);
 
@@ -30,13 +30,13 @@ export function ShipmentsFilter({ events }: Props) {
 
     const clearFilters = () => {
         setSearch("");
-        setEventId("");
+        setChannelId("");
         setDateFrom("");
         setDateTo("");
         router.push("/warehouse/shipments");
     };
 
-    const hasFilters = search || eventId || dateFrom || dateTo;
+    const hasFilters = search || channelId || dateFrom || dateTo;
 
     return (
         <div className="rounded-xl bg-white p-5 shadow-sm space-y-4">
@@ -45,8 +45,8 @@ export function ShipmentsFilter({ events }: Props) {
                 <div className="flex-1 min-w-[200px]">
                     <label className="text-xs text-slate-500 mb-1 block">Event</label>
                     <select
-                        value={eventId}
-                        onChange={(e) => setEventId(e.target.value)}
+                        value={channelId}
+                        onChange={(e) => setChannelId(e.target.value)}
                         className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
                     >
                         <option value="">ทุก Event</option>

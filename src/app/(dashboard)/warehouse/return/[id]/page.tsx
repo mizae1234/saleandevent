@@ -7,7 +7,7 @@ import { notFound, redirect } from "next/navigation";
 import { ConfirmReturnClient } from "./ConfirmReturnClient";
 
 async function getEventForReturn(id: string) {
-    const event = await db.event.findUnique({
+    const event = await db.salesChannel.findUnique({
         where: { id },
         include: {
             returnSummaries: {
@@ -110,7 +110,7 @@ export default async function WarehouseReturnDetailPage({ params }: Props) {
                         <div>
                             <p className="text-xs text-slate-500">ระยะเวลา</p>
                             <p className="font-medium text-slate-900">
-                                {format(new Date(event.startDate), "d MMM", { locale: th })} - {format(new Date(event.endDate), "d MMM", { locale: th })}
+                                {format(new Date(event.startDate!), "d MMM", { locale: th })} - {format(new Date(event.endDate!), "d MMM", { locale: th })}
                             </p>
                         </div>
                     </div>
@@ -194,7 +194,7 @@ export default async function WarehouseReturnDetailPage({ params }: Props) {
             </div>
 
             {/* Confirm Button */}
-            <ConfirmReturnClient eventId={event.id} totalReturn={totalReturn} />
+            <ConfirmReturnClient channelId={event.id} totalReturn={totalReturn} />
         </div>
     );
 }

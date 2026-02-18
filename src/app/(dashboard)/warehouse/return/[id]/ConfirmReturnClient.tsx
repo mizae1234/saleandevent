@@ -3,14 +3,14 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
-import { confirmReturnReceived } from "@/actions/event-actions";
+import { confirmReturnReceived } from "@/actions/channel-actions";
 
 type Props = {
-    eventId: string;
+    channelId: string;
     totalReturn: number;
 };
 
-export function ConfirmReturnClient({ eventId, totalReturn }: Props) {
+export function ConfirmReturnClient({ channelId, totalReturn }: Props) {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState("");
     const [showConfirm, setShowConfirm] = useState(false);
@@ -21,7 +21,7 @@ export function ConfirmReturnClient({ eventId, totalReturn }: Props) {
 
         startTransition(async () => {
             try {
-                await confirmReturnReceived(eventId);
+                await confirmReturnReceived(channelId);
                 router.push("/warehouse/return");
                 router.refresh();
             } catch (e: any) {

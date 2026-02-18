@@ -15,7 +15,7 @@ async function getSaleById(saleId: string) {
                     product: true
                 }
             },
-            event: true
+            channel: true
         }
     });
     return sale;

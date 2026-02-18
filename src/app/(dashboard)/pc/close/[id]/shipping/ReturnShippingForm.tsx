@@ -3,13 +3,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Truck, Loader2 } from "lucide-react";
-import { createReturnShipment } from "@/actions/event-actions";
+import { createReturnShipment } from "@/actions/channel-actions";
 
 type Props = {
-    eventId: string;
+    channelId: string;
 };
 
-export function ReturnShippingForm({ eventId }: Props) {
+export function ReturnShippingForm({ channelId }: Props) {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState("");
     const [provider, setProvider] = useState("");
@@ -27,7 +27,7 @@ export function ReturnShippingForm({ eventId }: Props) {
 
         startTransition(async () => {
             try {
-                await createReturnShipment(eventId, { provider, trackingNo });
+                await createReturnShipment(channelId, { provider, trackingNo });
                 router.push("/pc/close");
                 router.refresh();
             } catch (e: any) {

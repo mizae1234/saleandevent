@@ -3,7 +3,7 @@ import { SalesEventListClient } from "./SalesEventListClient";
 
 async function getEventsWithSales() {
     // Get only events with selling or closed status that have sales
-    const events = await db.event.findMany({
+    const events = await db.salesChannel.findMany({
         where: {
             status: { in: ['active', 'closed'] }
         },

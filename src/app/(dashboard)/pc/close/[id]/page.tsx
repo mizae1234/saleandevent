@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { CloseEventClient } from "./CloseEventClient";
 
 async function getEventForClose(id: string) {
-    const event = await db.event.findUnique({
+    const event = await db.salesChannel.findUnique({
         where: { id },
         include: {
             stock: {
@@ -141,7 +141,7 @@ export default async function CloseEventPage({ params }: Props) {
                         <div>
                             <p className="text-xs text-slate-500">ระยะเวลา</p>
                             <p className="font-medium text-slate-900">
-                                {format(new Date(event.startDate), "d MMM", { locale: th })} - {format(new Date(event.endDate), "d MMM", { locale: th })}
+                                {format(new Date(event.startDate!), "d MMM", { locale: th })} - {format(new Date(event.endDate!), "d MMM", { locale: th })}
                             </p>
                         </div>
                     </div>
@@ -168,7 +168,7 @@ export default async function CloseEventPage({ params }: Props) {
 
             {/* Close Form */}
             <CloseEventClient
-                eventId={event.id}
+                channelId={event.id}
                 eventName={event.name}
                 stockDetails={event.stockDetails}
             />

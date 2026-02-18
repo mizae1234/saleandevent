@@ -112,7 +112,7 @@ export function SalesEventListClient({ events }: Props) {
                         return (
                             <Link
                                 key={event.id}
-                                href={`/pc/sales/event/${event.id}`}
+                                href={`/pc/sales/channel/${event.id}`}
                                 className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between group"
                             >
                                 <div className="flex items-center gap-4">
@@ -138,7 +138,7 @@ export function SalesEventListClient({ events }: Props) {
                                             </span>
                                             <span className="flex items-center gap-1">
                                                 <Calendar className="h-3 w-3" />
-                                                {format(new Date(event.startDate), "d MMM yyyy", { locale: th })}
+                                                {format(new Date(event.startDate!), "d MMM yyyy", { locale: th })}
                                             </span>
                                         </div>
                                     </div>

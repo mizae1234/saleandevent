@@ -4,7 +4,7 @@ import { Package, MapPin, Calendar, ArrowRight, ShoppingCart, Store } from "luci
 import Link from "next/link";
 
 async function getActiveEvents() {
-    const events = await db.event.findMany({
+    const events = await db.salesChannel.findMany({
         where: {
             status: 'active'
         },
@@ -49,7 +49,7 @@ export default async function POSSelectPage() {
                             return (
                                 <Link
                                     key={event.id}
-                                    href={`/pc/pos/event/${event.id}`}
+                                    href={`/pc/pos/channel/${event.id}`}
                                     className="block rounded-xl bg-white p-5 shadow-sm hover:shadow-md transition-all border-l-4 border-emerald-500 hover:scale-[1.02]"
                                 >
                                     <div className="flex items-start justify-between mb-3">
@@ -71,7 +71,7 @@ export default async function POSSelectPage() {
                                         <div className="flex items-center gap-2">
                                             <Calendar className="h-4 w-4" />
                                             <span>
-                                                {format(new Date(event.startDate), "d MMM")} - {format(new Date(event.endDate), "d MMM")}
+                                                {format(new Date(event.startDate!), "d MMM")} - {format(new Date(event.endDate!), "d MMM")}
                                             </span>
                                         </div>
                                     </div>

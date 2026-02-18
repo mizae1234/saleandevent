@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Package, AlertTriangle, Loader2, CheckCircle2, Minus, Plus } from "lucide-react";
-import { closeEventStock } from "@/actions/event-actions";
+import { closeChannelStock } from "@/actions/channel-actions";
 
 type StockItem = {
     barcode: string;
@@ -23,12 +23,12 @@ type CloseItem = {
 };
 
 type Props = {
-    eventId: string;
+    channelId: string;
     eventName: string;
     stockDetails: StockItem[];
 };
 
-export function CloseEventClient({ eventId, eventName, stockDetails }: Props) {
+export function CloseEventClient({ channelId, eventName, stockDetails }: Props) {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState("");
     const [closeItems, setCloseItems] = useState<Record<string, CloseItem>>(() => {
@@ -66,8 +66,8 @@ export function CloseEventClient({ eventId, eventName, stockDetails }: Props) {
 
         startTransition(async () => {
             try {
-                await closeEventStock(eventId, items);
-                router.push(`/pc/close/${eventId}/shipping`);
+                await closeChannelStock(channelId, items);
+                router.push(`/pc/close/${channelId}/shipping`);
             } catch (e: any) {
                 setError(e.message || "เกิดข้อผิดพลาด กรุณาลองใหม่");
             }

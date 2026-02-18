@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
     try {
-        const events = await db.event.findMany({
+        const events = await db.salesChannel.findMany({
             orderBy: [{ status: 'asc' }, { startDate: 'asc' }],
         });
 
@@ -13,8 +13,8 @@ export async function GET() {
             code: e.code,
             name: e.name,
             location: e.location,
-            startDate: e.startDate.toISOString(),
-            endDate: e.endDate.toISOString(),
+            startDate: e.startDate?.toISOString() || "",
+            endDate: e.endDate?.toISOString() || "",
             status: e.status,
             responsiblePersonId: e.responsiblePersonId,
             responsiblePersonName: e.responsiblePersonName,

@@ -49,13 +49,13 @@ export const MENU_SECTIONS: MenuSection[] = [
         ],
     },
     {
-        title: "Event Management (จัดงาน)",
+        title: "Sales Channel (ช่องทางขาย)",
         items: [
-            { title: "ภาพรวมกิจกรรม", href: "/events", icon: Calendar },
-            { title: "ขอเปิด Event ใหม่", href: "/events/create", icon: PlusCircle },
-            { title: "รออนุมัติ", href: "/events/approvals", icon: Clock },
-            { title: "อนุมัติเบิกของเพิ่ม", href: "/events/approvals/refill", icon: RefreshCw },
-            { title: "บันทึกค่าใช้จ่าย", href: "/events/expenses", icon: Receipt },
+            { title: "ภาพรวมช่องทาง", href: "/channels", icon: Calendar },
+            { title: "เปิดช่องทางใหม่", href: "/channels/create", icon: PlusCircle },
+            { title: "รออนุมัติ", href: "/channels/approvals", icon: Clock },
+            { title: "อนุมัติเบิกของเพิ่ม", href: "/channels/approvals/refill", icon: RefreshCw },
+            { title: "บันทึกค่าใช้จ่าย", href: "/channels/expenses", icon: Receipt },
         ],
     },
     {
@@ -82,7 +82,7 @@ export const MENU_SECTIONS: MenuSection[] = [
             { title: "จัดการสินค้า", href: "/admin/products", icon: Tag },
             { title: "พนักงาน & สิทธิ์", href: "/admin/users", icon: Users },
             { title: "โปรโมชั่น", href: "/admin/promotions", icon: Gift },
-            { title: "ข้อมูลสาขา", href: "/admin/branches", icon: Settings },
+            { title: "ตั้งค่าระบบ", href: "/admin/settings", icon: Settings },
         ],
     },
 ];
