@@ -19,6 +19,7 @@ import {
     PieChart,
     Tag,
     Users,
+    UserCog,
     Gift,
     Settings,
     LucideIcon
@@ -43,7 +44,6 @@ export const MENU_SECTIONS: MenuSection[] = [
             { title: "ขายสินค้า (POS)", href: "/pc/pos", icon: ScanBarcode },
             { title: "รายการขาย", href: "/pc/sales", icon: History },
             { title: "รับสินค้าเข้า", href: "/pc/receive", icon: PackageCheck },
-            { title: "สต็อกหน้าร้าน", href: "/pc/stock", icon: Store },
             { title: "เบิกของเพิ่ม", href: "/pc/refill", icon: RefreshCw },
             { title: "ปิดยอด/ส่งคืน", href: "/pc/close", icon: LogOut },
         ],
@@ -54,7 +54,6 @@ export const MENU_SECTIONS: MenuSection[] = [
             { title: "ภาพรวมช่องทาง", href: "/channels", icon: Calendar },
             { title: "เปิดช่องทางใหม่", href: "/channels/create", icon: PlusCircle },
             { title: "รออนุมัติ", href: "/channels/approvals", icon: Clock },
-            { title: "อนุมัติเบิกของเพิ่ม", href: "/channels/approvals/refill", icon: RefreshCw },
             { title: "บันทึกค่าใช้จ่าย", href: "/channels/expenses", icon: Receipt },
         ],
     },
@@ -72,6 +71,7 @@ export const MENU_SECTIONS: MenuSection[] = [
         items: [
             { title: "ตรวจสอบการปิดงาน", href: "/finance/audit", icon: ClipboardCheck },
             { title: "รายการเดินบัญชี", href: "/finance/invoices", icon: FileText },
+            { title: "จัดการพนักงาน", href: "/hr/employees", icon: UserCog },
             { title: "เงินเดือน/คอมฯ", href: "/hr/payroll", icon: Banknote },
             { title: "รายงานสรุป", href: "/reports", icon: PieChart },
         ],

@@ -237,6 +237,7 @@ export async function cancelSale(saleId: string, reason: string) {
         if (result.channelId) {
             revalidatePath(`/pc/sales/channel/${result.channelId}`);
             revalidatePath(`/pc/pos/channel/${result.channelId}`);
+            revalidatePath(`/channel/${result.channelId}/pos/sales`);
         }
 
         return { success: true };

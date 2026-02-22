@@ -251,6 +251,12 @@ export async function approveChannel(channelId: string) {
             data: { status: 'approved' },
         });
 
+        // Also approve all submitted stock requests for this channel
+        await tx.stockRequest.updateMany({
+            where: { channelId, status: 'submitted' },
+            data: { status: 'approved' },
+        });
+
         await tx.channelLog.create({
             data: {
                 channelId,
@@ -263,6 +269,8 @@ export async function approveChannel(channelId: string) {
 
     revalidatePath(`/channels/${channelId}`);
     revalidatePath('/channels');
+    revalidatePath('/channels/approvals');
+    revalidatePath('/warehouse/packing');
 }
 
 // ============ CLOSING & RETURN FLOW (EVENT only) ============
@@ -492,7 +500,7 @@ export async function getChannelCompensationSummary(channelId: string) {
             attendance: true,
             sales: {
                 where: { status: 'active' },
-                include: { items: true },
+                select: { totalAmount: true },
             },
         },
     });
@@ -506,19 +514,23 @@ export async function getChannelCompensationSummary(channelId: string) {
 
     const staffSummary = channel.staff.map((cs: any) => {
         const staffAttendance = channel.attendance.filter((a: any) => a.staffId === cs.staffId);
-        const daysWorked = staffAttendance.length;
+        const attendanceDays = staffAttendance.length;
+        // Use override if set, otherwise use attendance count
+        const daysWorked = cs.daysWorkedOverride != null ? cs.daysWorkedOverride : attendanceDays;
         const dailyRate = Number(cs.staff.dailyRate || 0);
         const totalWage = daysWorked * dailyRate;
 
-        // Commission based on staff's commission settings
-        const commissionRate = Number(cs.commissionOverride || cs.staff.commissionAmount || 0);
-        const totalCommission = commissionRate * daysWorked;
+        // Commission: flat amount (not multiplied by days)
+        const commissionRate = Number(cs.commissionOverride ?? cs.staff.commissionAmount ?? 0);
+        const totalCommission = commissionRate;
 
         return {
+            channelStaffId: cs.id,
             staffId: cs.staffId,
             name: cs.staff.name,
             role: cs.role || 'PC',
             isMain: cs.isMain,
+            attendanceDays,
             daysWorked,
             dailyRate,
             totalWage,
@@ -535,4 +547,110 @@ export async function getChannelCompensationSummary(channelId: string) {
         staffSummary,
         totalStaffCost: staffSummary.reduce((sum: number, s: { totalPay: number }) => sum + s.totalPay, 0),
     };
+}
+
+// ============ SAVE STAFF COMPENSATION ============
+
+export async function saveStaffCompensation(
+    channelId: string,
+    items: { channelStaffId: string; daysWorked: number; commissionRate: number }[]
+) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await db.$transaction(async (tx: any) => {
+        for (const item of items) {
+            await tx.channelStaff.update({
+                where: { id: item.channelStaffId },
+                data: {
+                    daysWorkedOverride: item.daysWorked,
+                    commissionOverride: item.commissionRate,
+                },
+            });
+        }
+
+        await tx.channelLog.create({
+            data: {
+                channelId,
+                action: 'compensation_updated',
+                details: { staffCount: items.length },
+                changedBy: '00000000-0000-0000-0000-000000000000',
+            },
+        });
+    });
+
+    revalidatePath(`/channels/${channelId}`);
+}
+
+// ============ UPDATE EMPLOYEE COMPENSATION ============
+
+export async function updateEmployeeCompensation(
+    channelId: string,
+    staffId: string,
+    data: { daysWorked: number; commission: number }
+) {
+    if (data.daysWorked < 0) throw new Error('Days worked cannot be negative');
+    if (data.commission < 0) throw new Error('Commission cannot be negative');
+
+    const assignment = await db.channelStaff.findFirst({
+        where: { channelId, staffId },
+    });
+    if (!assignment) throw new Error('Staff not assigned to this channel');
+
+    await db.channelStaff.update({
+        where: { id: assignment.id },
+        data: {
+            daysWorkedOverride: data.daysWorked,
+            commissionOverride: data.commission,
+        },
+    });
+
+    await db.channelLog.create({
+        data: {
+            channelId,
+            action: 'compensation_updated_by_staff',
+            details: { staffId, daysWorked: data.daysWorked, commission: data.commission },
+            changedBy: staffId,
+        },
+    });
+
+    revalidatePath(`/channel/${channelId}/payroll`);
+}
+
+// ============ PAYMENT APPROVAL FLOW ============
+
+export async function submitForPaymentApproval(channelId: string) {
+    await db.salesChannel.update({
+        where: { id: channelId },
+        data: { status: 'pending_payment' },
+    });
+
+    await db.channelLog.create({
+        data: {
+            channelId,
+            action: 'submitted_for_payment',
+            details: {},
+            changedBy: '00000000-0000-0000-0000-000000000000',
+        },
+    });
+
+    revalidatePath(`/channels/${channelId}`);
+    revalidatePath('/channels/approvals/payment');
+}
+
+export async function approvePayment(channelId: string) {
+    await db.salesChannel.update({
+        where: { id: channelId },
+        data: { status: 'payment_approved' },
+    });
+
+    await db.channelLog.create({
+        data: {
+            channelId,
+            action: 'payment_approved',
+            details: {},
+            changedBy: '00000000-0000-0000-0000-000000000000',
+        },
+    });
+
+    revalidatePath(`/channels/${channelId}`);
+    revalidatePath('/channels/approvals/payment');
 }

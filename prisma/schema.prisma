@@ -378,8 +378,17 @@ model ChannelExpense {
 
 model Staff {
   id               String         @id @default(uuid()) @db.Uuid
+  code             String?        @unique @db.VarChar(10) // S0001 format
   name             String         @db.VarChar(255)
-  role             String         @default("PC") @db.VarChar(50)
+  email            String?        @unique @db.VarChar(255)
+  passwordHash     String?        @map("password_hash") @db.VarChar(255)
+  pin              String?        @db.VarChar(6)
+  role             String         @default("STAFF") @db.VarChar(50) // ADMIN, MANAGER, STAFF, WAREHOUSE, FINANCE
+  employeeType     String?        @map("employee_type") @db.VarChar(50)
+  position         String?        @db.VarChar(100)
+  dateOfBirth      DateTime?      @map("date_of_birth") @db.Date
+  bankAccountNo    String?        @map("bank_account_no") @db.VarChar(20)
+  bankName         String?        @map("bank_name") @db.VarChar(100)
   phone            String?        @db.VarChar(50)
   paymentType      String         @default("daily") @map("payment_type") @db.VarChar(50)
   dailyRate        Decimal?       @map("daily_rate") @db.Decimal(10, 2)
@@ -406,6 +415,7 @@ model ChannelStaff {
   staffId            String       @map("staff_id") @db.Uuid
   assignedAt         DateTime     @default(now()) @map("assigned_at") @db.Timestamptz(6)
   commissionOverride Decimal?     @map("commission_override") @db.Decimal(10, 2)
+  daysWorkedOverride Int?         @map("days_worked_override")
   role               String?      @default("PC")
   isMain             Boolean      @default(false) @map("is_main")
   

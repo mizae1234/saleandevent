@@ -156,9 +156,10 @@ export async function uploadAllocation(requestId: string, rows: AllocationRow[],
 
     // Look up all products by code to find real barcodes
     const codeSet = [...new Set(rows.map(r => {
-        // row.barcode from Excel is "SR4006-S" format (code-size)
+        // row.barcode from Excel is "SR4006-อ่อน-S" format (code-color-size)
         const parts = r.barcode.split('-');
         parts.pop(); // remove size suffix
+        parts.pop(); // remove color
         return parts.join('-');
     }))];
     const products = await db.product.findMany({
@@ -172,17 +173,17 @@ export async function uploadAllocation(requestId: string, rows: AllocationRow[],
         throw new Error(`Products not found: ${missingCodes.join(', ')}`);
     }
 
-    // Build a map: "CODE-SIZE" → real barcode (e.g. "SR6001-S" → "600142")
-    const codesSizeToBarcode = new Map<string, string>();
+    // Build a map: "CODE-COLOR-SIZE" → real barcode (e.g. "SR4006-อ่อน-S" → "400632")
+    const codeSizeToBarcode = new Map<string, string>();
     for (const p of products) {
-        if (p.code && p.size) {
-            codesSizeToBarcode.set(`${p.code}-${p.size}`, p.barcode);
+        if (p.code && p.size && p.color) {
+            codeSizeToBarcode.set(`${p.code}-${p.color}-${p.size}`, p.barcode);
         }
     }
 
     // Map each row to the real barcode
     const mappedRows = rows.map(row => {
-        const realBarcode = codesSizeToBarcode.get(row.barcode); // row.barcode = "SR4006-S"
+        const realBarcode = codeSizeToBarcode.get(row.barcode); // row.barcode = "SR4006-อ่อน-S"
         if (!realBarcode) {
             throw new Error(`ไม่พบสินค้า barcode สำหรับ ${row.barcode} ในระบบ`);
         }
@@ -285,6 +286,8 @@ export async function confirmPacking(requestId: string) {
 
     revalidatePath('/warehouse/packing');
     revalidatePath('/warehouse/shipments');
+    revalidatePath(`/channels/${requestId}/packing`);
+    revalidatePath(`/channels/${request.channelId}`);
     return { totalPacked };
 }
 
@@ -368,8 +371,8 @@ export async function confirmReceiving(
 
     const receivedTotal = items.reduce((sum, i) => sum + i.receivedQty, 0);
 
-    await db.$transaction(async (tx) => {
-        // 1. Create Receiving record
+    await db.$transaction(async (tx: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        // 1. Create Receiving record with items
         const receiving = await tx.receiving.create({
             data: {
                 stockRequestId: requestId,
@@ -443,14 +446,14 @@ export async function confirmReceiving(
             },
         });
 
-        // 6. If this is INITIAL and channel is draft → move to active
-        if (request.requestType === 'INITIAL' && request.channel.status === 'draft') {
+        // 6. Move channel to active when stock is received
+        if (request.channel.status !== 'active') {
             await tx.salesChannel.update({
                 where: { id: request.channelId },
                 data: { status: 'active' },
             });
         }
-    });
+    }, { timeout: 30000 });
 
     // Log
     await db.channelLog.create({
