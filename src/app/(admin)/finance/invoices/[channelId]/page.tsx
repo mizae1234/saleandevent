@@ -2,6 +2,7 @@ import { getInvoicesByChannel, getChannelForInvoice } from "@/actions/invoice-ac
 import Link from "next/link";
 import { FileText, Plus, ArrowLeft, ChevronRight } from "lucide-react";
 import { DeleteInvoiceButton } from "../DeleteInvoiceButton";
+import { InvoicePdfButton } from "../InvoicePdfButton";
 
 export default async function ChannelInvoicesPage({
     params,
@@ -62,6 +63,7 @@ export default async function ChannelInvoicesPage({
                                 <th className="text-right p-3 text-xs font-semibold text-slate-600">จำนวนรวม</th>
                                 <th className="text-right p-3 text-xs font-semibold text-slate-600">ยอดรวม (฿)</th>
                                 <th className="text-center p-3 text-xs font-semibold text-slate-600">สถานะ</th>
+                                <th className="text-center p-3 text-xs font-semibold text-slate-600 w-12">PDF</th>
                                 <th className="text-center p-3 text-xs font-semibold text-slate-600 w-20">จัดการ</th>
                             </tr>
                         </thead>
@@ -101,6 +103,9 @@ export default async function ChannelInvoicesPage({
                                             </span>
                                         )}
                                     </td>
+                                    <td className="p-3 text-center">
+                                        <InvoicePdfButton invoiceId={inv.id} invoiceNumber={inv.invoiceNumber} />
+                                    </td>
                                     <td className="p-3">
                                         <div className="flex items-center justify-center gap-1">
                                             <Link
@@ -119,7 +124,7 @@ export default async function ChannelInvoicesPage({
                             ))}
                             {invoices.length === 0 && (
                                 <tr>
-                                    <td colSpan={7} className="p-8 text-center text-slate-400 text-sm">
+                                    <td colSpan={8} className="p-8 text-center text-slate-400 text-sm">
                                         ยังไม่มี Invoice สำหรับ Event นี้
                                     </td>
                                 </tr>
