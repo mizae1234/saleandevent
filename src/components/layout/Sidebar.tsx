@@ -6,13 +6,35 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOutButton } from "./LogOutButton";
 
-export function Sidebar({ className, onNavigated }: { className?: string, onNavigated?: () => void }) {
+interface SidebarProps {
+    className?: string;
+    onNavigated?: () => void;
+    allowedMenus?: string[];
+    userName?: string;
+    userRole?: string;
+}
+
+export function Sidebar({ className, onNavigated, allowedMenus = [], userName = "User", userRole = "" }: SidebarProps) {
     const pathname = usePathname();
+
+    // Filter menu sections by allowed menus (empty = show all for backward compat)
+    const filteredSections = allowedMenus.length > 0
+        ? MENU_SECTIONS.filter((section) => allowedMenus.includes(section.key))
+        : MENU_SECTIONS;
 
     // Check if menu item is active - exact match only
     const isMenuActive = (href: string) => {
         if (pathname === href) return true;
         return false;
+    };
+
+    const roleLabels: Record<string, string> = {
+        ADMIN: "ผู้ดูแลระบบ",
+        MANAGER: "ผู้จัดการ",
+        WAREHOUSE: "คลังสินค้า",
+        FINANCE: "บัญชี/การเงิน",
+        STAFF: "พนักงาน",
+        PC: "PC",
     };
 
     return (
@@ -35,8 +57,8 @@ export function Sidebar({ className, onNavigated }: { className?: string, onNavi
             {/* Navigation */}
             <div className="flex-1 overflow-y-auto py-6 px-3">
                 <nav className="space-y-6">
-                    {MENU_SECTIONS.map((section, index) => (
-                        <div key={section.title}>
+                    {filteredSections.map((section, index) => (
+                        <div key={section.key}>
                             <h3 className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
                                 {section.title}
                             </h3>
@@ -69,7 +91,7 @@ export function Sidebar({ className, onNavigated }: { className?: string, onNavi
                                 })}
                             </div>
                             {/* Divider between sections */}
-                            {index < MENU_SECTIONS.length - 1 && (
+                            {index < filteredSections.length - 1 && (
                                 <div className="mt-6 mx-3 border-t border-slate-100" />
                             )}
                         </div>
@@ -81,11 +103,11 @@ export function Sidebar({ className, onNavigated }: { className?: string, onNavi
             <div className="p-4 mx-3 mb-3 rounded-xl bg-slate-100/50">
                 <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center shadow-sm">
-                        <span className="text-white text-sm font-medium">A</span>
+                        <span className="text-white text-sm font-medium">{userName.charAt(0).toUpperCase()}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-slate-700 truncate">Admin User</p>
-                        <p className="text-xs text-slate-500">Super Admin</p>
+                        <p className="font-medium text-sm text-slate-700 truncate">{userName}</p>
+                        <p className="text-xs text-slate-500">{roleLabels[userRole] || userRole}</p>
                     </div>
                     <LogOutButton />
                 </div>
@@ -93,3 +115,4 @@ export function Sidebar({ className, onNavigated }: { className?: string, onNavi
         </aside>
     );
 }
+

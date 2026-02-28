@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { hashPassword, verifyPassword, createSession, destroySession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { format } from 'date-fns';
+import { getAllowedMenusForRole } from './role-permission-actions';
 
 // ============ LOGIN (by employee code) ============
 
@@ -31,10 +32,14 @@ export async function loginAction(_prevState: { error?: string } | undefined, fo
         return { error: 'รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง' };
     }
 
+    // Fetch allowed menus for this role
+    const allowedMenus = await getAllowedMenusForRole(staff.role);
+
     await createSession({
         staffId: staff.id,
         role: staff.role,
         name: staff.name,
+        allowedMenus,
     });
 
     // Redirect based on role

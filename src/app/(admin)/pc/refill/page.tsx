@@ -47,18 +47,19 @@ export default async function PCRefillPage() {
                     {requests.map(req => {
                         const status = statusConfig[req.status] || { label: req.status, color: 'bg-slate-100 text-slate-600' };
                         return (
-                            <div key={req.id} className="bg-white rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100">
+                            <Link key={req.id} href={`/pc/refill/${req.id}`} className="block bg-white rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100 hover:border-slate-200 hover:shadow-md transition-all">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <h3 className="font-semibold text-slate-900">{req.channel.name}</h3>
                                         <p className="text-sm text-slate-500">{req.channel.code} · {req.requestedTotalQuantity.toLocaleString()} ชิ้น</p>
+                                        {req.notes && <p className="text-xs text-slate-400 mt-0.5">📝 {req.notes}</p>}
                                         <p className="text-xs text-slate-400 mt-1">{format(req.createdAt, 'd MMM yy HH:mm', { locale: th })}</p>
                                     </div>
                                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${status.color}`}>
                                         {status.label}
                                     </span>
                                 </div>
-                            </div>
+                            </Link>
                         );
                     })}
                 </div>

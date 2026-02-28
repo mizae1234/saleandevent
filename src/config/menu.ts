@@ -22,6 +22,7 @@ import {
     UserCog,
     Gift,
     Settings,
+    Contact,
     LucideIcon
 } from "lucide-react";
 
@@ -33,12 +34,14 @@ export interface MenuItem {
 }
 
 export interface MenuSection {
+    key: string;
     title: string;
     items: MenuItem[];
 }
 
 export const MENU_SECTIONS: MenuSection[] = [
     {
+        key: "front_office",
         title: "Front Office (หน้าร้าน)",
         items: [
             { title: "ขายสินค้า (POS)", href: "/pc/pos", icon: ScanBarcode },
@@ -49,6 +52,7 @@ export const MENU_SECTIONS: MenuSection[] = [
         ],
     },
     {
+        key: "sales_channel",
         title: "Sales Channel (ช่องทางขาย)",
         items: [
             { title: "ภาพรวมช่องทาง", href: "/channels", icon: Calendar },
@@ -58,31 +62,47 @@ export const MENU_SECTIONS: MenuSection[] = [
         ],
     },
     {
+        key: "supply_chain",
         title: "Supply Chain (คลังสินค้า)",
         items: [
             { title: "งานรอแพ็ค", href: "/warehouse/packing", icon: Package },
             { title: "รายการจัดส่ง", href: "/warehouse/shipments", icon: Truck },
             { title: "รับคืนสินค้า", href: "/warehouse/return", icon: Undo2 },
-            { title: "คลังสินค้าหลัก", href: "/warehouse/stock", icon: Warehouse },
+            // { title: "คลังสินค้าหลัก", href: "/warehouse/stock", icon: Warehouse },
         ],
     },
     {
+        key: "finance_hr",
         title: "Finance & HR (บัญชี/บุคคล)",
         items: [
-            { title: "ตรวจสอบการปิดงาน", href: "/finance/audit", icon: ClipboardCheck },
-            { title: "รายการเดินบัญชี", href: "/finance/invoices", icon: FileText },
+            // { title: "ตรวจสอบการปิดงาน", href: "/finance/audit", icon: ClipboardCheck },
+            { title: "จัดการลูกค้า", href: "/finance/customers", icon: Contact },
+            { title: "ใบแจ้งหนี้ (Invoice)", href: "/finance/invoices", icon: FileText },
             { title: "จัดการพนักงาน", href: "/hr/employees", icon: UserCog },
             { title: "เงินเดือน/คอมฯ", href: "/hr/payroll", icon: Banknote },
             { title: "รายงานสรุป", href: "/reports", icon: PieChart },
         ],
     },
     {
+        key: "system_admin",
         title: "System Admin (ตั้งค่า)",
         items: [
             { title: "จัดการสินค้า", href: "/admin/products", icon: Tag },
             { title: "พนักงาน & สิทธิ์", href: "/admin/users", icon: Users },
-            { title: "โปรโมชั่น", href: "/admin/promotions", icon: Gift },
+            // { title: "โปรโมชั่น", href: "/admin/promotions", icon: Gift },
             { title: "ตั้งค่าระบบ", href: "/admin/settings", icon: Settings },
         ],
     },
 ];
+
+// Helper: map a route prefix to its menu section key
+export const ROUTE_TO_MENU_KEY: Record<string, string> = {
+    "/pc": "front_office",
+    "/channels": "sales_channel",
+    "/warehouse": "supply_chain",
+    "/finance": "finance_hr",
+    "/hr": "finance_hr",
+    "/reports": "finance_hr",
+    "/admin": "system_admin",
+};
+

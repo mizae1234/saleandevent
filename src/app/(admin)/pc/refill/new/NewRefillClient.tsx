@@ -79,6 +79,7 @@ export default function NewRefillClient({ channels, redirectTo, backHref, presel
                     <label className="block text-sm font-medium text-slate-700 mb-1">จำนวนสินค้าที่ต้องการ (ชิ้น) *</label>
                     <input
                         type="number"
+                        onFocus={(e) => e.target.select()}
                         value={quantity}
                         onChange={e => setQuantity(e.target.value)}
                         placeholder="เช่น 200"

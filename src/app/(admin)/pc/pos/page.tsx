@@ -9,7 +9,7 @@ async function getActiveEvents() {
             status: 'active'
         },
         include: {
-            stock: true
+            stock: { select: { quantity: true, soldQuantity: true } }
         },
         orderBy: { startDate: 'asc' }
     });

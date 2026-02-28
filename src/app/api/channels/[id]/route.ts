@@ -40,6 +40,7 @@ export async function GET(
             startDate: channel.startDate?.toISOString() || null,
             endDate: channel.endDate?.toISOString() || null,
             responsiblePersonName: channel.responsiblePersonName,
+            customerId: channel.customerId,
             staff: channel.staff.map((s: any) => ({
                 staffId: s.staffId,
                 isMain: s.isMain,
@@ -50,5 +51,34 @@ export async function GET(
     } catch (error) {
         console.error("Failed to fetch channel:", error);
         return NextResponse.json({ error: "Failed to fetch channel" }, { status: 500 });
+    }
+}
+
+export async function PATCH(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const { id } = await params;
+        const body = await request.json();
+
+        const updated = await db.salesChannel.update({
+            where: { id },
+            data: {
+                name: body.name,
+                location: body.location,
+                startDate: body.startDate ? new Date(body.startDate) : null,
+                endDate: body.endDate ? new Date(body.endDate) : null,
+                salesTarget: body.salesTarget ? parseFloat(body.salesTarget) : null,
+                responsiblePersonName: body.responsiblePersonName || null,
+                phone: body.phone || null,
+                customerId: body.customerId || null,
+            },
+        });
+
+        return NextResponse.json({ success: true, id: updated.id });
+    } catch (error) {
+        console.error("Failed to update channel:", error);
+        return NextResponse.json({ error: "Failed to update channel" }, { status: 500 });
     }
 }

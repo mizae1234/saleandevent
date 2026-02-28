@@ -39,9 +39,9 @@ export default async function EmployeePayrollPage({ params }: { params: Promise<
         where: { channelId, staffId: session.staffId }
     });
 
-    // Get expenses for this channel
+    // Get expenses for this channel submitted by this staff
     const expenses = await db.channelExpense.findMany({
-        where: { channelId },
+        where: { channelId, createdBy: session.staffId },
         orderBy: { createdAt: 'desc' },
     });
 
@@ -92,6 +92,12 @@ export default async function EmployeePayrollPage({ params }: { params: Promise<
                     attendanceDays,
                     wageSummary,
                 }}
+                isSubmitted={assignment?.isSubmitted || false}
+                submittedAt={assignment?.submittedAt?.toISOString() || null}
+                isWagePaid={assignment?.isWagePaid || false}
+                wagePaidAt={assignment?.wagePaidAt?.toISOString() || null}
+                isCommissionPaid={assignment?.isCommissionPaid || false}
+                commissionPaidAt={assignment?.commissionPaidAt?.toISOString() || null}
             />
         </div>
     );

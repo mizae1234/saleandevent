@@ -7,7 +7,7 @@ export default async function ExpensesEventListPage() {
     const events = await db.salesChannel.findMany({
         where: {
             status: {
-                in: ['approved', 'packing', 'packed', 'shipped', 'in_progress', 'completed', 'pending_return', 'returning', 'returned']
+                in: ['active', 'approved', 'packing', 'packed', 'shipped', 'in_progress', 'completed', 'pending_return', 'returning', 'returned']
             }
         },
         orderBy: {

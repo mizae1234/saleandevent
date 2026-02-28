@@ -50,6 +50,7 @@ export async function createChannelWithDetails(formData: FormData) {
     const salesTarget = formData.get('salesTarget') as string | null;
     const responsiblePersonName = formData.get('responsiblePersonName') as string | null;
     const phone = formData.get('phone') as string | null;
+    const customerId = formData.get('customerId') as string | null;
     const staffJson = formData.get('staff') as string | null;
     const initialQty = formData.get('initialQuantity') as string | null;
     const notes = formData.get('notes') as string | null;
@@ -73,6 +74,7 @@ export async function createChannelWithDetails(formData: FormData) {
                     salesTarget: salesTarget ? parseFloat(salesTarget) : null,
                     responsiblePersonName: responsiblePersonName || null,
                     phone: phone || null,
+                    customerId: customerId || null,
                     status: 'draft',
                 },
             });
@@ -137,6 +139,7 @@ export async function updateChannelWithDetails(channelId: string, formData: Form
     const salesTarget = formData.get('salesTarget') as string | null;
     const responsiblePersonName = formData.get('responsiblePersonName') as string | null;
     const phone = formData.get('phone') as string | null;
+    const customerId = formData.get('customerId') as string | null;
     const staffJson = formData.get('staff') as string | null;
 
     const staff: StaffSelection[] = staffJson ? JSON.parse(staffJson) : [];
@@ -154,6 +157,7 @@ export async function updateChannelWithDetails(channelId: string, formData: Form
                 salesTarget: salesTarget ? parseFloat(salesTarget) : null,
                 responsiblePersonName: responsiblePersonName || null,
                 phone: phone || null,
+                customerId: customerId || null,
             },
         });
 
@@ -447,7 +451,8 @@ export async function closeChannelManual(channelId: string) {
 
 export async function addChannelExpense(
     channelId: string,
-    data: { category: string; amount: number; description: string }
+    data: { category: string; amount: number; description: string },
+    staffId?: string
 ) {
     await db.channelExpense.create({
         data: {
@@ -456,6 +461,7 @@ export async function addChannelExpense(
             amount: data.amount,
             description: data.description,
             status: 'approved',
+            createdBy: staffId || null,
         },
     });
 
@@ -464,11 +470,12 @@ export async function addChannelExpense(
             channelId,
             action: 'expense_added',
             details: data,
-            changedBy: '00000000-0000-0000-0000-000000000000',
+            changedBy: staffId || '00000000-0000-0000-0000-000000000000',
         },
     });
 
     revalidatePath(`/channels/${channelId}`);
+    revalidatePath(`/hr/payroll/${channelId}`);
 }
 
 export async function removeChannelExpense(expenseId: string, channelId: string) {
@@ -517,7 +524,7 @@ export async function getChannelCompensationSummary(channelId: string) {
         const attendanceDays = staffAttendance.length;
         // Use override if set, otherwise use attendance count
         const daysWorked = cs.daysWorkedOverride != null ? cs.daysWorkedOverride : attendanceDays;
-        const dailyRate = Number(cs.staff.dailyRate || 0);
+        const dailyRate = cs.dailyRateOverride != null ? Number(cs.dailyRateOverride) : Number(cs.staff.dailyRate || 0);
         const totalWage = daysWorked * dailyRate;
 
         // Commission: flat amount (not multiplied by days)
@@ -653,4 +660,108 @@ export async function approvePayment(channelId: string) {
 
     revalidatePath(`/channels/${channelId}`);
     revalidatePath('/channels/approvals/payment');
+}
+
+// ============ Payroll Payment Status ============
+
+export async function updateStaffDailyRate(channelStaffId: string, dailyRate: number | null) {
+    await db.channelStaff.update({
+        where: { id: channelStaffId },
+        data: { dailyRateOverride: dailyRate },
+    });
+    const cs = await db.channelStaff.findUnique({ where: { id: channelStaffId }, select: { channelId: true } });
+    if (cs) revalidatePath(`/hr/payroll/${cs.channelId}`);
+}
+
+export async function toggleWagePaid(channelStaffId: string, isWagePaid: boolean) {
+    await db.channelStaff.update({
+        where: { id: channelStaffId },
+        data: {
+            isWagePaid,
+            wagePaidAt: isWagePaid ? new Date() : null,
+        },
+    });
+    const cs = await db.channelStaff.findUnique({ where: { id: channelStaffId }, select: { channelId: true } });
+    if (cs) revalidatePath(`/hr/payroll/${cs.channelId}`);
+}
+
+export async function toggleCommissionPaid(channelStaffId: string, isCommissionPaid: boolean) {
+    await db.channelStaff.update({
+        where: { id: channelStaffId },
+        data: {
+            isCommissionPaid,
+            commissionPaidAt: isCommissionPaid ? new Date() : null,
+        },
+    });
+    const cs = await db.channelStaff.findUnique({ where: { id: channelStaffId }, select: { channelId: true } });
+    if (cs) revalidatePath(`/hr/payroll/${cs.channelId}`);
+}
+
+export async function markAllWagePaid(channelId: string, isWagePaid: boolean) {
+    await db.channelStaff.updateMany({
+        where: { channelId },
+        data: { isWagePaid, wagePaidAt: isWagePaid ? new Date() : null },
+    });
+    revalidatePath(`/hr/payroll/${channelId}`);
+}
+
+export async function markAllCommissionPaid(channelId: string, isCommissionPaid: boolean) {
+    await db.channelStaff.updateMany({
+        where: { channelId },
+        data: { isCommissionPaid, commissionPaidAt: isCommissionPaid ? new Date() : null },
+    });
+    revalidatePath(`/hr/payroll/${channelId}`);
+}
+
+export async function submitPayroll(channelId: string, staffId: string) {
+    await db.channelStaff.updateMany({
+        where: { channelId, staffId },
+        data: {
+            isSubmitted: true,
+            submittedAt: new Date(),
+        },
+    });
+    revalidatePath(`/hr/payroll/${channelId}`);
+}
+
+// ============ ADD / REMOVE STAFF FROM CHANNEL ============
+
+export async function addStaffToChannel(channelId: string, staffId: string, isMain: boolean = false) {
+    // Check if already assigned
+    const existing = await db.channelStaff.findUnique({
+        where: { channelId_staffId: { channelId, staffId } },
+    });
+    if (existing) throw new Error('พนักงานนี้อยู่ในช่องทางนี้แล้ว');
+
+    await db.channelStaff.create({
+        data: { channelId, staffId, isMain },
+    });
+
+    await db.channelLog.create({
+        data: {
+            channelId,
+            action: 'staff_added',
+            details: { staffId, isMain },
+            changedBy: '00000000-0000-0000-0000-000000000000',
+        },
+    });
+
+    revalidatePath(`/channels/${channelId}`);
+}
+
+export async function removeStaffFromChannel(channelId: string, channelStaffId: string) {
+    await db.channelStaff.delete({
+        where: { id: channelStaffId },
+    });
+
+    await db.channelLog.create({
+        data: {
+            channelId,
+            action: 'staff_removed',
+            details: { channelStaffId },
+            changedBy: '00000000-0000-0000-0000-000000000000',
+        },
+    });
+
+    revalidatePath(`/channels/${channelId}`);
 }

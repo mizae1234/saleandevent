@@ -4,10 +4,17 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default async function CreateChannelPage() {
-    const staffList = await db.staff.findMany({
-        where: { status: 'active' },
-        orderBy: { name: 'asc' },
-    });
+    const [staffList, customerList] = await Promise.all([
+        db.staff.findMany({
+            where: { status: 'active' },
+            orderBy: { name: 'asc' },
+        }),
+        db.customer.findMany({
+            where: { status: 'active' },
+            select: { id: true, code: true, name: true },
+            orderBy: { name: 'asc' },
+        }),
+    ]);
 
     return (
         <div className="p-6">
@@ -17,12 +24,15 @@ export default async function CreateChannelPage() {
                 </Link>
             </div>
 
-            <CreateChannelForm staffList={staffList.map(s => ({
-                id: s.id,
-                name: s.name,
-                role: s.role,
-                phone: s.phone,
-            }))} />
+            <CreateChannelForm
+                staffList={staffList.map(s => ({
+                    id: s.id,
+                    name: s.name,
+                    role: s.role,
+                    phone: s.phone,
+                }))}
+                customerList={customerList}
+            />
         </div>
     );
 }

@@ -2,7 +2,9 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Package, Truck } from "lucide-react";
+import { format } from "date-fns";
+import { th } from "date-fns/locale";
+import { ArrowLeft, Package, Truck, CheckCircle2, History, ChevronRight } from "lucide-react";
 import ReceivingInterface from "@/app/(admin)/pc/receive/[id]/ReceivingInterface";
 
 export default async function EmployeeReceivePage({ params }: { params: Promise<{ id: string }> }) {
@@ -10,21 +12,30 @@ export default async function EmployeeReceivePage({ params }: { params: Promise<
     const session = await getSession();
     if (!session) redirect('/login');
 
-    // Find shipped stock requests for this channel
-    const requests = await db.stockRequest.findMany({
-        where: {
-            channelId,
-            status: 'shipped',
-        },
-        include: {
-            channel: true,
-            shipment: true,
-            allocations: { include: { product: true } },
-        },
-        orderBy: { updatedAt: 'desc' },
-    });
+    const [channel, requests, receivedRequests] = await Promise.all([
+        db.salesChannel.findUnique({ where: { id: channelId }, select: { id: true, name: true } }),
+        // Pending: shipped, waiting to receive
+        db.stockRequest.findMany({
+            where: { channelId, status: 'shipped' },
+            include: {
+                channel: true,
+                shipment: true,
+                allocations: { include: { product: true } },
+            },
+            orderBy: { updatedAt: 'desc' },
+        }),
+        // History: already received
+        db.stockRequest.findMany({
+            where: { channelId, status: 'received' },
+            include: {
+                receiving: { select: { id: true, receivedTotalQty: true, receivedAt: true } },
+                shipment: { select: { provider: true, trackingNumber: true } },
+            },
+            orderBy: { updatedAt: 'desc' },
+            take: 20,
+        }),
+    ]);
 
-    const channel = await db.salesChannel.findUnique({ where: { id: channelId } });
     if (!channel) notFound();
 
     return (
@@ -43,6 +54,7 @@ export default async function EmployeeReceivePage({ params }: { params: Promise<
                 </div>
             </div>
 
+            {/* Pending Section */}
             {requests.length === 0 ? (
                 <div className="rounded-2xl bg-white p-10 text-center shadow-sm border border-slate-100">
                     <Package className="h-12 w-12 text-slate-200 mx-auto mb-3" />
@@ -92,6 +104,51 @@ export default async function EmployeeReceivePage({ params }: { params: Promise<
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* History Section */}
+            {receivedRequests.length > 0 && (
+                <div className="border-t border-slate-100 pt-4">
+                    <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                        <History className="h-4 w-4 text-slate-400" />
+                        ประวัติการรับสินค้า
+                    </h2>
+                    <div className="space-y-2">
+                        {receivedRequests.map(req => (
+                            <Link
+                                key={req.id}
+                                href={`/channel/${channelId}/pos/receive/history/${req.receiving?.id || req.id}`}
+                                className="block bg-white rounded-xl p-3 border border-slate-100 border-l-4 border-l-emerald-400 hover:bg-slate-50 transition-colors"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-0.5">
+                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${req.requestType === 'INITIAL' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
+                                                {req.requestType === 'INITIAL' ? 'เริ่มต้น' : 'เพิ่มเติม'}
+                                            </span>
+                                            <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                                                <CheckCircle2 className="h-3 w-3" />
+                                                รับแล้ว {req.receiving?.receivedTotalQty || 0} ชิ้น
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-1">
+                                            {req.shipment && (
+                                                <span className="flex items-center gap-1">
+                                                    <Truck className="h-3 w-3" />
+                                                    {req.shipment.provider} {req.shipment.trackingNumber && `· ${req.shipment.trackingNumber}`}
+                                                </span>
+                                            )}
+                                            {req.receiving?.receivedAt && (
+                                                <span>{format(req.receiving.receivedAt, 'd MMM yy HH:mm', { locale: th })}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <ChevronRight className="h-4 w-4 text-slate-300 flex-shrink-0" />
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>

@@ -4,7 +4,13 @@ import { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { Menu } from "lucide-react";
 
-export function MobileNav() {
+interface MobileNavProps {
+    allowedMenus?: string[];
+    userName?: string;
+    userRole?: string;
+}
+
+export function MobileNav({ allowedMenus = [], userName = "User", userRole = "" }: MobileNavProps) {
     const [open, setOpen] = useState(false);
 
     // Prevent scrolling when menu is open
@@ -46,8 +52,12 @@ export function MobileNav() {
                 <Sidebar
                     className="h-full w-full flex border-r-0 shadow-none"
                     onNavigated={() => setOpen(false)}
+                    allowedMenus={allowedMenus}
+                    userName={userName}
+                    userRole={userRole}
                 />
             </div>
         </>
     );
 }
+

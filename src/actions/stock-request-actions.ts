@@ -40,6 +40,47 @@ export async function createStockRequest(
     return request;
 }
 
+// ============ UPDATE STOCK REQUEST (Admin edit qty/notes) ============
+
+export async function updateStockRequest(
+    requestId: string,
+    data: { requestedTotalQuantity?: number; notes?: string | null }
+) {
+    const request = await db.stockRequest.findUnique({
+        where: { id: requestId },
+    });
+
+    if (!request) throw new Error('Stock request not found');
+    if (['shipped', 'received', 'cancelled'].includes(request.status)) {
+        throw new Error('ไม่สามารถแก้ไขคำขอที่จัดส่งแล้วหรือยกเลิกแล้ว');
+    }
+
+    const updated = await db.stockRequest.update({
+        where: { id: requestId },
+        data: {
+            ...(data.requestedTotalQuantity !== undefined && { requestedTotalQuantity: data.requestedTotalQuantity }),
+            ...(data.notes !== undefined && { notes: data.notes }),
+        },
+    });
+
+    await db.channelLog.create({
+        data: {
+            channelId: request.channelId,
+            action: 'stock_request_updated',
+            details: {
+                requestId,
+                changes: data,
+            },
+            changedBy: '00000000-0000-0000-0000-000000000000',
+        },
+    });
+
+    revalidatePath(`/pc/refill`);
+    revalidatePath(`/pc/refill/${requestId}`);
+    revalidatePath(`/channels/${request.channelId}`);
+    return updated;
+}
+
 // ============ SUBMIT STOCK REQUEST ============
 
 export async function submitStockRequest(requestId: string) {
@@ -130,6 +171,8 @@ export async function rejectStockRequest(requestId: string, reason?: string) {
 
 interface AllocationRow {
     barcode: string;
+    code?: string;   // original product code from Excel (e.g. "SR04-1")
+    color?: string;  // original color from Excel (e.g. "แดง")
     size: string | null;
     packedQuantity: number;
     price: number;
@@ -154,14 +197,16 @@ export async function uploadAllocation(requestId: string, rows: AllocationRow[],
         );
     }
 
-    // Look up all products by code to find real barcodes
+    // Extract product codes — use explicit `code` field if available, fallback to barcode parsing
     const codeSet = [...new Set(rows.map(r => {
-        // row.barcode from Excel is "SR4006-อ่อน-S" format (code-color-size)
+        if (r.code) return r.code;
+        // Legacy fallback: last resort parsing (unreliable for codes with hyphens)
         const parts = r.barcode.split('-');
-        parts.pop(); // remove size suffix
+        if (r.size) parts.pop(); // remove size
         parts.pop(); // remove color
         return parts.join('-');
     }))];
+
     const products = await db.product.findMany({
         where: { code: { in: codeSet } },
     });
@@ -173,19 +218,33 @@ export async function uploadAllocation(requestId: string, rows: AllocationRow[],
         throw new Error(`Products not found: ${missingCodes.join(', ')}`);
     }
 
-    // Build a map: "CODE-COLOR-SIZE" → real barcode (e.g. "SR4006-อ่อน-S" → "400632")
-    const codeSizeToBarcode = new Map<string, string>();
+    // Build lookup maps
+    // For products WITH size: "CODE-COLOR-SIZE" → real barcode
+    // For products WITHOUT size: "CODE-COLOR" → real barcode
+    const lookupMap = new Map<string, string>();
     for (const p of products) {
-        if (p.code && p.size && p.color) {
-            codeSizeToBarcode.set(`${p.code}-${p.color}-${p.size}`, p.barcode);
+        if (p.code && p.color && p.size) {
+            lookupMap.set(`${p.code}-${p.color}-${p.size}`, p.barcode);
+        }
+        if (p.code && p.color) {
+            // Also map without size for size-less products
+            const keyNoSize = `${p.code}-${p.color}`;
+            if (!lookupMap.has(keyNoSize)) {
+                lookupMap.set(keyNoSize, p.barcode);
+            }
         }
     }
 
     // Map each row to the real barcode
     const mappedRows = rows.map(row => {
-        const realBarcode = codeSizeToBarcode.get(row.barcode); // row.barcode = "SR4006-อ่อน-S"
+        // Try exact match first (code-color-size or code-color)
+        let lookupKey = row.barcode;
+        if (row.code && row.color) {
+            lookupKey = row.size ? `${row.code}-${row.color}-${row.size}` : `${row.code}-${row.color}`;
+        }
+        const realBarcode = lookupMap.get(lookupKey);
         if (!realBarcode) {
-            throw new Error(`ไม่พบสินค้า barcode สำหรับ ${row.barcode} ในระบบ`);
+            throw new Error(`ไม่พบสินค้า barcode สำหรับ ${lookupKey} ในระบบ`);
         }
         return {
             stockRequestId: requestId,

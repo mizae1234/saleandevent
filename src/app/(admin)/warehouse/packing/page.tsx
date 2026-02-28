@@ -11,8 +11,8 @@ export default async function WarehousePackingPage() {
             status: { in: ['approved', 'allocated', 'packed'] },
         },
         include: {
-            channel: true,
-            allocations: true,
+            channel: { select: { id: true, name: true, code: true, location: true } },
+            allocations: { select: { packedQuantity: true } },
         },
         orderBy: { updatedAt: 'desc' },
     });

@@ -11,8 +11,8 @@ export default async function ShippingPage({ params }: { params: Promise<{ id: s
     const request = await db.stockRequest.findUnique({
         where: { id },
         include: {
-            channel: true,
-            allocations: true,
+            channel: { select: { id: true, name: true, code: true } },
+            allocations: { select: { packedQuantity: true } },
         },
     });
 

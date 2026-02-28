@@ -183,6 +183,7 @@ export function EventExpenses({ channelId, expenses, readonly = false }: Props) 
                                     <Label className="text-slate-500">จำนวนเงิน (บาท)</Label>
                                     <Input
                                         type="number"
+                                        onFocus={(e) => e.target.select()}
                                         step="0.01"
                                         placeholder="0.00"
                                         value={formData.amount}

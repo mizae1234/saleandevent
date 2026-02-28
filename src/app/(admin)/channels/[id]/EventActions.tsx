@@ -88,6 +88,7 @@ export default function EventActions({ channel }: Props) {
                             <p className="text-sm font-medium text-teal-800">ระบุจำนวนที่ต้องการเพิ่ม</p>
                             <input
                                 type="number"
+                                onFocus={(e) => e.target.select()}
                                 value={topUpQty}
                                 onChange={e => setTopUpQty(e.target.value)}
                                 placeholder="จำนวนชิ้น"

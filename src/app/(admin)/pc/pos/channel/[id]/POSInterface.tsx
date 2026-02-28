@@ -369,6 +369,7 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
                                     <Tag className="h-2.5 w-2.5 text-slate-300" />
                                     <input
                                         type="number"
+                                        onFocus={(e) => e.target.select()}
                                         placeholder="ลด"
                                         value={item.discount || ''}
                                         onChange={(e) => updateItemDiscount(item.barcode, parseFloat(e.target.value) || 0)}
@@ -432,6 +433,7 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
                         <span className="text-slate-500">ส่วนลดท้ายบิล</span>
                         <input
                             type="number"
+                            onFocus={(e) => e.target.select()}
                             value={billDiscount || ''}
                             onChange={(e) => setBillDiscount(parseFloat(e.target.value) || 0)}
                             className="w-24 text-right text-sm px-2 py-1.5 bg-white/80 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/20 focus:border-emerald-300"
@@ -575,6 +577,7 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
                                     <label className="text-sm text-slate-600">จำนวนเงิน (+ เพิ่ม, - ลด)</label>
                                     <input
                                         type="number"
+                                        onFocus={(e) => e.target.select()}
                                         placeholder="100 หรือ -50"
                                         value={newAdjustment.amount || ''}
                                         onChange={(e) => setNewAdjustment({ ...newAdjustment, amount: parseFloat(e.target.value) || 0 })}

@@ -11,24 +11,25 @@ const COOKIE_NAME = 'sj-session';
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = ['/login', '/api'];
 
-// Admin-only route prefixes (the existing admin pages)
-const ADMIN_ROUTE_PREFIXES = [
-    '/channels',
-    '/pc',
-    '/warehouse',
-    '/hr',
-    '/finance',
-    '/reports',
-];
+// Route prefix to menu key mapping (must match ROUTE_TO_MENU_KEY in menu.ts)
+const ROUTE_TO_MENU_KEY: Record<string, string> = {
+    '/pc': 'front_office',
+    '/channels': 'sales_channel',
+    '/warehouse': 'supply_chain',
+    '/finance': 'finance_hr',
+    '/hr': 'finance_hr',
+    '/reports': 'finance_hr',
+    '/admin': 'system_admin',
+};
+
+// Admin roles that can access admin routes (fallback when no allowedMenus)
+const ADMIN_ROLES = ['ADMIN', 'MANAGER', 'WAREHOUSE', 'FINANCE'];
 
 // Employee route prefixes
 const EMPLOYEE_ROUTE_PREFIXES = [
     '/workspace',
     '/channel',
 ];
-
-// Admin roles that can access admin routes
-const ADMIN_ROLES = ['ADMIN', 'MANAGER', 'WAREHOUSE', 'FINANCE'];
 
 // Employee roles that can access employee routes
 const EMPLOYEE_ROLES = ['ADMIN', 'MANAGER', 'STAFF', 'PC'];
@@ -61,22 +62,48 @@ export async function middleware(request: NextRequest) {
     try {
         const { payload } = await jwtVerify(token, JWT_SECRET);
         const role = payload.role as string;
-
-        // Admin route protection
-        // Allow PC/STAFF to access /pc/* routes (Front Office functions)
-        const isAdminRoute = ADMIN_ROUTE_PREFIXES.some(prefix => pathname.startsWith(prefix));
-        const isFrontOfficeRoute = pathname.startsWith('/pc');
-        if (isAdminRoute && !isFrontOfficeRoute && !ADMIN_ROLES.includes(role)) {
-            return NextResponse.redirect(new URL('/workspace', request.url));
-        }
-        if (isFrontOfficeRoute && !ADMIN_ROLES.includes(role) && !EMPLOYEE_ROLES.includes(role)) {
-            return NextResponse.redirect(new URL('/workspace', request.url));
-        }
+        const allowedMenus = (payload.allowedMenus as string[] | undefined) || [];
 
         // Employee route protection
         const isEmployeeRoute = EMPLOYEE_ROUTE_PREFIXES.some(prefix => pathname.startsWith(prefix));
         if (isEmployeeRoute && !EMPLOYEE_ROLES.includes(role)) {
             return NextResponse.redirect(new URL('/channels', request.url));
+        }
+
+        // If it's an employee route, allow it
+        if (isEmployeeRoute) {
+            return NextResponse.next();
+        }
+
+        // Admin route protection via allowedMenus
+        if (allowedMenus.length > 0) {
+            // Find which menu key this route belongs to
+            const matchedPrefix = Object.keys(ROUTE_TO_MENU_KEY).find(prefix =>
+                pathname.startsWith(prefix)
+            );
+
+            if (matchedPrefix) {
+                const menuKey = ROUTE_TO_MENU_KEY[matchedPrefix];
+                if (!allowedMenus.includes(menuKey)) {
+                    // User doesn't have access to this menu section
+                    // Find the first allowed menu's route
+                    const firstAllowedPrefix = Object.entries(ROUTE_TO_MENU_KEY)
+                        .find(([_, key]) => allowedMenus.includes(key));
+                    const redirectTo = firstAllowedPrefix ? firstAllowedPrefix[0] : '/workspace';
+                    return NextResponse.redirect(new URL(redirectTo, request.url));
+                }
+            }
+        } else {
+            // Fallback: old role-based protection (no allowedMenus configured yet)
+            const isFrontOfficeRoute = pathname.startsWith('/pc');
+            const isAdminRoute = Object.keys(ROUTE_TO_MENU_KEY).some(prefix => pathname.startsWith(prefix));
+
+            if (isAdminRoute && !isFrontOfficeRoute && !ADMIN_ROLES.includes(role)) {
+                return NextResponse.redirect(new URL('/workspace', request.url));
+            }
+            if (isFrontOfficeRoute && !ADMIN_ROLES.includes(role) && !EMPLOYEE_ROLES.includes(role)) {
+                return NextResponse.redirect(new URL('/workspace', request.url));
+            }
         }
 
         return NextResponse.next();
@@ -93,3 +120,4 @@ export const config = {
         '/((?!_next/static|_next/image|favicon.ico).*)',
     ],
 };
+

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
-import { Save, ArrowLeft, Loader2, Users, Star, Package, Search } from "lucide-react";
+import { useState, useEffect, useTransition, useRef } from "react";
+import { Save, ArrowLeft, Loader2, Users, Star, Package, Search, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateChannelWithDetails } from "@/actions/channel-actions";
 
 type Staff = { id: string; name: string; phone: string | null; role: string };
+type Customer = { id: string; code: string; name: string };
 
 interface StockRequestData {
     id: string;
@@ -29,6 +30,7 @@ interface ChannelData {
     salesTarget: number | null;
     responsiblePersonName: string | null;
     phone: string | null;
+    customerId: string | null;
     staff: { staffId: string; isMain: boolean }[];
     stockRequests: StockRequestData[];
 }
@@ -48,6 +50,13 @@ export default function EditEventClient({ channelId }: { channelId: string }) {
     const [responsiblePersonName, setResponsiblePersonName] = useState("");
     const [phone, setPhone] = useState("");
     const [channelType, setChannelType] = useState("EVENT");
+    const [customerId, setCustomerId] = useState("");
+
+    // Customer state
+    const [customerList, setCustomerList] = useState<Customer[]>([]);
+    const [customerSearch, setCustomerSearch] = useState("");
+    const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+    const customerDropdownRef = useRef<HTMLDivElement>(null);
 
     // Staff state
     const [staffList, setStaffList] = useState<Staff[]>([]);
@@ -56,12 +65,24 @@ export default function EditEventClient({ channelId }: { channelId: string }) {
     const [initialQty, setInitialQty] = useState("");
     const [staffSearch, setStaffSearch] = useState("");
 
+    // Close customer dropdown on outside click
+    useEffect(() => {
+        function handleClick(e: MouseEvent) {
+            if (customerDropdownRef.current && !customerDropdownRef.current.contains(e.target as Node)) {
+                setShowCustomerDropdown(false);
+            }
+        }
+        if (showCustomerDropdown) document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [showCustomerDropdown]);
+
     useEffect(() => {
         async function load() {
             try {
-                const [channelRes, staffRes] = await Promise.all([
+                const [channelRes, staffRes, customerRes] = await Promise.all([
                     fetch(`/api/channels/${channelId}`),
                     fetch(`/api/staff`),
+                    fetch(`/api/customers`),
                 ]);
                 if (channelRes.ok) {
                     const data: ChannelData = await channelRes.json();
@@ -73,9 +94,9 @@ export default function EditEventClient({ channelId }: { channelId: string }) {
                     setSalesTarget(data.salesTarget?.toString() || "");
                     setResponsiblePersonName(data.responsiblePersonName || "");
                     setPhone(data.phone || "");
+                    setCustomerId(data.customerId || "");
                     setSelectedStaff(data.staff);
                     setStockRequests(data.stockRequests || []);
-                    // Set initialQty from first INITIAL stock request
                     const initialReq = (data.stockRequests || []).find((r: StockRequestData) => r.requestType === 'INITIAL');
                     if (initialReq) {
                         setInitialQty(initialReq.requestedTotalQuantity.toString());
@@ -85,6 +106,10 @@ export default function EditEventClient({ channelId }: { channelId: string }) {
                     const data = await staffRes.json();
                     setStaffList(data);
                 }
+                if (customerRes.ok) {
+                    const data = await customerRes.json();
+                    setCustomerList(data);
+                }
             } catch (err) {
                 setError("Failed to load data");
             } finally {
@@ -93,6 +118,12 @@ export default function EditEventClient({ channelId }: { channelId: string }) {
         }
         load();
     }, [channelId]);
+
+    const selectedCustomer = customerList.find(c => c.id === customerId);
+    const filteredCustomers = customerList.filter(c =>
+        c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+        c.code.toLowerCase().includes(customerSearch.toLowerCase())
+    );
 
     const handleSave = () => {
         startTransition(async () => {
@@ -105,6 +136,7 @@ export default function EditEventClient({ channelId }: { channelId: string }) {
                 if (salesTarget) formData.set("salesTarget", salesTarget);
                 if (responsiblePersonName) formData.set("responsiblePersonName", responsiblePersonName);
                 if (phone) formData.set("phone", phone);
+                if (customerId) formData.set("customerId", customerId);
                 formData.set("staff", JSON.stringify(selectedStaff));
                 if (initialQty) formData.set("initialQuantity", initialQty);
 
@@ -160,21 +192,85 @@ export default function EditEventClient({ channelId }: { channelId: string }) {
                     <label className="block text-sm font-medium text-slate-700 mb-1">สถานที่</label>
                     <input type="text" value={location} onChange={e => setLocation(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 focus:outline-none transition-colors" />
                 </div>
-                {channelType === 'EVENT' && (
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">วันเริ่ม</label>
-                            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 focus:outline-none transition-colors" />
+
+                {/* Customer Dropdown */}
+                <div ref={customerDropdownRef} className="relative">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">ลูกค้า</label>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setShowCustomerDropdown(!showCustomerDropdown);
+                            setCustomerSearch('');
+                        }}
+                        className="w-full flex items-center justify-between border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-left focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 focus:outline-none transition-colors bg-white"
+                    >
+                        {selectedCustomer ? (
+                            <span className="text-slate-900">{selectedCustomer.code} — {selectedCustomer.name}</span>
+                        ) : (
+                            <span className="text-slate-400">เลือกลูกค้า...</span>
+                        )}
+                        <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
+                    </button>
+
+                    {showCustomerDropdown && (
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-slate-200 z-50 overflow-hidden">
+                            <div className="p-2 border-b border-slate-100">
+                                <div className="relative">
+                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="ค้นหาลูกค้า..."
+                                        value={customerSearch}
+                                        onChange={e => setCustomerSearch(e.target.value)}
+                                        className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400"
+                                        autoFocus
+                                    />
+                                </div>
+                            </div>
+                            <div className="max-h-48 overflow-y-auto">
+                                <button
+                                    type="button"
+                                    onClick={() => { setCustomerId(''); setShowCustomerDropdown(false); }}
+                                    className="w-full px-3 py-2 text-left text-sm text-slate-400 hover:bg-slate-50 transition-colors"
+                                >
+                                    — ไม่ระบุ —
+                                </button>
+                                {filteredCustomers.map(c => (
+                                    <button
+                                        key={c.id}
+                                        type="button"
+                                        onClick={() => {
+                                            setCustomerId(c.id);
+                                            setShowCustomerDropdown(false);
+                                            setCustomerSearch('');
+                                        }}
+                                        className={`w-full px-3 py-2 text-left text-sm hover:bg-teal-50 transition-colors ${customerId === c.id ? 'bg-teal-50 text-teal-700' : 'text-slate-900'}`}
+                                    >
+                                        <span className="font-medium text-teal-600">{c.code}</span>
+                                        <span className="ml-2">{c.name}</span>
+                                    </button>
+                                ))}
+                                {filteredCustomers.length === 0 && (
+                                    <div className="px-3 py-3 text-xs text-center text-slate-400">ไม่พบลูกค้า</div>
+                                )}
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">วันสิ้นสุด</label>
-                            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 focus:outline-none transition-colors" />
-                        </div>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">วันเริ่ม</label>
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 focus:outline-none transition-colors" />
                     </div>
-                )}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">วันสิ้นสุด</label>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 focus:outline-none transition-colors" />
+                    </div>
+                </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">เป้ายอดขาย (บาท)</label>
-                    <input type="number" value={salesTarget} onChange={e => setSalesTarget(e.target.value)} placeholder="0" className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 focus:outline-none transition-colors" />
+                    <input type="number" onFocus={(e) => e.target.select()} value={salesTarget} onChange={e => setSalesTarget(e.target.value)} placeholder="0" className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 focus:outline-none transition-colors" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -226,7 +322,7 @@ export default function EditEventClient({ channelId }: { channelId: string }) {
                 )}
                 <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">จำนวนสินค้าที่ขอ (ชิ้น)</label>
-                    <input type="number" value={initialQty} onChange={e => setInitialQty(e.target.value)} placeholder="0" className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 focus:outline-none transition-colors" />
+                    <input type="number" onFocus={(e) => e.target.select()} value={initialQty} onChange={e => setInitialQty(e.target.value)} placeholder="0" className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 focus:outline-none transition-colors" />
                 </div>
             </div>
 

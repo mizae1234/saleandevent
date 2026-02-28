@@ -203,6 +203,7 @@ export function StaffForm({ initialData, action, isEdit = false }: StaffFormProp
                         <label className="block text-sm font-medium text-slate-700 mb-2">ค่าแรงรายวัน (บาท)</label>
                         <input
                             type="number"
+                            onFocus={(e) => e.target.select()}
                             name="dailyRate"
                             defaultValue={initialData?.dailyRate?.toString() || ''}
                             placeholder="0.00"
@@ -217,6 +218,7 @@ export function StaffForm({ initialData, action, isEdit = false }: StaffFormProp
                         <label className="block text-sm font-medium text-slate-700 mb-2">คอมมิชชั่น (บาท)</label>
                         <input
                             type="number"
+                            onFocus={(e) => e.target.select()}
                             name="commissionAmount"
                             defaultValue={initialData?.commissionAmount?.toString() || ''}
                             placeholder="0.00"

@@ -1,20 +1,30 @@
 import { db } from "@/lib/db";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { ArrowLeft, Calendar, MapPin, Users, Package, Clock, Pencil, Receipt, Truck, Hash, Target } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Package, Clock, Pencil, Receipt, Truck, Hash, Target } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import EventActions from "./EventActions";
 import { EventExpenses } from "./EventExpenses";
 import { EventCompensation } from "./EventCompensation";
 import { EventStockTabs } from "./EventStockTabs";
+import { InvoiceDownloadButton } from "./InvoiceDownloadButton";
+import { StaffManager } from "./StaffManager";
+import ChannelBasicInfoEditor from "./ChannelBasicInfoEditor";
 
 async function getChannelDetails(id: string) {
     const [channel, salesAgg] = await Promise.all([
         db.salesChannel.findUnique({
             where: { id },
             include: {
-                staff: { include: { staff: { select: { id: true, name: true } } } },
+                staff: {
+                    select: {
+                        id: true,
+                        isMain: true,
+                        staff: { select: { id: true, name: true } },
+                    },
+                },
+                customer: { select: { id: true, code: true, name: true } },
                 stockRequests: {
                     include: {
                         allocations: { select: { packedQuantity: true } },
@@ -192,45 +202,30 @@ export default async function ChannelDetailPage({ params }: { params: Promise<{ 
                         name: channel.name,
                     }} />
 
-                    {/* Staff */}
-                    <div className="bg-white rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100">
-                        <h3 className="font-semibold text-slate-900 flex items-center gap-2 mb-3">
-                            <Users className="h-4 w-4 text-teal-600" /> พนักงาน ({channel.staff.length})
-                        </h3>
-                        <div className="space-y-2">
-                            {channel.staff.map(cs => (
-                                <div key={cs.id} className="flex items-center gap-2">
-                                    <div className="h-7 w-7 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
-                                        {cs.staff.name.charAt(0)}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-slate-900 truncate">{cs.staff.name}</p>
-                                    </div>
-                                    {cs.isMain && (
-                                        <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">หัวหน้า</span>
-                                    )}
-                                </div>
-                            ))}
-                            {channel.staff.length === 0 && (
-                                <p className="text-sm text-slate-400">ยังไม่มีพนักงาน</p>
-                            )}
-                        </div>
-                    </div>
+                    {/* Invoice Download */}
+                    {channel.stockRequests.some(r => ['shipped', 'received'].includes(r.status)) && (
+                        <InvoiceDownloadButton
+                            channelId={channel.id}
+                            channelName={channel.name}
+                        />
+                    )}
 
-                    {/* Info */}
-                    <div className="bg-white rounded-xl p-4 space-y-3 text-sm shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100">
-                        {channel.responsiblePersonName && (
-                            <div className="flex justify-between">
-                                <span className="text-slate-500">ผู้รับผิดชอบ</span>
-                                <span className="text-slate-900 font-medium">{channel.responsiblePersonName}</span>
-                            </div>
-                        )}
-                        {channel.phone && (
-                            <div className="flex justify-between">
-                                <span className="text-slate-500">เบอร์โทร</span>
-                                <span className="text-slate-900">{channel.phone}</span>
-                            </div>
-                        )}
+                    {/* Staff Manager */}
+                    <StaffManager channelId={channel.id} staff={channel.staff} />
+
+                    {/* Info (Editable) */}
+                    <ChannelBasicInfoEditor
+                        channelId={channel.id}
+                        name={channel.name}
+                        location={channel.location}
+                        responsiblePersonName={channel.responsiblePersonName}
+                        phone={channel.phone}
+                        startDate={channel.startDate ? format(channel.startDate, 'yyyy-MM-dd') : null}
+                        endDate={channel.endDate ? format(channel.endDate, 'yyyy-MM-dd') : null}
+                        salesTarget={channel.salesTarget ? Number(channel.salesTarget) : null}
+                        customerId={channel.customerId}
+                    />
+                    <div className="bg-white rounded-xl p-4 text-sm shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100">
                         <div className="flex justify-between">
                             <span className="text-slate-500">สร้างเมื่อ</span>
                             <span className="text-slate-900">{format(channel.createdAt, 'd MMM yy HH:mm', { locale: th })}</span>

@@ -11,8 +11,10 @@ async function getAssignedChannels(staffId: string) {
         include: {
             channel: {
                 include: {
-                    stock: true,
-                }
+                    stock: {
+                        select: { quantity: true, soldQuantity: true },
+                    },
+                },
             }
         },
         orderBy: { channel: { startDate: 'desc' } }

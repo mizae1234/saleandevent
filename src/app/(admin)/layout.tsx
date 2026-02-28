@@ -1,15 +1,21 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
+import { getSession } from "@/lib/auth";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const session = await getSession();
+    const allowedMenus = session?.allowedMenus || [];
+    const userName = session?.name || "User";
+    const userRole = session?.role || "";
+
     return (
         <div className="flex h-screen bg-slate-50">
-            <MobileNav />
-            <Sidebar />
+            <MobileNav allowedMenus={allowedMenus} userName={userName} userRole={userRole} />
+            <Sidebar allowedMenus={allowedMenus} userName={userName} userRole={userRole} />
             <main className="flex-1 overflow-y-auto">
                 <div className="container mx-auto p-4 md:p-8">
                     {children}
@@ -18,3 +24,4 @@ export default function DashboardLayout({
         </div>
     );
 }
+

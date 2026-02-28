@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Receipt, Trash2, Loader2, X, Tag, Clock, ChevronDown, CalendarDays, Save, Check } from "lucide-react";
-import { addChannelExpense, removeChannelExpense, updateEmployeeCompensation } from "@/actions/channel-actions";
+import { Plus, Receipt, Trash2, Loader2, X, Tag, Clock, ChevronDown, CalendarDays, Save, Check, Send, CheckCircle2, Banknote, Lock, Circle } from "lucide-react";
+import { addChannelExpense, removeChannelExpense, updateEmployeeCompensation, submitPayroll } from "@/actions/channel-actions";
 import { useRouter } from "next/navigation";
 
 const EXPENSE_CATEGORIES = [
@@ -39,14 +39,13 @@ interface Props {
     endDate: string | null;
     expenses: ExpenseItem[];
     wage: WageInfo;
+    isSubmitted: boolean;
+    submittedAt: string | null;
+    isWagePaid: boolean;
+    wagePaidAt: string | null;
+    isCommissionPaid: boolean;
+    commissionPaidAt: string | null;
 }
-
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-    draft: { label: "แบบร่าง", color: "bg-slate-100 text-slate-600" },
-    pending: { label: "รอตรวจ", color: "bg-amber-100 text-amber-700" },
-    approved: { label: "อนุมัติ", color: "bg-emerald-100 text-emerald-700" },
-    rejected: { label: "ไม่อนุมัติ", color: "bg-red-100 text-red-700" },
-};
 
 function formatDate(isoString: string) {
     return new Date(isoString).toLocaleDateString('th-TH', {
@@ -56,7 +55,17 @@ function formatDate(isoString: string) {
     });
 }
 
-export function PayrollClient({ channelId, staffId, startDate, endDate, expenses: initialExpenses, wage }: Props) {
+function formatDateTime(isoString: string) {
+    return new Date(isoString).toLocaleDateString('th-TH', {
+        day: 'numeric',
+        month: 'short',
+        year: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
+export function PayrollClient({ channelId, staffId, startDate, endDate, expenses: initialExpenses, wage, isSubmitted, submittedAt, isWagePaid, wagePaidAt, isCommissionPaid, commissionPaidAt }: Props) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [showForm, setShowForm] = useState(false);
@@ -64,6 +73,7 @@ export function PayrollClient({ channelId, staffId, startDate, endDate, expenses
     const [amount, setAmount] = useState("");
     const [description, setDescription] = useState("");
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+    const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
 
     // Compensation editing (days + commission)
     const [editing, setEditing] = useState(false);
@@ -71,11 +81,18 @@ export function PayrollClient({ channelId, staffId, startDate, endDate, expenses
     const [commissionInput, setCommissionInput] = useState(String(wage.commission));
     const [saved, setSaved] = useState(false);
 
+    // Lock editing when submitted
+    const locked = isSubmitted;
+
     const currentDays = editing ? (parseInt(daysInput) || 0) : wage.daysWorked;
     const currentCommission = editing ? (parseFloat(commissionInput) || 0) : wage.commission;
     const previewWage = (wage.dailyRate * currentDays) + currentCommission;
 
+    const totalExpenses = initialExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const grandTotal = wage.wageSummary + totalExpenses;
+
     const handleStartEdit = () => {
+        if (locked) return;
         setEditing(true);
         setDaysInput(String(wage.daysWorked));
         setCommissionInput(String(wage.commission));
@@ -106,7 +123,7 @@ export function PayrollClient({ channelId, staffId, startDate, endDate, expenses
                 category,
                 amount: parsedAmount,
                 description: description || category,
-            });
+            }, staffId);
             setAmount("");
             setDescription("");
             setShowForm(false);
@@ -115,16 +132,74 @@ export function PayrollClient({ channelId, staffId, startDate, endDate, expenses
     };
 
     const handleDelete = (expenseId: string) => {
+        if (locked) return;
         startTransition(async () => {
             await removeChannelExpense(expenseId, channelId);
             router.refresh();
         });
     };
 
-    const totalExpenses = initialExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const handleSubmitPayroll = () => {
+        startTransition(async () => {
+            await submitPayroll(channelId, staffId);
+            setShowConfirmSubmit(false);
+            router.refresh();
+        });
+    };
 
     return (
         <div className="space-y-4">
+            {/* ── Payment Status ── */}
+            <div className="space-y-2">
+                {/* Submit status */}
+                {isSubmitted ? (
+                    <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                        <div>
+                            <p className="text-sm font-semibold text-emerald-800">ส่งเบิกแล้ว</p>
+                            {submittedAt && <p className="text-[11px] text-emerald-600">ส่งเมื่อ {formatDateTime(submittedAt)}</p>}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                        <Circle className="h-5 w-5 text-slate-400 flex-shrink-0" />
+                        <p className="text-sm text-slate-500">ยังไม่ได้ส่งเบิก</p>
+                    </div>
+                )}
+
+                {/* Wage payment status */}
+                {isWagePaid ? (
+                    <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                        <div>
+                            <p className="text-sm font-semibold text-emerald-800">โอนค่าแรงแล้ว</p>
+                            {wagePaidAt && <p className="text-[11px] text-emerald-600">{formatDateTime(wagePaidAt)}</p>}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                        <Clock className="h-5 w-5 text-amber-500 flex-shrink-0" />
+                        <p className="text-sm text-amber-700">ยังไม่โอนค่าแรง</p>
+                    </div>
+                )}
+
+                {/* Commission payment status */}
+                {isCommissionPaid ? (
+                    <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-xl">
+                        <CheckCircle2 className="h-5 w-5 text-purple-600 flex-shrink-0" />
+                        <div>
+                            <p className="text-sm font-semibold text-purple-800">โอนค่าคอมแล้ว</p>
+                            {commissionPaidAt && <p className="text-[11px] text-purple-600">{formatDateTime(commissionPaidAt)}</p>}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                        <Clock className="h-5 w-5 text-amber-500 flex-shrink-0" />
+                        <p className="text-sm text-amber-700">ยังไม่โอนค่าคอม</p>
+                    </div>
+                )}
+            </div>
+
             {/* ── Event Date Range ── */}
             {(startDate || endDate) && (
                 <div className="flex items-center gap-2 px-1 text-xs text-slate-500">
@@ -139,7 +214,7 @@ export function PayrollClient({ channelId, staffId, startDate, endDate, expenses
             <div className="rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 text-white shadow-lg shadow-blue-200/50">
                 <div className="flex items-center justify-between">
                     <p className="text-blue-100 text-xs font-medium">สรุปค่าแรง</p>
-                    {!editing && (
+                    {!editing && !locked && (
                         <button
                             onClick={handleStartEdit}
                             className="text-[11px] text-blue-200 hover:text-white underline underline-offset-2 transition-colors"
@@ -147,12 +222,16 @@ export function PayrollClient({ channelId, staffId, startDate, endDate, expenses
                             แก้ไข
                         </button>
                     )}
+                    {locked && (
+                        <span className="text-[10px] text-blue-200 flex items-center gap-1">
+                            <Lock className="h-3 w-3" /> ล็อคแล้ว
+                        </span>
+                    )}
                 </div>
 
                 {editing ? (
                     /* ── Edit Mode ── */
                     <div className="mt-2 space-y-2">
-                        {/* Days & Commission - Side by side */}
                         <div className="grid grid-cols-2 gap-2">
                             <div className="bg-white/15 rounded-lg p-2.5">
                                 <span className="text-blue-100 text-[11px] font-medium">วันทำงาน</span>
@@ -188,13 +267,11 @@ export function PayrollClient({ channelId, staffId, startDate, endDate, expenses
                             </div>
                         </div>
 
-                        {/* Preview Total */}
                         <div className="pt-2 border-t border-white/20 flex justify-between items-end">
                             <span className="text-blue-200 text-xs">รวมค่าแรง (preview)</span>
                             <span className="text-xl font-bold">฿{previewWage.toLocaleString()}</span>
                         </div>
 
-                        {/* Action Buttons */}
                         <div className="flex gap-2 pt-1">
                             <button
                                 onClick={() => setEditing(false)}
@@ -259,7 +336,7 @@ export function PayrollClient({ channelId, staffId, startDate, endDate, expenses
                             </span>
                         )}
                     </div>
-                    {!showForm && (
+                    {!showForm && !locked && (
                         <button
                             onClick={() => setShowForm(true)}
                             className="flex items-center gap-1.5 text-sm font-medium text-purple-600 hover:text-purple-700 transition-colors"
@@ -271,7 +348,7 @@ export function PayrollClient({ channelId, staffId, startDate, endDate, expenses
                 </div>
 
                 {/* Inline Add Form */}
-                {showForm && (
+                {showForm && !locked && (
                     <form onSubmit={handleSubmit} className="p-4 bg-purple-50/50 border-b border-slate-100">
                         <div className="space-y-3">
                             {/* Category Picker */}
@@ -308,6 +385,7 @@ export function PayrollClient({ channelId, staffId, startDate, endDate, expenses
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">฿</span>
                                 <input
                                     type="number"
+                                    onFocus={(e) => e.target.select()}
                                     placeholder="จำนวนเงิน"
                                     value={amount}
                                     onChange={(e) => setAmount(e.target.value)}
@@ -350,7 +428,7 @@ export function PayrollClient({ channelId, staffId, startDate, endDate, expenses
                     </form>
                 )}
 
-                {/* Expense List */}
+                {/* Expense List — no status badges */}
                 <div className="divide-y divide-slate-50">
                     {initialExpenses.length === 0 && !showForm ? (
                         <div className="text-center py-8 text-slate-400">
@@ -359,41 +437,31 @@ export function PayrollClient({ channelId, staffId, startDate, endDate, expenses
                             <p className="text-xs mt-1">กดปุ่ม "เพิ่ม" เพื่อเบิกค่าใช้จ่าย</p>
                         </div>
                     ) : (
-                        initialExpenses.map(exp => {
-                            const status = STATUS_MAP[exp.status] || STATUS_MAP.draft;
-                            return (
-                                <div key={exp.id} className="flex items-center gap-3 px-4 py-3">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-medium text-sm text-slate-900 truncate">{exp.category}</span>
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${status.color}`}>
-                                                {status.label}
-                                            </span>
-                                        </div>
-                                        {exp.description && exp.description !== exp.category && (
-                                            <p className="text-xs text-slate-500 truncate mt-0.5">{exp.description}</p>
-                                        )}
-                                        <p className="text-[10px] text-slate-400 mt-0.5">
-                                            {new Date(exp.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
-                                        </p>
-                                    </div>
-                                    <span className="text-sm font-semibold text-slate-900 flex-shrink-0">
-                                        ฿{exp.amount.toLocaleString()}
-                                    </span>
-                                    {exp.status === 'draft' || exp.status === 'approved' ? (
-                                        <button
-                                            onClick={() => handleDelete(exp.id)}
-                                            disabled={isPending}
-                                            className="text-red-400 hover:text-red-500 p-1 rounded transition-colors flex-shrink-0"
-                                        >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </button>
-                                    ) : (
-                                        <div className="w-[22px]" /> /* spacer */
+                        initialExpenses.map(exp => (
+                            <div key={exp.id} className="flex items-center gap-3 px-4 py-3">
+                                <div className="flex-1 min-w-0">
+                                    <span className="font-medium text-sm text-slate-900 truncate">{exp.category}</span>
+                                    {exp.description && exp.description !== exp.category && (
+                                        <p className="text-xs text-slate-500 truncate mt-0.5">{exp.description}</p>
                                     )}
+                                    <p className="text-[10px] text-slate-400 mt-0.5">
+                                        {new Date(exp.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+                                    </p>
                                 </div>
-                            );
-                        })
+                                <span className="text-sm font-semibold text-slate-900 flex-shrink-0">
+                                    ฿{exp.amount.toLocaleString()}
+                                </span>
+                                {!locked && (
+                                    <button
+                                        onClick={() => handleDelete(exp.id)}
+                                        disabled={isPending}
+                                        className="text-red-400 hover:text-red-500 p-1 rounded transition-colors flex-shrink-0"
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                )}
+                            </div>
+                        ))
                     )}
                 </div>
 
@@ -405,6 +473,60 @@ export function PayrollClient({ channelId, staffId, startDate, endDate, expenses
                     </div>
                 )}
             </div>
-        </div>
+
+            {/* ── Grand Total ── */}
+            <div className="bg-gradient-to-r from-emerald-50 to-white rounded-2xl border border-emerald-200 p-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <p className="text-xs text-emerald-600 font-medium">ยอดรวมทั้งหมด</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">ค่าแรง + ค่าใช้จ่าย</p>
+                    </div>
+                    <p className="text-2xl font-bold text-emerald-700">฿{grandTotal.toLocaleString()}</p>
+                </div>
+            </div>
+
+            {/* ── Submit / Status Section ── */}
+            {
+                !isSubmitted && (
+                    <div className="space-y-3">
+                        {!showConfirmSubmit ? (
+                            <button
+                                onClick={() => setShowConfirmSubmit(true)}
+                                className="w-full py-3 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm"
+                            >
+                                <Send className="h-4 w-4" />
+                                ส่งเบิกค่าแรง
+                            </button>
+                        ) : (
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+                                <p className="text-sm font-semibold text-amber-800">ยืนยันส่งเบิกค่าแรง?</p>
+                                <div className="text-xs text-amber-700 space-y-1">
+                                    <p>• ค่าแรงรวม: ฿{wage.wageSummary.toLocaleString()}</p>
+                                    <p>• ค่าใช้จ่ายเบิก: ฿{totalExpenses.toLocaleString()}</p>
+                                    <p className="font-bold">• ยอดรวม: ฿{grandTotal.toLocaleString()}</p>
+                                </div>
+                                <p className="text-[11px] text-amber-600">หลังส่งเบิกแล้วจะไม่สามารถแก้ไขได้</p>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setShowConfirmSubmit(false)}
+                                        className="flex-1 py-2.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                                    >
+                                        ยกเลิก
+                                    </button>
+                                    <button
+                                        onClick={handleSubmitPayroll}
+                                        disabled={isPending}
+                                        className="flex-1 py-2.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-1 transition-colors"
+                                    >
+                                        {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                                        ยืนยันส่งเบิก
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )
+            }
+        </div >
     );
 }

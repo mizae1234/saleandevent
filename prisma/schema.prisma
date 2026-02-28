@@ -24,6 +24,7 @@ model SalesChannel {
   responsiblePersonId   String?         @map("responsible_person_id") @db.Uuid
   responsiblePersonName String?         @map("responsible_person_name") @db.VarChar(255)
   phone                 String?         @db.VarChar(50)
+  customerId            String?         @map("customer_id") @db.Uuid
   version               Int             @default(1)
   
   // Audit fields
@@ -35,6 +36,7 @@ model SalesChannel {
   // Relations
   attendance            Attendance[]
   expenses              ChannelExpense[]
+  invoices              Invoice[]
   logs                  ChannelLog[]
   staff                 ChannelStaff[]
   stock                 ChannelStock[]
@@ -42,11 +44,13 @@ model SalesChannel {
   sales                 Sale[]
   movements             StockMovement[]
   stockRequests         StockRequest[]
+  customer              Customer?       @relation(fields: [customerId], references: [id])
 
   @@index([type])
   @@index([status])
   @@index([startDate])
   @@index([responsiblePersonId])
+  @@index([customerId])
   @@map("sales_channels")
 }
 
@@ -86,6 +90,7 @@ model Product {
   // Relations
   allocations       WarehouseAllocation[]
   channelStock      ChannelStock[]
+  invoiceItems      InvoiceItem[]
   receivingItems    ReceivingItem[]
   returnItems       ReturnItem[]
   saleItems         SaleItem[]
@@ -415,9 +420,16 @@ model ChannelStaff {
   staffId            String       @map("staff_id") @db.Uuid
   assignedAt         DateTime     @default(now()) @map("assigned_at") @db.Timestamptz(6)
   commissionOverride Decimal?     @map("commission_override") @db.Decimal(10, 2)
+  dailyRateOverride  Decimal?     @map("daily_rate_override") @db.Decimal(10, 2)
   daysWorkedOverride Int?         @map("days_worked_override")
   role               String?      @default("PC")
   isMain             Boolean      @default(false) @map("is_main")
+  isWagePaid             Boolean      @default(false) @map("is_wage_paid")
+  wagePaidAt             DateTime?    @map("wage_paid_at") @db.Timestamptz(6)
+  isCommissionPaid       Boolean      @default(false) @map("is_commission_paid")
+  commissionPaidAt       DateTime?    @map("commission_paid_at") @db.Timestamptz(6)
+  isSubmitted        Boolean      @default(false) @map("is_submitted")
+  submittedAt        DateTime?    @map("submitted_at") @db.Timestamptz(6)
   
   // Audit fields
   createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -541,4 +553,100 @@ model User {
   updatedBy    String?  @map("updated_by") @db.Uuid
 
   @@map("users")
+}
+
+// ============ ROLE PERMISSIONS ============
+
+model RolePermission {
+  id           String   @id @default(uuid()) @db.Uuid
+  role         String   @unique @db.VarChar(50)  // ADMIN, MANAGER, STAFF, WAREHOUSE, FINANCE, PC
+  allowedMenus Json     @default("[]") @map("allowed_menus") // Array of menu section keys
+
+  // Audit fields
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("role_permissions")
+}
+
+// ============ CUSTOMER ============
+
+model Customer {
+  id              String   @id @default(uuid()) @db.Uuid
+  code            String   @unique @db.VarChar(20)
+  taxId           String?  @map("tax_id") @db.VarChar(30)
+  name            String   @db.VarChar(255)
+  address         String?  @db.Text
+  phone           String?  @db.VarChar(50)
+  creditTerm      Int?     @default(0) @map("credit_term") // days
+  referenceNo     String?  @map("reference_no") @db.VarChar(100)
+  discountPercent Decimal? @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  status          String   @default("active") @db.VarChar(20)
+
+  // Audit fields
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  channels        SalesChannel[]
+  invoices        Invoice[]
+
+  @@index([code])
+  @@index([name])
+  @@map("customers")
+}
+
+// ============ INVOICES ============
+
+model Invoice {
+  id              String        @id @default(uuid()) @db.Uuid
+  invoiceNumber   String?       @unique @map("invoice_number") @db.VarChar(30)
+  channelId       String        @map("channel_id") @db.Uuid
+  customerId      String?       @map("customer_id") @db.Uuid
+  invoicePercent  Decimal       @default(100) @map("invoice_percent") @db.Decimal(5, 2)
+  totalQuantity   Int           @default(0) @map("total_quantity")
+  totalAmount     Decimal       @default(0) @map("total_amount") @db.Decimal(12, 2)
+  discountPercent Decimal       @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  discountAmount  Decimal       @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  vatAmount       Decimal       @default(0) @map("vat_amount") @db.Decimal(12, 2)
+  grandTotal      Decimal       @default(0) @map("grand_total") @db.Decimal(12, 2)
+  status          String        @default("draft") @db.VarChar(20) // draft | submitted
+  notes           String?
+  invoiceDate     DateTime?     @map("invoice_date") @db.Date
+
+  // Audit fields
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy       String?       @map("created_by") @db.Uuid
+  updatedBy       String?       @map("updated_by") @db.Uuid
+
+  // Relations
+  channel         SalesChannel  @relation(fields: [channelId], references: [id])
+  customer        Customer?     @relation(fields: [customerId], references: [id])
+  items           InvoiceItem[]
+
+  @@index([channelId])
+  @@index([status])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id              String   @id @default(uuid()) @db.Uuid
+  invoiceId       String   @map("invoice_id") @db.Uuid
+  barcode         String   @db.VarChar(50)
+  originalQty     Int      @map("original_quantity")
+  invoiceQty      Int      @map("invoice_quantity")
+  unitPrice       Decimal  @map("unit_price") @db.Decimal(10, 2)
+  totalAmount     Decimal  @map("total_amount") @db.Decimal(12, 2)
+
+  // Audit fields
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [barcode], references: [barcode])
+
+  @@index([invoiceId])
+  @@map("invoice_items")
 }

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Package, ClipboardList, Truck } from "lucide-react";
+import { Package, ClipboardList, Truck, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
+const ITEMS_PER_PAGE = 10;
 
 interface StockItem {
     id: string;
@@ -35,7 +36,7 @@ interface StockRequest {
 
 interface GroupedRow {
     no: number;
-    producttype: string;
+    name: string;
     code: string;
     color: string;
     sizes: Record<string, { qty: number; sold: number }>;
@@ -61,6 +62,7 @@ const requestStatusConfig: Record<string, { label: string; color: string }> = {
 
 export function EventStockTabs({ stock, stockRequests }: Props) {
     const [activeTab, setActiveTab] = useState<'requests' | 'stock'>(stock.length > 0 ? 'stock' : 'requests');
+    const [stockPage, setStockPage] = useState(1);
 
     // Group stock by code + color
     const groupedRows: GroupedRow[] = useMemo(() => {
@@ -74,7 +76,7 @@ export function EventStockTabs({ stock, stockRequests }: Props) {
                 counter++;
                 row = {
                     no: counter,
-                    producttype: s.product.producttype || s.product.name || '',
+                    name: s.product.name || s.product.producttype || '',
                     code: s.product.code || s.barcode,
                     color: s.product.color || '-',
                     sizes: {},
@@ -145,60 +147,98 @@ export function EventStockTabs({ stock, stockRequests }: Props) {
                 stock.length === 0 ? (
                     <div className="p-6 text-center text-sm text-slate-400">ยังไม่มีสต็อก</div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead className="bg-slate-50">
-                                <tr>
-                                    <th className="text-center p-3 text-xs font-semibold text-slate-600 w-10">#</th>
-                                    <th className="text-left p-3 text-xs font-semibold text-slate-600">ประเภท</th>
-                                    <th className="text-left p-3 text-xs font-semibold text-slate-600">รุ่น</th>
-                                    <th className="text-center p-3 text-xs font-semibold text-slate-600">สี</th>
-                                    {SIZES.map(s => (
-                                        <th key={s} className="text-center p-3 text-xs font-semibold text-slate-600 w-14">{s}</th>
-                                    ))}
-                                    <th className="text-center p-3 text-xs font-semibold text-slate-600 w-14">รวม</th>
-                                    <th className="text-center p-3 text-xs font-semibold text-slate-600 w-14">ขาย</th>
-                                    <th className="text-center p-3 text-xs font-semibold text-slate-600 w-14">คงเหลือ</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {groupedRows.map(row => (
-                                    <tr key={`${row.code}-${row.color}`} className="hover:bg-slate-50">
-                                        <td className="p-3 text-center text-slate-400">{row.no}</td>
-                                        <td className="p-3 text-slate-700 text-xs">{row.producttype}</td>
-                                        <td className="p-3 font-semibold text-teal-700">{row.code}</td>
-                                        <td className="p-3 text-center text-slate-700">{row.color}</td>
+                    <div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead className="bg-slate-50">
+                                    <tr>
+                                        <th className="text-center p-3 text-xs font-semibold text-slate-600 w-10">#</th>
+                                        <th className="text-left p-3 text-xs font-semibold text-slate-600">ชื่อสินค้า</th>
+                                        <th className="text-left p-3 text-xs font-semibold text-slate-600">รุ่น</th>
+                                        <th className="text-center p-3 text-xs font-semibold text-slate-600">สี</th>
                                         {SIZES.map(s => (
-                                            <td key={s} className="p-3 text-center">
-                                                {row.sizes[s] ? (
-                                                    <span className="font-medium text-slate-900">
-                                                        {row.sizes[s].qty - row.sizes[s].sold}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-slate-300">-</span>
-                                                )}
+                                            <th key={s} className="text-center p-3 text-xs font-semibold text-slate-600 w-14">{s}</th>
+                                        ))}
+                                        <th className="text-center p-3 text-xs font-semibold text-slate-600 w-14">รวม</th>
+                                        <th className="text-center p-3 text-xs font-semibold text-slate-600 w-14">ขาย</th>
+                                        <th className="text-center p-3 text-xs font-semibold text-slate-600 w-14">คงเหลือ</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {groupedRows.slice((stockPage - 1) * ITEMS_PER_PAGE, stockPage * ITEMS_PER_PAGE).map(row => (
+                                        <tr key={`${row.code}-${row.color}`} className="hover:bg-slate-50">
+                                            <td className="p-3 text-center text-slate-400">{row.no}</td>
+                                            <td className="p-3 text-slate-700 text-xs">{row.name}</td>
+                                            <td className="p-3 font-semibold text-teal-700">{row.code}</td>
+                                            <td className="p-3 text-center text-slate-700">{row.color}</td>
+                                            {SIZES.map(s => (
+                                                <td key={s} className="p-3 text-center">
+                                                    {row.sizes[s] ? (
+                                                        <span className="font-medium text-slate-900">
+                                                            {row.sizes[s].qty - row.sizes[s].sold}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-slate-300">-</span>
+                                                    )}
+                                                </td>
+                                            ))}
+                                            <td className="p-3 text-center text-slate-500">{row.totalQty}</td>
+                                            <td className="p-3 text-center text-blue-600 font-medium">{row.totalSold}</td>
+                                            <td className="p-3 text-center font-bold text-emerald-700">{row.totalQty - row.totalSold}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot className="bg-slate-100 border-t-2 border-slate-300">
+                                    <tr>
+                                        <td colSpan={4} className="p-3 text-sm font-bold text-slate-700">รวมทั้งหมด</td>
+                                        {SIZES.map(s => (
+                                            <td key={s} className="p-3 text-center font-bold text-slate-700">
+                                                {(sizeTotals[s].qty - sizeTotals[s].sold) > 0 ? sizeTotals[s].qty - sizeTotals[s].sold : '-'}
                                             </td>
                                         ))}
-                                        <td className="p-3 text-center text-slate-500">{row.totalQty}</td>
-                                        <td className="p-3 text-center text-blue-600 font-medium">{row.totalSold}</td>
-                                        <td className="p-3 text-center font-bold text-emerald-700">{row.totalQty - row.totalSold}</td>
+                                        <td className="p-3 text-center font-bold text-slate-600">{totalStock}</td>
+                                        <td className="p-3 text-center font-bold text-blue-600">{totalSold}</td>
+                                        <td className="p-3 text-center font-bold text-emerald-700 text-base">{totalStock - totalSold}</td>
                                     </tr>
-                                ))}
-                            </tbody>
-                            <tfoot className="bg-slate-100 border-t-2 border-slate-300">
-                                <tr>
-                                    <td colSpan={4} className="p-3 text-sm font-bold text-slate-700">รวมทั้งหมด</td>
-                                    {SIZES.map(s => (
-                                        <td key={s} className="p-3 text-center font-bold text-slate-700">
-                                            {(sizeTotals[s].qty - sizeTotals[s].sold) > 0 ? sizeTotals[s].qty - sizeTotals[s].sold : '-'}
-                                        </td>
+                                </tfoot>
+                            </table>
+                        </div>
+                        {/* Pagination */}
+                        {groupedRows.length > ITEMS_PER_PAGE && (
+                            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200">
+                                <p className="text-xs text-slate-500">
+                                    แสดง {(stockPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(stockPage * ITEMS_PER_PAGE, groupedRows.length)} จาก {groupedRows.length} รายการ
+                                </p>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => setStockPage(p => Math.max(1, p - 1))}
+                                        disabled={stockPage === 1}
+                                        className="p-1.5 rounded-lg hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <ChevronLeft className="h-4 w-4 text-slate-600" />
+                                    </button>
+                                    {Array.from({ length: Math.ceil(groupedRows.length / ITEMS_PER_PAGE) }, (_, i) => (
+                                        <button
+                                            key={i + 1}
+                                            onClick={() => setStockPage(i + 1)}
+                                            className={`min-w-[28px] h-7 rounded-lg text-xs font-medium transition-colors ${stockPage === i + 1
+                                                    ? 'bg-teal-600 text-white'
+                                                    : 'text-slate-600 hover:bg-slate-100'
+                                                }`}
+                                        >
+                                            {i + 1}
+                                        </button>
                                     ))}
-                                    <td className="p-3 text-center font-bold text-slate-600">{totalStock}</td>
-                                    <td className="p-3 text-center font-bold text-blue-600">{totalSold}</td>
-                                    <td className="p-3 text-center font-bold text-emerald-700 text-base">{totalStock - totalSold}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
+                                    <button
+                                        onClick={() => setStockPage(p => Math.min(Math.ceil(groupedRows.length / ITEMS_PER_PAGE), p + 1))}
+                                        disabled={stockPage >= Math.ceil(groupedRows.length / ITEMS_PER_PAGE)}
+                                        className="p-1.5 rounded-lg hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <ChevronRight className="h-4 w-4 text-slate-600" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )
             )}

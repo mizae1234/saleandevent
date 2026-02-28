@@ -18,20 +18,21 @@ async function getActiveEventsForClose() {
         orderBy: { endDate: 'asc' }
     });
 
-    // Fetch total sales amount via aggregate for each event in parallel
-    const salesAggs = await Promise.all(
-        events.map(event =>
-            db.sale.aggregate({
-                where: { channelId: event.id, status: 'active' },
-                _sum: { totalAmount: true },
-            })
-        )
-    );
+    // Single grouped query instead of N+1 aggregates
+    const salesAggs = await db.sale.groupBy({
+        by: ['channelId'],
+        where: {
+            channelId: { in: events.map(e => e.id) },
+            status: 'active',
+        },
+        _sum: { totalAmount: true },
+    });
+    const salesMap = new Map(salesAggs.map(a => [a.channelId, Number(a._sum.totalAmount || 0)]));
 
-    return events.map((event, i) => {
+    return events.map((event) => {
         const totalStock = event.stock.reduce((sum, s) => sum + s.quantity, 0);
         const soldQuantity = event.stock.reduce((sum, s) => sum + s.soldQuantity, 0);
-        const totalSales = Number(salesAggs[i]._sum.totalAmount || 0);
+        const totalSales = salesMap.get(event.id) || 0;
 
         return {
             ...event,

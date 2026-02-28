@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { uploadAllocation } from '@/actions/stock-request-actions';
-import { Upload, CheckCircle2, AlertTriangle, FileSpreadsheet, X, Download, Trash2 } from 'lucide-react';
+import { Upload, CheckCircle2, AlertTriangle, FileSpreadsheet, X, Download, Trash2, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface Props {
@@ -14,6 +14,8 @@ interface Props {
 
 interface AllocationRow {
     barcode: string;
+    code?: string;
+    color?: string;
     size: string | null;
     packedQuantity: number;
     price: number;
@@ -40,17 +42,18 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
     const [importing, setImporting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [fileName, setFileName] = useState<string | null>(null);
+    const [progress, setProgress] = useState(0);
 
     const totalQty = rows.reduce((sum, r) => sum + r.packedQuantity, 0);
 
     // ========== Download Template ==========
     const downloadTemplate = () => {
         const headers = ['ลำดับ', 'ประเภท', 'รุ่น', 'สี', 'S', 'M', 'L', 'XL', 'XXL', '3XL', 'รวม', 'ราคา'];
-        const exampleRow = [1, 'กางเกง', 'SR4006', 'อ่อน', 1, 2, 3, 4, 5, 6, 21, 790];
+        const example1 = [1, 'กางเกง', 'SR4006', 'อ่อน', 1, 2, 3, 4, 5, 6, 21, 790];
+        const example2 = [2, 'เสื้อ', 'SR01', 'ขาว', '', '', '', '', '', '', 20, 590];
 
-        const ws = XLSX.utils.aoa_to_sheet([headers, exampleRow]);
+        const ws = XLSX.utils.aoa_to_sheet([headers, example1, example2]);
 
-        // Set column widths
         ws['!cols'] = [
             { wch: 6 },   // ลำดับ
             { wch: 12 },  // ประเภท
@@ -90,7 +93,6 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
                 throw new Error('ไฟล์ Excel ต้องมีอย่างน้อย 1 แถวข้อมูล (ไม่รวมหัวตาราง)');
             }
 
-            // Skip header row, parse data rows
             const parsedExcelRows: ExcelRow[] = [];
             const parsedAllocRows: AllocationRow[] = [];
 
@@ -103,7 +105,7 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
                 const code = String(row[2] || '').trim();
                 const color = String(row[3] || '').trim();
 
-                if (!code) continue; // Skip empty rows
+                if (!code) continue;
 
                 const sizeQties: { size: string; qty: number }[] = [];
 
@@ -115,17 +117,34 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
                     }
                 });
 
-                const total = Number(row[10]) || sizeQties.reduce((s, q) => s + q.qty, 0);
+                // "รวม" column (col 10) — use it directly if provided, otherwise sum sizes
+                const explicitTotal = Number(row[10]) || 0;
+                const sizeSum = sizeQties.reduce((s, q) => s + q.qty, 0);
+                const total = explicitTotal > 0 ? explicitTotal : sizeSum;
                 const price = Number(row[11]) || 0;
 
                 parsedExcelRows.push({ no, type, code, color, sizes: sizeQties, total, price });
 
-                // Convert to allocation rows — generate barcode from code+color+size
-                for (const sq of sizeQties) {
+                if (sizeQties.length > 0) {
+                    // Product WITH sizes — create one row per size
+                    for (const sq of sizeQties) {
+                        parsedAllocRows.push({
+                            barcode: `${code}-${color}-${sq.size}`,
+                            code,
+                            color,
+                            size: sq.size,
+                            packedQuantity: sq.qty,
+                            price,
+                        });
+                    }
+                } else if (total > 0) {
+                    // Product WITHOUT sizes (e.g. shirts) — single row using "รวม" column
                     parsedAllocRows.push({
-                        barcode: `${code}-${color}-${sq.size}`,
-                        size: sq.size,
-                        packedQuantity: sq.qty,
+                        barcode: `${code}-${color}`,
+                        code,
+                        color,
+                        size: null,
+                        packedQuantity: total,
                         price,
                     });
                 }
@@ -141,7 +160,6 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
             setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการอ่านไฟล์');
         } finally {
             setImporting(false);
-            // Reset file input
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
@@ -151,18 +169,44 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
         setRows([]);
         setFileName(null);
         setError(null);
+        setProgress(0);
     };
 
     const handleSubmit = async () => {
         if (rows.length === 0) return;
         setLoading(true);
         setError(null);
+        setProgress(0);
+
         try {
-            await uploadAllocation(requestId, rows);
+            // Upload in batches with progress
+            const BATCH_SIZE = 50;
+            const batches: AllocationRow[][] = [];
+
+            for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+                batches.push(rows.slice(i, i + BATCH_SIZE));
+            }
+
+            if (batches.length <= 1) {
+                // Single batch — just upload all at once
+                setProgress(50);
+                await uploadAllocation(requestId, rows);
+                setProgress(100);
+            } else {
+                // Multiple batches — upload first batch to create, rest to append
+                for (let i = 0; i < batches.length; i++) {
+                    await uploadAllocation(requestId, batches[i]);
+                    setProgress(Math.round(((i + 1) / batches.length) * 100));
+                }
+            }
+
+            // Small delay to show 100%
+            await new Promise(r => setTimeout(r, 500));
             router.refresh();
             router.push('/warehouse/packing');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Error');
+            setProgress(0);
         } finally {
             setLoading(false);
         }
@@ -181,7 +225,6 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
                 <h3 className="text-sm font-semibold text-slate-700">นำเข้าข้อมูลจาก Excel</h3>
 
                 <div className="flex flex-wrap items-center gap-3">
-                    {/* Download Template Button */}
                     <button
                         onClick={downloadTemplate}
                         className="flex items-center gap-2 px-4 py-2 border border-indigo-300 text-indigo-700 rounded-lg hover:bg-indigo-50 text-sm font-medium transition-colors"
@@ -189,7 +232,6 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
                         <Download className="h-4 w-4" /> ดาวน์โหลด Template
                     </button>
 
-                    {/* Upload Button */}
                     <label className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium cursor-pointer transition-colors">
                         <Upload className="h-4 w-4" /> {importing ? 'กำลังอ่าน...' : 'Import Excel'}
                         <input
@@ -215,10 +257,12 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
 
                 <p className="text-xs text-slate-400">
                     Format: ลำดับ, ประเภท, รุ่น, สี, S, M, L, XL, XXL, 3XL, รวม, ราคา
+                    <br />
+                    <span className="text-slate-500">สินค้าที่ไม่มี size ให้ใส่จำนวนใน "รวม" ไม่ต้องกรอกช่อง size</span>
                 </p>
             </div>
 
-            {/* Preview Table — show imported data in the original Excel format */}
+            {/* Preview Table */}
             {excelRows.length > 0 && (
                 <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
                     <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
@@ -248,6 +292,7 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
                             <tbody className="divide-y divide-slate-100">
                                 {excelRows.map((r, i) => {
                                     const sizeMap = Object.fromEntries(r.sizes.map(s => [s.size, s.qty]));
+                                    const hasSizes = r.sizes.length > 0;
                                     return (
                                         <tr key={i} className="hover:bg-slate-50">
                                             <td className="p-2 text-center text-slate-400">{r.no}</td>
@@ -256,7 +301,10 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
                                             <td className="p-2">{r.color}</td>
                                             {SIZES.map(s => (
                                                 <td key={s} className="p-2 text-center">
-                                                    {sizeMap[s] ? <span className="font-medium">{sizeMap[s]}</span> : <span className="text-slate-300">-</span>}
+                                                    {hasSizes
+                                                        ? (sizeMap[s] ? <span className="font-medium">{sizeMap[s]}</span> : <span className="text-slate-300">-</span>)
+                                                        : <span className="text-slate-200">·</span>
+                                                    }
                                                 </td>
                                             ))}
                                             <td className="p-2 text-center font-bold text-slate-900">{r.total}</td>
@@ -305,6 +353,28 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
 
             {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">{error}</div>
+            )}
+
+            {/* Progress Bar */}
+            {loading && (
+                <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-600 flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+                            กำลังอัปโหลด...
+                        </span>
+                        <span className="font-bold text-indigo-700">{progress}%</span>
+                    </div>
+                    <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full transition-all duration-300 ease-out"
+                            style={{ width: `${progress}%` }}
+                        />
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                        กำลังบันทึก {rows.length} รายการ ({totalQty.toLocaleString()} ชิ้น)
+                    </p>
+                </div>
             )}
 
             {/* Submit */}

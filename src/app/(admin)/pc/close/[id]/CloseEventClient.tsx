@@ -285,6 +285,7 @@ export function CloseEventClient({ channelId, eventName, stockDetails, redirectT
                                                 <div className="flex items-center justify-center gap-1">
                                                     <input
                                                         type="number"
+                                                        onFocus={(e) => e.target.select()}
                                                         min="0"
                                                         value={ci.damaged || ''}
                                                         placeholder="0"
@@ -294,6 +295,7 @@ export function CloseEventClient({ channelId, eventName, stockDetails, redirectT
                                                     <span className="text-slate-300">/</span>
                                                     <input
                                                         type="number"
+                                                        onFocus={(e) => e.target.select()}
                                                         min="0"
                                                         value={ci.missing || ''}
                                                         placeholder="0"

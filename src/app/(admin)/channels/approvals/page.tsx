@@ -10,7 +10,7 @@ export default async function ApprovalsPage() {
     const [pendingChannels, pendingRequests, pendingPayments] = await Promise.all([
         db.salesChannel.findMany({
             where: { status: 'submitted' },
-            include: { staff: { include: { staff: true } } },
+            include: { staff: { select: { staff: { select: { name: true } } } } },
             orderBy: { createdAt: 'asc' },
         }),
         db.stockRequest.findMany({

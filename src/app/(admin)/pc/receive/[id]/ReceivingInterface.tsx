@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { confirmReceiving } from '@/actions/stock-request-actions';
-import { CheckCircle2, AlertTriangle, Package, ClipboardCheck } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Package, ClipboardCheck, Loader2 } from 'lucide-react';
 
 interface Allocation {
     barcode: string;
@@ -32,6 +32,7 @@ interface GroupedRow {
 export default function ReceivingInterface({ requestId, allocations, redirectTo }: Props) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const [progress, setProgress] = useState(0);
     const [activeTab, setActiveTab] = useState<'shipped' | 'receive'>('receive');
     const [receivedQtys, setReceivedQtys] = useState<Record<string, number>>(() => {
         const map: Record<string, number> = {};
@@ -97,6 +98,7 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
 
     const handleConfirm = async () => {
         setLoading(true);
+        setProgress(0);
         try {
             // Deduplicate items by barcode (prevent duplicate submission)
             const itemsMap = new Map<string, { barcode: string; allocatedQty: number; receivedQty: number }>();
@@ -114,11 +116,24 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
             }
             const items = Array.from(itemsMap.values());
 
+            // Simulate progress during server processing
+            const progressInterval = setInterval(() => {
+                setProgress(prev => {
+                    if (prev >= 90) { clearInterval(progressInterval); return 90; }
+                    return prev + Math.random() * 15;
+                });
+            }, 300);
+
             await confirmReceiving(requestId, items);
+            clearInterval(progressInterval);
+            setProgress(100);
+
+            await new Promise(r => setTimeout(r, 500));
             router.push(redirectTo || '/pc/receive');
             router.refresh();
         } catch (err) {
             alert(err instanceof Error ? err.message : 'Error');
+            setProgress(0);
         } finally {
             setLoading(false);
         }
@@ -249,6 +264,7 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
                                                     <td key={s} className="p-2 text-center">
                                                         <input
                                                             type="number"
+                                                            onFocus={(e) => e.target.select()}
                                                             value={received}
                                                             onChange={e => setReceivedQtys(prev => ({
                                                                 ...prev,
@@ -282,11 +298,33 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
                         </table>
                     </div>
 
+                    {/* Progress Bar */}
+                    {loading && (
+                        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-slate-600 flex items-center gap-2">
+                                    <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+                                    กำลังบันทึกการรับสินค้า...
+                                </span>
+                                <span className="font-bold text-emerald-700">{Math.round(progress)}%</span>
+                            </div>
+                            <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all duration-300 ease-out"
+                                    style={{ width: `${progress}%` }}
+                                />
+                            </div>
+                            <p className="text-[11px] text-slate-400">
+                                กำลังรับสินค้า {totalReceived.toLocaleString()} ชิ้น จาก {allocations.length} รายการ
+                            </p>
+                        </div>
+                    )}
+
                     {/* Confirm */}
                     <button
                         onClick={handleConfirm}
                         disabled={loading}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm font-medium"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm font-medium transition-colors"
                     >
                         <CheckCircle2 className="h-4 w-4" /> {loading ? 'กำลังยืนยัน...' : `ยืนยันรับสินค้า (${totalReceived} ชิ้น)`}
                     </button>

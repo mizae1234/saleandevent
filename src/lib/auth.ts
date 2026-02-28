@@ -14,6 +14,7 @@ export interface SessionPayload {
     staffId: string;
     role: string;
     name: string;
+    allowedMenus?: string[];
     channelId?: string;
     workMode?: string;
 }
