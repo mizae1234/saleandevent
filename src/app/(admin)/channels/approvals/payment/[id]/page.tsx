@@ -3,8 +3,8 @@ import { format } from "date-fns";
 import { ArrowLeft, Calendar, MapPin, Receipt, Users, DollarSign, CheckCircle2, Clock } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { EventExpenses } from "@/app/(dashboard)/channels/[id]/EventExpenses";
-import { EventCompensation } from "@/app/(dashboard)/channels/[id]/EventCompensation";
+import { EventExpenses } from "@/app/(admin)/channels/[id]/EventExpenses";
+import { EventCompensation } from "@/app/(admin)/channels/[id]/EventCompensation";
 import { PaymentApprovalActions } from "./PaymentApprovalActions";
 
 async function getChannelForReview(id: string) {
