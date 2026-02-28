@@ -11,7 +11,7 @@ const PAGE_SIZE = 20;
 
 async function getStaffList(searchParams: Promise<{ [key: string]: string | string[] | undefined }>) {
     const params = await searchParams;
-    const q = typeof params.q === 'string' ? params.q : undefined;
+    const q = typeof params.q === 'string' ? params.q : '';
     const page = typeof params.page === 'string' ? Math.max(1, parseInt(params.page, 10) || 1) : 1;
 
     const where: Prisma.StaffWhereInput = {
@@ -35,7 +35,7 @@ async function getStaffList(searchParams: Promise<{ [key: string]: string | stri
         db.staff.count({ where }),
     ]);
 
-    return { staffList, totalCount, page };
+    return { staffList, totalCount, page, q };
 }
 
 const EMPLOYEE_TYPE_MAP: Record<string, string> = {
@@ -45,10 +45,8 @@ const EMPLOYEE_TYPE_MAP: Record<string, string> = {
 };
 
 export default async function EmployeesPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
-    const { staffList, totalCount, page } = await getStaffList(searchParams);
+    const { staffList, totalCount, page, q } = await getStaffList(searchParams);
     const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-    const params = await searchParams;
-    const q = typeof params.q === 'string' ? params.q : '';
 
     function buildPageUrl(targetPage: number) {
         const p = new URLSearchParams();

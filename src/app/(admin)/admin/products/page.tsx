@@ -10,8 +10,8 @@ const PAGE_SIZE = 25;
 
 async function getProductList(searchParams: Promise<{ [key: string]: string | string[] | undefined }>) {
     const params = await searchParams;
-    const q = typeof params.q === 'string' ? params.q : undefined;
-    const category = typeof params.category === 'string' ? params.category : undefined;
+    const q = typeof params.q === 'string' ? params.q : '';
+    const category = typeof params.category === 'string' ? params.category : '';
     const page = typeof params.page === 'string' ? Math.max(1, parseInt(params.page, 10) || 1) : 1;
 
     const where: Prisma.ProductWhereInput = {
@@ -45,15 +45,12 @@ async function getProductList(searchParams: Promise<{ [key: string]: string | st
         db.product.count({ where }),
     ]);
 
-    return { products, totalCount, page };
+    return { products, totalCount, page, q, category };
 }
 
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
-    const { products, totalCount, page } = await getProductList(searchParams);
+    const { products, totalCount, page, q, category } = await getProductList(searchParams);
     const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-    const params = await searchParams;
-    const q = typeof params.q === 'string' ? params.q : '';
-    const category = typeof params.category === 'string' ? params.category : '';
 
     function buildPageUrl(targetPage: number) {
         const p = new URLSearchParams();
@@ -144,8 +141,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <span className={`font-mono text-xs font-medium px-2 py-1 rounded-md ${(product.warehouseStock?.quantity ?? 0) > 0
-                                                ? 'bg-emerald-50 text-emerald-700'
-                                                : 'bg-red-50 text-red-600'
+                                            ? 'bg-emerald-50 text-emerald-700'
+                                            : 'bg-red-50 text-red-600'
                                             }`}>
                                             {product.warehouseStock?.quantity ?? 0}
                                         </span>
