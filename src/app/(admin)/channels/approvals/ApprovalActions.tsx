@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { approveStockRequest, rejectStockRequest } from '@/actions/stock-request-actions';
 import { CheckCircle2, XCircle } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 
 interface Props {
     readonly requestId: string;
@@ -14,6 +15,7 @@ export default function ApprovalActions({ requestId }: Props) {
     const [loading, setLoading] = useState<string | null>(null);
     const [showReject, setShowReject] = useState(false);
     const [reason, setReason] = useState('');
+    const { toastError } = useToast();
 
     const handleApprove = async () => {
         setLoading('approve');
@@ -21,7 +23,7 @@ export default function ApprovalActions({ requestId }: Props) {
             await approveStockRequest(requestId);
             router.refresh();
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Error');
+            toastError(err instanceof Error ? err.message : 'Error');
         } finally {
             setLoading(null);
         }
@@ -33,7 +35,7 @@ export default function ApprovalActions({ requestId }: Props) {
             await rejectStockRequest(requestId, reason);
             router.refresh();
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Error');
+            toastError(err instanceof Error ? err.message : 'Error');
         } finally {
             setLoading(null);
             setShowReject(false);

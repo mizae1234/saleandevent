@@ -4,10 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { approvePayment, closeChannelManual } from "@/actions/channel-actions";
+import { useToast } from "@/components/ui/toast";
 
 export function PaymentApprovalActions({ channelId, status }: { channelId: string; status: string }) {
     const router = useRouter();
     const [loading, setLoading] = useState<string | null>(null);
+    const { toastError } = useToast();
 
     const handleAction = async (actionName: string, action: () => Promise<void>) => {
         setLoading(actionName);
@@ -15,7 +17,7 @@ export function PaymentApprovalActions({ channelId, status }: { channelId: strin
             await action();
             router.refresh();
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด');
+            toastError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด');
         } finally {
             setLoading(null);
         }

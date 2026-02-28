@@ -23,6 +23,7 @@ import {
     Gift,
     Settings,
     Contact,
+    LayoutDashboard,
     LucideIcon
 } from "lucide-react";
 
@@ -75,6 +76,7 @@ export const MENU_SECTIONS: MenuSection[] = [
         key: "finance_hr",
         title: "Finance & HR (บัญชี/บุคคล)",
         items: [
+            { title: "Owner Dashboard", href: "/dashboard/owner", icon: LayoutDashboard },
             // { title: "ตรวจสอบการปิดงาน", href: "/finance/audit", icon: ClipboardCheck },
             { title: "จัดการลูกค้า", href: "/finance/customers", icon: Contact },
             { title: "ใบแจ้งหนี้ (Invoice)", href: "/finance/invoices", icon: FileText },
@@ -103,6 +105,7 @@ export const ROUTE_TO_MENU_KEY: Record<string, string> = {
     "/finance": "finance_hr",
     "/hr": "finance_hr",
     "/reports": "finance_hr",
+    "/dashboard": "finance_hr",
     "/admin": "system_admin",
 };
 

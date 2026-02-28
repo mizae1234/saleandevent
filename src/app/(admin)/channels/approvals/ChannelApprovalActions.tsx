@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { approveChannel } from '@/actions/channel-actions';
 import { CheckCircle2, XCircle } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 
 interface Props {
     readonly channelId: string;
@@ -12,6 +13,7 @@ interface Props {
 export default function ChannelApprovalActions({ channelId }: Props) {
     const router = useRouter();
     const [loading, setLoading] = useState<string | null>(null);
+    const { toastError } = useToast();
 
     const handleApprove = async () => {
         setLoading('approve');
@@ -19,7 +21,7 @@ export default function ChannelApprovalActions({ channelId }: Props) {
             await approveChannel(channelId);
             router.refresh();
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Error');
+            toastError(err instanceof Error ? err.message : 'Error');
         } finally {
             setLoading(null);
         }

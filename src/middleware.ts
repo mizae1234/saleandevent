@@ -67,7 +67,7 @@ export async function middleware(request: NextRequest) {
         // Employee route protection
         const isEmployeeRoute = EMPLOYEE_ROUTE_PREFIXES.some(prefix => pathname.startsWith(prefix));
         if (isEmployeeRoute && !EMPLOYEE_ROLES.includes(role)) {
-            return NextResponse.redirect(new URL('/channels', request.url));
+            return NextResponse.redirect(new URL('/dashboard/owner', request.url));
         }
 
         // If it's an employee route, allow it

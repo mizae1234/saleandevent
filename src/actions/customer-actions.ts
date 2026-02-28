@@ -50,7 +50,6 @@ export async function createCustomer(formData: FormData) {
 // ============ UPDATE ============
 export async function updateCustomer(id: string, formData: FormData) {
     const name = formData.get('name') as string;
-    const code = formData.get('code') as string;
     const taxId = formData.get('taxId') as string | null;
     const address = formData.get('address') as string | null;
     const phone = formData.get('phone') as string | null;
@@ -63,7 +62,6 @@ export async function updateCustomer(id: string, formData: FormData) {
     await db.customer.update({
         where: { id },
         data: {
-            code,
             name,
             taxId: taxId || null,
             address: address || null,

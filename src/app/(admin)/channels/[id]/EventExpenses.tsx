@@ -3,6 +3,7 @@
 import { useState, useTransition, useOptimistic } from "react";
 import { Plus, Receipt, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import {
     Dialog,
     DialogContent,
@@ -64,6 +65,7 @@ type OptimisticAction =
 export function EventExpenses({ channelId, expenses, readonly = false }: Props) {
     const [isOpen, setIsOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
+    const { toastError } = useToast();
 
     // Optimistic state for instant UI feedback
     const [optimisticExpenses, dispatchOptimistic] = useOptimistic(
@@ -116,7 +118,7 @@ export function EventExpenses({ channelId, expenses, readonly = false }: Props) 
                 });
             } catch (error) {
                 console.error(error);
-                alert("Failed to add expense");
+                toastError("Failed to add expense");
             }
         });
     };
@@ -132,7 +134,7 @@ export function EventExpenses({ channelId, expenses, readonly = false }: Props) 
                 await removeChannelExpense(idToDelete, channelId);
             } catch (error) {
                 console.error(error);
-                alert("Failed to remove expense");
+                toastError("Failed to remove expense");
             }
         });
     };

@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { confirmReceiving } from '@/actions/stock-request-actions';
 import { CheckCircle2, AlertTriangle, Package, ClipboardCheck, Loader2 } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 
 interface Allocation {
     barcode: string;
@@ -34,6 +35,7 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
     const [loading, setLoading] = useState(false);
     const [progress, setProgress] = useState(0);
     const [activeTab, setActiveTab] = useState<'shipped' | 'receive'>('receive');
+    const { toastError } = useToast();
     const [receivedQtys, setReceivedQtys] = useState<Record<string, number>>(() => {
         const map: Record<string, number> = {};
         allocations.forEach(a => { map[a.barcode] = a.packedQuantity; });
@@ -132,7 +134,7 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
             router.push(redirectTo || '/pc/receive');
             router.refresh();
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Error');
+            toastError(err instanceof Error ? err.message : 'Error');
             setProgress(0);
         } finally {
             setLoading(false);

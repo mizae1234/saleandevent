@@ -11,10 +11,15 @@ export async function GET(
         where: { id: invoiceId },
         include: {
             channel: {
-                select: { id: true, code: true, name: true, location: true },
+                select: {
+                    id: true, code: true, name: true, location: true,
+                    customer: {
+                        select: { id: true, code: true, name: true, taxId: true, address: true, phone: true, creditTerm: true },
+                    },
+                },
             },
             customer: {
-                select: { id: true, code: true, name: true, taxId: true, address: true },
+                select: { id: true, code: true, name: true, taxId: true, address: true, phone: true, creditTerm: true },
             },
             items: {
                 include: {
@@ -31,6 +36,9 @@ export async function GET(
         return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
+    // Use invoice's direct customer, fall back to channel's customer
+    const customer = invoice.customer || invoice.channel.customer;
+
     return NextResponse.json({
         id: invoice.id,
         invoiceNumber: invoice.invoiceNumber,
@@ -44,8 +52,19 @@ export async function GET(
         grandTotal: Number(invoice.grandTotal),
         status: invoice.status,
         notes: invoice.notes,
-        channel: invoice.channel,
-        customer: invoice.customer,
+        channel: {
+            id: invoice.channel.id,
+            code: invoice.channel.code,
+            name: invoice.channel.name,
+            location: invoice.channel.location,
+        },
+        customer: customer ? {
+            name: customer.name,
+            taxId: customer.taxId,
+            address: customer.address,
+            phone: customer.phone,
+            creditTerm: customer.creditTerm,
+        } : null,
         items: invoice.items.map(item => ({
             barcode: item.barcode,
             productCode: item.product?.code || item.barcode,

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createStockRequest, submitStockRequest } from '@/actions/stock-request-actions';
 import { ArrowLeft, Send, Package } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 import Link from 'next/link';
 
 interface Channel {
@@ -26,6 +27,7 @@ export default function NewRefillClient({ channels, redirectTo, backHref, presel
     const [quantity, setQuantity] = useState('');
     const [notes, setNotes] = useState('');
     const [loading, setLoading] = useState(false);
+    const { toastError } = useToast();
 
     const handleSubmit = async () => {
         if (!channelId || !quantity || parseInt(quantity) <= 0) return;
@@ -36,7 +38,7 @@ export default function NewRefillClient({ channels, redirectTo, backHref, presel
             await submitStockRequest(req.id);
             router.push(redirectTo || '/pc/refill');
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Error');
+            toastError(err instanceof Error ? err.message : 'Error');
         } finally {
             setLoading(false);
         }

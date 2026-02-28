@@ -45,7 +45,7 @@ export async function loginAction(_prevState: { error?: string } | undefined, fo
     // Redirect based on role
     const adminRoles = ['ADMIN', 'MANAGER', 'WAREHOUSE', 'FINANCE'];
     if (adminRoles.includes(staff.role)) {
-        redirect('/channels');
+        redirect('/dashboard/owner');
     } else {
         // STAFF, PC, etc → employee workspace
         redirect('/workspace');

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { closeChannelStock, createReturnShipment, confirmReturnReceived, closeChannelManual, submitChannel, approveChannel } from '@/actions/channel-actions';
 import { createStockRequest, submitStockRequest } from '@/actions/stock-request-actions';
 import { Package, Truck, RotateCcw, CheckCircle2, Plus, Send, ArrowRight } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 
 interface Props {
     readonly channel: {
@@ -20,6 +21,7 @@ export default function EventActions({ channel }: Props) {
     const [loading, setLoading] = useState<string | null>(null);
     const [topUpQty, setTopUpQty] = useState('');
     const [showTopUp, setShowTopUp] = useState(false);
+    const { toastError } = useToast();
 
     const handleAction = async (actionName: string, action: () => Promise<void>) => {
         setLoading(actionName);
@@ -27,7 +29,7 @@ export default function EventActions({ channel }: Props) {
             await action();
             router.refresh();
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Error occurred');
+            toastError(err instanceof Error ? err.message : 'Error occurred');
         } finally {
             setLoading(null);
         }

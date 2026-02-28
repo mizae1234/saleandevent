@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createShipment } from '@/actions/stock-request-actions';
 import { Truck, Send } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 
 interface Props {
     readonly requestId: string;
@@ -15,6 +16,7 @@ export default function ShippingForm({ requestId, packedTotal }: Props) {
     const [provider, setProvider] = useState('');
     const [trackingNumber, setTrackingNumber] = useState('');
     const [loading, setLoading] = useState(false);
+    const { toastError } = useToast();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -26,7 +28,7 @@ export default function ShippingForm({ requestId, packedTotal }: Props) {
             router.refresh();
             router.push('/warehouse/shipments');
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Error');
+            toastError(err instanceof Error ? err.message : 'Error');
         } finally {
             setLoading(false);
         }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { ProductFilters } from "./ProductFilters";
 import { DeleteProductButton } from "./DeleteProductButton";
+import { ExportProductsButton } from "./ExportProductsButton";
 
 const PAGE_SIZE = 25;
 
@@ -72,12 +73,15 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                     </h2>
                     <p className="text-slate-500 mt-1">เพิ่ม แก้ไข และจัดการสินค้าทั้งหมดในระบบ</p>
                 </div>
-                <Link href="/admin/products/create">
-                    <Button className="bg-teal-600 hover:bg-teal-700 text-white">
-                        <Plus className="mr-2 h-4 w-4" />
-                        เพิ่มสินค้า
-                    </Button>
-                </Link>
+                <div className="flex items-center gap-3">
+                    <ExportProductsButton />
+                    <Link href="/admin/products/create">
+                        <Button className="bg-teal-600 hover:bg-teal-700 text-white">
+                            <Plus className="mr-2 h-4 w-4" />
+                            เพิ่มสินค้า
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             {/* Filters */}

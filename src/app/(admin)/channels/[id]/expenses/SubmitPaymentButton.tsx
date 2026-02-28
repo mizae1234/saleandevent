@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Send, Loader2, CheckCircle2 } from "lucide-react";
 import { submitForPaymentApproval } from "@/actions/channel-actions";
+import { useToast } from "@/components/ui/toast";
 
 export function SubmitPaymentButton({ channelId, status }: { channelId: string; status: string }) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [confirm, setConfirm] = useState(false);
+    const { toastError } = useToast();
 
     // Only show if event is in a status where payment submission makes sense
     const canSubmit = ['active', 'returned', 'completed'].includes(status);
@@ -20,7 +22,7 @@ export function SubmitPaymentButton({ channelId, status }: { channelId: string; 
             await submitForPaymentApproval(channelId);
             router.refresh();
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด');
+            toastError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด');
         } finally {
             setLoading(false);
             setConfirm(false);

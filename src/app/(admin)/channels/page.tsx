@@ -24,10 +24,16 @@ async function getEvents(searchParams: Promise<{ [key: string]: string | string[
     const q = typeof params.q === 'string' ? params.q : undefined;
     const startDate = typeof params.startDate === 'string' ? params.startDate : undefined;
     const endDate = typeof params.endDate === 'string' ? params.endDate : undefined;
+    const type = typeof params.type === 'string' ? params.type : undefined;
 
     const where: Prisma.SalesChannelWhereInput = {
         AND: []
     };
+
+    // Filter by type (EVENT / BRANCH)
+    if (type) {
+        (where.AND as Prisma.SalesChannelWhereInput[]).push({ type });
+    }
 
     if (q) {
         (where.AND as Prisma.SalesChannelWhereInput[]).push({
@@ -65,8 +71,8 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-900">Events</h2>
-                    <p className="text-sm text-slate-500 mt-0.5">จัดการข้อมูล Event และการออกบูธ</p>
+                    <h2 className="text-2xl font-bold text-slate-900">ช่องทางการขาย</h2>
+                    <p className="text-sm text-slate-500 mt-0.5">จัดการข้อมูล Event/สาขา/ออกบูธ</p>
                 </div>
                 <Link
                     href="/channels/create"

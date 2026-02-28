@@ -7,6 +7,7 @@ import {
     Search, Plus, Minus, Trash2, ShoppingCart,
     CheckCircle, X, Receipt, Tag, PlusCircle, Package
 } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -55,6 +56,7 @@ interface POSInterfaceProps {
 
 export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceProps) {
     const router = useRouter();
+    const { toastError } = useToast();
     const [search, setSearch] = useState("");
     const [cart, setCart] = useState<CartItem[]>([]);
     const [adjustments, setAdjustments] = useState<Adjustment[]>([]);
@@ -203,7 +205,7 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
             router.refresh();
         } catch (error) {
             console.error("Failed to create sale:", error);
-            alert("เกิดข้อผิดพลาดในการบันทึก");
+            toastError("เกิดข้อผิดพลาดในการบันทึก");
         } finally {
             setIsSubmitting(false);
         }

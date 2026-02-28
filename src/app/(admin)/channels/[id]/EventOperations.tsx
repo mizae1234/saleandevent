@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { closeChannelManual } from "@/actions/channel-actions";
 import { Package, Power, CheckCircle, AlertTriangle, Loader2, DollarSign } from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/components/ui/toast";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -26,6 +27,7 @@ type Props = {
 export function EventOperations({ channelId, status }: Props) {
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
+    const { toastError } = useToast();
 
     const handleCloseEvent = () => {
         startTransition(async () => {
@@ -33,7 +35,7 @@ export function EventOperations({ channelId, status }: Props) {
                 await closeChannelManual(channelId);
             } catch (e) {
                 console.error(e);
-                alert("Failed to close event");
+                toastError("Failed to close event");
             }
         });
     };

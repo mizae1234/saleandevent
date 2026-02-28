@@ -2,12 +2,14 @@
 
 import { deleteInvoice } from "@/actions/invoice-actions";
 import { Trash2 } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function DeleteInvoiceButton({ id }: { id: string }) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const { toastError } = useToast();
 
     const handleDelete = async () => {
         if (!confirm("ต้องการลบ Invoice ฉบับร่างนี้หรือไม่?")) return;
@@ -16,7 +18,7 @@ export function DeleteInvoiceButton({ id }: { id: string }) {
             await deleteInvoice(id);
             router.refresh();
         } catch (e: any) {
-            alert(e.message || "เกิดข้อผิดพลาด");
+            toastError(e.message || "เกิดข้อผิดพลาด");
         } finally {
             setLoading(false);
         }

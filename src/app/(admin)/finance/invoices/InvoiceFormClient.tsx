@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { createInvoice, updateInvoice, submitInvoice } from "@/actions/invoice-actions";
 import { useRouter } from "next/navigation";
 import { Save, Send, RotateCcw, Percent, Loader2 } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 import { numberToThaiText } from "@/lib/thai-baht-text";
 
 interface ShippedItem {
@@ -66,6 +67,7 @@ export function InvoiceFormClient({
 }) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
+    const { toastError } = useToast();
 
     const isEditing = !!existingInvoice;
     const isReadonly = existingInvoice?.status === "submitted";
@@ -184,7 +186,7 @@ export function InvoiceFormClient({
                 router.push(`/finance/invoices/${channelId}`);
                 router.refresh();
             } catch (e: any) {
-                alert(e.message || "เกิดข้อผิดพลาด");
+                toastError(e.message || "เกิดข้อผิดพลาด");
             }
         });
     };

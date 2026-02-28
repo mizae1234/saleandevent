@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useTransition } from "react";
 import { Users, Plus, X, Search, Loader2 } from "lucide-react";
 import { addStaffToChannel, removeStaffFromChannel } from "@/actions/channel-actions";
+import { useToast } from "@/components/ui/toast";
 
 interface StaffAssignment {
     id: string; // channelStaff id
@@ -33,6 +34,7 @@ export function StaffManager({ channelId, staff }: Props) {
     const [isPending, startTransition] = useTransition();
     const [removing, setRemoving] = useState<string | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const { toastError } = useToast();
 
     // Fetch available staff when opening the picker
     useEffect(() => {
@@ -73,7 +75,7 @@ export function StaffManager({ channelId, staff }: Props) {
                 // Re-fetch available staff to update the list
                 setAvailableStaff([]);
             } catch (err) {
-                alert(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+                toastError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
             }
         });
     };
@@ -85,7 +87,7 @@ export function StaffManager({ channelId, staff }: Props) {
             try {
                 await removeStaffFromChannel(channelId, channelStaffId);
             } catch (err) {
-                alert(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+                toastError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
             } finally {
                 setRemoving(null);
             }
