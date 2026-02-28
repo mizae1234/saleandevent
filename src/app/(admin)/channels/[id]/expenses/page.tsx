@@ -94,7 +94,7 @@ export default async function EventExpensePage({ params }: { params: Promise<{ i
                         <Receipt className="h-5 w-5 text-slate-500" />
                         บันทึกค่าใช้จ่าย
                     </div>
-                    <EventExpenses channelId={event.id} expenses={event.expenses || []} />
+                    <EventExpenses channelId={event.id} expenses={(event.expenses || []).map(e => ({ id: e.id, category: e.category, amount: Number(e.amount), description: e.description || '', status: e.status, createdAt: e.createdAt.toISOString() }))} />
                 </div>
 
                 {/* Right Column: Compensation */}
