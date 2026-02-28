@@ -6,8 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: saran-jeans-web
-    ports:
-      - "3003:3003"
+    network_mode: host
     environment:
       - NODE_ENV=production
       - PORT=3003
