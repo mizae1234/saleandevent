@@ -177,7 +177,7 @@ export default function PackingInterface({ requestId, requestedTotal, status, al
             const data = await pendingFile.arrayBuffer();
             const wb = XLSX.read(data, { type: 'array' });
             const ws = wb.Sheets[wb.SheetNames[0]];
-            const rawData = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { header: 1 }) as unknown[][];
+            const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as unknown as unknown[][];
 
             if (rawData.length < 2) {
                 throw new Error('ไฟล์ Excel ต้องมีอย่างน้อย 1 แถวข้อมูล');
