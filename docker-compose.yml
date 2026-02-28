@@ -6,13 +6,38 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: saran-jeans-web
-    ports:
-      - "3003:3003"
+    expose:
+      - "3003"
     environment:
-      # Include all your runtime environment variables here.
-      # You can also use an env_file instead of spelling them out.
       - NODE_ENV=production
       - PORT=3003
     env_file:
       - .env
     restart: unless-stopped
+    networks:
+      - saran-network
+
+  # Caddy Reverse Proxy for Automatic HTTPS
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - saran-network
+    depends_on:
+      - web
+
+networks:
+  saran-network:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:

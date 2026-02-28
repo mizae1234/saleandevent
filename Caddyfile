@@ -1,0 +1,3 @@
+saran.popcorn-creator.com {
+    reverse_proxy web:3003
+}
