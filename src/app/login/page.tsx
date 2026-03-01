@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { loginAction } from "@/actions/auth-actions";
 import { Lock, Eye, EyeOff, UserRound } from "lucide-react";
 import { useState } from "react";
+import { Spinner } from "@/components/shared";
 
 export default function LoginPage() {
     const [state, formAction, isPending] = useActionState(loginAction, undefined);
@@ -82,7 +83,7 @@ export default function LoginPage() {
                         >
                             {isPending ? (
                                 <span className="flex items-center justify-center gap-2">
-                                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                    <Spinner size="sm" />
                                     กำลังเข้าสู่ระบบ...
                                 </span>
                             ) : (

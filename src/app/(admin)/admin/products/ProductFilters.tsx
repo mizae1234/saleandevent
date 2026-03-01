@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Search } from "lucide-react";
+import { Spinner } from "@/components/shared";
 
 export function ProductFilters() {
     const router = useRouter();
@@ -72,7 +73,7 @@ export function ProductFilters() {
                 ))}
             </select>
             {isPending && (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-teal-600 border-t-transparent" />
+                <Spinner size="sm" />
             )}
         </div>
     );
