@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeft, Save } from "lucide-react";
-import { Spinner } from "@/components/shared";
+import { Spinner, FormInput, FormTextarea, PageHeader } from "@/components/shared";
 import Link from "next/link";
 import { useTransition } from "react";
 import { createCustomer, updateCustomer } from "@/actions/customer-actions";
@@ -33,122 +33,75 @@ export function CustomerForm({ customer, isEdit }: { customer?: CustomerData; is
 
     return (
         <div className="max-w-3xl mx-auto">
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-6">
-                <Link
-                    href="/finance/customers"
-                    className="p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
-                >
-                    <ArrowLeft className="h-5 w-5" />
-                </Link>
-                <h1 className="text-2xl font-bold text-slate-900">
-                    {isEdit ? 'แก้ไขลูกค้า' : 'เพิ่มลูกค้าใหม่'}
-                </h1>
-            </div>
+            <PageHeader
+                back="/finance/customers"
+                title={isEdit ? 'แก้ไขลูกค้า' : 'เพิ่มลูกค้าใหม่'}
+            />
 
             <form action={handleSubmit}>
                 <div className="bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100 space-y-5">
                     {/* Row 1: Name */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                            ชื่อลูกค้า <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            name="name"
-                            defaultValue={customer?.name || ''}
-                            required
-                            placeholder="ชื่อบริษัท หรือ ชื่อบุคคล"
-                            className="w-full px-3 py-2.5 border-0 border-b-2 border-slate-200 text-sm focus:outline-none focus:border-teal-500 bg-slate-50/50 rounded-t-lg transition-colors"
-                        />
-                    </div>
+                    <FormInput
+                        label="ชื่อลูกค้า *"
+                        name="name"
+                        defaultValue={customer?.name || ''}
+                        required
+                        placeholder="ชื่อบริษัท หรือ ชื่อบุคคล"
+                    />
 
                     {/* Row 2: Tax ID + Phone */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                เลขประจำตัวผู้เสียภาษี
-                            </label>
-                            <input
-                                type="text"
-                                name="taxId"
-                                defaultValue={customer?.taxId || ''}
-                                placeholder="เช่น 0105563046582"
-                                className="w-full px-3 py-2.5 border-0 border-b-2 border-slate-200 text-sm focus:outline-none focus:border-teal-500 bg-slate-50/50 rounded-t-lg transition-colors"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                เบอร์โทร
-                            </label>
-                            <input
-                                type="text"
-                                name="phone"
-                                defaultValue={customer?.phone || ''}
-                                placeholder="เช่น 02-xxx-xxxx"
-                                className="w-full px-3 py-2.5 border-0 border-b-2 border-slate-200 text-sm focus:outline-none focus:border-teal-500 bg-slate-50/50 rounded-t-lg transition-colors"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Row 3: Address */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                            ที่อยู่
-                        </label>
-                        <textarea
-                            name="address"
-                            rows={3}
-                            defaultValue={customer?.address || ''}
-                            placeholder="ที่อยู่สำหรับออกใบกำกับภาษี"
-                            className="w-full px-3 py-2.5 border-0 border-b-2 border-slate-200 text-sm focus:outline-none focus:border-teal-500 bg-slate-50/50 rounded-t-lg transition-colors resize-none"
+                        <FormInput
+                            label="เลขประจำตัวผู้เสียภาษี"
+                            name="taxId"
+                            defaultValue={customer?.taxId || ''}
+                            placeholder="เช่น 0105563046582"
+                        />
+                        <FormInput
+                            label="เบอร์โทร"
+                            name="phone"
+                            defaultValue={customer?.phone || ''}
+                            placeholder="เช่น 02-xxx-xxxx"
                         />
                     </div>
 
+                    {/* Row 3: Address */}
+                    <FormTextarea
+                        label="ที่อยู่"
+                        name="address"
+                        rows={3}
+                        defaultValue={customer?.address || ''}
+                        placeholder="ที่อยู่สำหรับออกใบกำกับภาษี"
+                    />
+
                     {/* Row 4: Credit Term + Reference No + Discount */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                เครดิต (วัน)
-                            </label>
-                            <input
-                                type="number"
-                                onFocus={(e) => e.target.select()}
-                                name="creditTerm"
-                                min={0}
-                                defaultValue={customer?.creditTerm ?? 0}
-                                placeholder="0"
-                                className="w-full px-3 py-2.5 border-0 border-b-2 border-slate-200 text-sm focus:outline-none focus:border-teal-500 bg-slate-50/50 rounded-t-lg transition-colors"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                เลขที่อ้างอิง
-                            </label>
-                            <input
-                                type="text"
-                                name="referenceNo"
-                                defaultValue={customer?.referenceNo || ''}
-                                placeholder="PO / เลขอ้างอิง"
-                                className="w-full px-3 py-2.5 border-0 border-b-2 border-slate-200 text-sm focus:outline-none focus:border-teal-500 bg-slate-50/50 rounded-t-lg transition-colors"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                ส่วนลด (%)
-                            </label>
-                            <input
-                                type="number"
-                                onFocus={(e) => e.target.select()}
-                                name="discountPercent"
-                                min={0}
-                                max={100}
-                                step={0.01}
-                                defaultValue={customer?.discountPercent ?? 0}
-                                placeholder="0"
-                                className="w-full px-3 py-2.5 border-0 border-b-2 border-slate-200 text-sm focus:outline-none focus:border-teal-500 bg-slate-50/50 rounded-t-lg transition-colors"
-                            />
-                        </div>
+                        <FormInput
+                            label="เครดิต (วัน)"
+                            type="number"
+                            onFocus={(e) => (e.target as HTMLInputElement).select()}
+                            name="creditTerm"
+                            min={0}
+                            defaultValue={customer?.creditTerm ?? 0}
+                            placeholder="0"
+                        />
+                        <FormInput
+                            label="เลขที่อ้างอิง"
+                            name="referenceNo"
+                            defaultValue={customer?.referenceNo || ''}
+                            placeholder="PO / เลขอ้างอิง"
+                        />
+                        <FormInput
+                            label="ส่วนลด (%)"
+                            type="number"
+                            onFocus={(e) => (e.target as HTMLInputElement).select()}
+                            name="discountPercent"
+                            min={0}
+                            max={100}
+                            step={0.01}
+                            defaultValue={customer?.discountPercent ?? 0}
+                            placeholder="0"
+                        />
                     </div>
                 </div>
 

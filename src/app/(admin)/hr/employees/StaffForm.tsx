@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { useActionState } from "react";
+import { FormInput, FormSelect, Spinner } from "@/components/shared";
 
 interface StaffData {
     id?: string;
@@ -50,94 +51,68 @@ export function StaffForm({ initialData, action, isEdit = false }: StaffFormProp
                 <h3 className="text-lg font-semibold text-slate-900 mb-6 pb-3 border-b border-slate-100">ข้อมูลทั่วไป</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* รหัสพนักงาน */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">รหัสพนักงาน</label>
-                        <input
-                            type="text"
-                            value={initialData?.code || 'ระบบจะสร้างอัตโนมัติ (S0001)'}
-                            disabled
-                            className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-100 text-sm text-slate-500 cursor-not-allowed"
-                        />
-                    </div>
+                    <FormInput
+                        label="รหัสพนักงาน"
+                        value={initialData?.code || 'ระบบจะสร้างอัตโนมัติ (S0001)'}
+                        disabled
+                    />
 
                     {/* ชื่อ-สกุล */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                            ชื่อ-สกุล <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            name="name"
-                            defaultValue={initialData?.name || ''}
-                            required
-                            placeholder="กรอกชื่อ-นามสกุล"
-                            className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                        />
-                    </div>
+                    <FormInput
+                        label="ชื่อ-สกุล *"
+                        name="name"
+                        defaultValue={initialData?.name || ''}
+                        required
+                        placeholder="กรอกชื่อ-นามสกุล"
+                    />
 
                     {/* ประเภทพนักงาน */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">ประเภทพนักงาน</label>
-                        <select
-                            name="employeeType"
-                            defaultValue={initialData?.employeeType || ''}
-                            className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                        >
-                            <option value="">-- เลือก --</option>
-                            <option value="fulltime">ประจำ</option>
-                            <option value="parttime">พาร์ทไทม์</option>
-                            <option value="temporary">ชั่วคราว</option>
-                        </select>
-                    </div>
+                    <FormSelect
+                        label="ประเภทพนักงาน"
+                        name="employeeType"
+                        defaultValue={initialData?.employeeType || ''}
+                    >
+                        <option value="">-- เลือก --</option>
+                        <option value="fulltime">ประจำ</option>
+                        <option value="parttime">พาร์ทไทม์</option>
+                        <option value="temporary">ชั่วคราว</option>
+                    </FormSelect>
 
                     {/* ตำแหน่ง */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">ตำแหน่ง</label>
-                        <input
-                            type="text"
-                            name="position"
-                            defaultValue={initialData?.position || ''}
-                            placeholder="เช่น พนักงานขาย, หัวหน้างาน"
-                            className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                        />
-                    </div>
+                    <FormInput
+                        label="ตำแหน่ง"
+                        name="position"
+                        defaultValue={initialData?.position || ''}
+                        placeholder="เช่น พนักงานขาย, หัวหน้างาน"
+                    />
 
                     {/* Role */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">บทบาท</label>
-                        <select
-                            name="role"
-                            defaultValue={initialData?.role || 'PC'}
-                            className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                        >
-                            <option value="PC">PC (พนักงานขาย)</option>
-                            <option value="Supervisor">Supervisor (หัวหน้า)</option>
-                            <option value="Admin">Admin (ผู้ดูแลระบบ)</option>
-                        </select>
-                    </div>
+                    <FormSelect
+                        label="บทบาท"
+                        name="role"
+                        defaultValue={initialData?.role || 'PC'}
+                    >
+                        <option value="PC">PC (พนักงานขาย)</option>
+                        <option value="Supervisor">Supervisor (หัวหน้า)</option>
+                        <option value="Admin">Admin (ผู้ดูแลระบบ)</option>
+                    </FormSelect>
 
                     {/* เบอร์โทร */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">เบอร์โทร</label>
-                        <input
-                            type="tel"
-                            name="phone"
-                            defaultValue={initialData?.phone || ''}
-                            placeholder="0xx-xxx-xxxx"
-                            className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                        />
-                    </div>
+                    <FormInput
+                        label="เบอร์โทร"
+                        type="tel"
+                        name="phone"
+                        defaultValue={initialData?.phone || ''}
+                        placeholder="0xx-xxx-xxxx"
+                    />
 
                     {/* วันเกิด */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">วันเดือนปีเกิด</label>
-                        <input
-                            type="date"
-                            name="dateOfBirth"
-                            defaultValue={dateOfBirthValue}
-                            className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                        />
-                    </div>
+                    <FormInput
+                        label="วันเดือนปีเกิด"
+                        type="date"
+                        name="dateOfBirth"
+                        defaultValue={dateOfBirthValue}
+                    />
                 </div>
             </div>
 
@@ -146,37 +121,30 @@ export function StaffForm({ initialData, action, isEdit = false }: StaffFormProp
                 <h3 className="text-lg font-semibold text-slate-900 mb-6 pb-3 border-b border-slate-100">ข้อมูลธนาคาร</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* ธนาคาร */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">ธนาคาร</label>
-                        <select
-                            name="bankName"
-                            defaultValue={initialData?.bankName || ''}
-                            className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                        >
-                            <option value="">-- เลือก --</option>
-                            <option value="กรุงเทพ">ธ.กรุงเทพ</option>
-                            <option value="กสิกรไทย">ธ.กสิกรไทย</option>
-                            <option value="ไทยพาณิชย์">ธ.ไทยพาณิชย์</option>
-                            <option value="กรุงไทย">ธ.กรุงไทย</option>
-                            <option value="กรุงศรีอยุธยา">ธ.กรุงศรีอยุธยา</option>
-                            <option value="ทหารไทยธนชาต">ธ.ทหารไทยธนชาต (ttb)</option>
-                            <option value="ออมสิน">ธ.ออมสิน</option>
-                            <option value="ธ.ก.ส.">ธ.ก.ส.</option>
-                            <option value="อื่นๆ">อื่นๆ</option>
-                        </select>
-                    </div>
+                    <FormSelect
+                        label="ธนาคาร"
+                        name="bankName"
+                        defaultValue={initialData?.bankName || ''}
+                    >
+                        <option value="">-- เลือก --</option>
+                        <option value="กรุงเทพ">ธ.กรุงเทพ</option>
+                        <option value="กสิกรไทย">ธ.กสิกรไทย</option>
+                        <option value="ไทยพาณิชย์">ธ.ไทยพาณิชย์</option>
+                        <option value="กรุงไทย">ธ.กรุงไทย</option>
+                        <option value="กรุงศรีอยุธยา">ธ.กรุงศรีอยุธยา</option>
+                        <option value="ทหารไทยธนชาต">ธ.ทหารไทยธนชาต (ttb)</option>
+                        <option value="ออมสิน">ธ.ออมสิน</option>
+                        <option value="ธ.ก.ส.">ธ.ก.ส.</option>
+                        <option value="อื่นๆ">อื่นๆ</option>
+                    </FormSelect>
 
                     {/* เลขบัญชี */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">เลขที่บัญชีธนาคาร</label>
-                        <input
-                            type="text"
-                            name="bankAccountNo"
-                            defaultValue={initialData?.bankAccountNo || ''}
-                            placeholder="xxx-x-xxxxx-x"
-                            className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                        />
-                    </div>
+                    <FormInput
+                        label="เลขที่บัญชีธนาคาร"
+                        name="bankAccountNo"
+                        defaultValue={initialData?.bankAccountNo || ''}
+                        placeholder="xxx-x-xxxxx-x"
+                    />
                 </div>
             </div>
 
@@ -185,48 +153,39 @@ export function StaffForm({ initialData, action, isEdit = false }: StaffFormProp
                 <h3 className="text-lg font-semibold text-slate-900 mb-6 pb-3 border-b border-slate-100">ค่าตอบแทน</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* ประเภทการจ่าย */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">ประเภทการจ่าย</label>
-                        <select
-                            name="paymentType"
-                            defaultValue={initialData?.paymentType || 'daily'}
-                            className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                        >
-                            <option value="daily">รายวัน</option>
-                            <option value="monthly">รายเดือน</option>
-                            <option value="commission">คอมมิชชั่น</option>
-                        </select>
-                    </div>
+                    <FormSelect
+                        label="ประเภทการจ่าย"
+                        name="paymentType"
+                        defaultValue={initialData?.paymentType || 'daily'}
+                    >
+                        <option value="daily">รายวัน</option>
+                        <option value="monthly">รายเดือน</option>
+                        <option value="commission">คอมมิชชั่น</option>
+                    </FormSelect>
 
                     {/* ค่าแรงรายวัน */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">ค่าแรงรายวัน (บาท)</label>
-                        <input
-                            type="number"
-                            onFocus={(e) => e.target.select()}
-                            name="dailyRate"
-                            defaultValue={initialData?.dailyRate?.toString() || ''}
-                            placeholder="0.00"
-                            step="0.01"
-                            min="0"
-                            className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                        />
-                    </div>
+                    <FormInput
+                        label="ค่าแรงรายวัน (บาท)"
+                        type="number"
+                        onFocus={(e) => (e.target as HTMLInputElement).select()}
+                        name="dailyRate"
+                        defaultValue={initialData?.dailyRate?.toString() || ''}
+                        placeholder="0.00"
+                        step="0.01"
+                        min="0"
+                    />
 
                     {/* คอมมิชชั่น */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">คอมมิชชั่น (บาท)</label>
-                        <input
-                            type="number"
-                            onFocus={(e) => e.target.select()}
-                            name="commissionAmount"
-                            defaultValue={initialData?.commissionAmount?.toString() || ''}
-                            placeholder="0.00"
-                            step="0.01"
-                            min="0"
-                            className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                        />
-                    </div>
+                    <FormInput
+                        label="คอมมิชชั่น (บาท)"
+                        type="number"
+                        onFocus={(e) => (e.target as HTMLInputElement).select()}
+                        name="commissionAmount"
+                        defaultValue={initialData?.commissionAmount?.toString() || ''}
+                        placeholder="0.00"
+                        step="0.01"
+                        min="0"
+                    />
                 </div>
             </div>
 
@@ -245,7 +204,7 @@ export function StaffForm({ initialData, action, isEdit = false }: StaffFormProp
                 >
                     {isPending ? (
                         <div className="flex items-center gap-2">
-                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            <Spinner size="sm" />
                             กำลังบันทึก...
                         </div>
                     ) : (

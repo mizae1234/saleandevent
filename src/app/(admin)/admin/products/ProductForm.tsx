@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { createProduct, updateProduct } from "@/actions/product-actions";
 import { ArrowLeft, Save } from "lucide-react";
-import { Spinner } from "@/components/shared";
+import { Spinner, FormInput, FormSelect, PageHeader } from "@/components/shared";
 import Link from "next/link";
 
 interface ProductFormProps {
@@ -47,23 +47,11 @@ export function ProductForm({ mode, product }: ProductFormProps) {
 
     return (
         <div className="max-w-2xl mx-auto">
-            {/* Header */}
-            <div className="flex items-center gap-4 mb-8">
-                <Link
-                    href="/admin/products"
-                    className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
-                >
-                    <ArrowLeft className="h-5 w-5" />
-                </Link>
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-900">
-                        {isEdit ? "แก้ไขสินค้า" : "เพิ่มสินค้าใหม่"}
-                    </h2>
-                    <p className="text-slate-500 mt-0.5 text-sm">
-                        {isEdit ? `แก้ไขข้อมูลสินค้า ${product?.name}` : "กรอกข้อมูลสินค้าที่ต้องการเพิ่ม"}
-                    </p>
-                </div>
-            </div>
+            <PageHeader
+                back="/admin/products"
+                title={isEdit ? "แก้ไขสินค้า" : "เพิ่มสินค้าใหม่"}
+                subtitle={isEdit ? `แก้ไขข้อมูลสินค้า ${product?.name}` : "กรอกข้อมูลสินค้าที่ต้องการเพิ่ม"}
+            />
 
             {/* Error */}
             {state?.error && (
@@ -77,17 +65,14 @@ export function ProductForm({ mode, product }: ProductFormProps) {
                 <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] border border-slate-100 p-6 space-y-5">
                     {/* Barcode */}
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                            บาร์โค้ด <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="text"
+                        <FormInput
+                            label="บาร์โค้ด *"
                             name="barcode"
                             defaultValue={product?.barcode || ""}
                             readOnly={isEdit}
                             required
                             placeholder="สแกนหรือกรอกบาร์โค้ด"
-                            className={`w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors ${isEdit ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
+                            disabled={isEdit}
                         />
                         {isEdit && (
                             <p className="text-xs text-slate-400 mt-1">บาร์โค้ดไม่สามารถแก้ไขได้</p>
@@ -96,104 +81,64 @@ export function ProductForm({ mode, product }: ProductFormProps) {
 
                     {/* Code & Name row */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                รหัสสินค้า
-                            </label>
-                            <input
-                                type="text"
-                                name="code"
-                                defaultValue={product?.code || ""}
-                                placeholder="เช่น P001"
-                                className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                ชื่อสินค้า <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                name="name"
-                                defaultValue={product?.name || ""}
-                                required
-                                placeholder="ชื่อสินค้า"
-                                className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                            />
-                        </div>
+                        <FormInput
+                            label="รหัสสินค้า"
+                            name="code"
+                            defaultValue={product?.code || ""}
+                            placeholder="เช่น P001"
+                        />
+                        <FormInput
+                            label="ชื่อสินค้า *"
+                            name="name"
+                            defaultValue={product?.name || ""}
+                            required
+                            placeholder="ชื่อสินค้า"
+                        />
                     </div>
 
                     {/* Size, Color, Category */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                ไซส์
-                            </label>
-                            <input
-                                type="text"
-                                name="size"
-                                defaultValue={product?.size || ""}
-                                placeholder="เช่น 28, 30, M, L"
-                                className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                สี
-                            </label>
-                            <input
-                                type="text"
-                                name="color"
-                                defaultValue={product?.color || ""}
-                                placeholder="เช่น น้ำเงิน, ดำ"
-                                className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                หมวดหมู่
-                            </label>
-                            <select
-                                name="category"
-                                defaultValue={product?.category || ""}
-                                className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-600 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors cursor-pointer"
-                            >
-                                <option value="">-- เลือกหมวดหมู่ --</option>
-                                {CATEGORIES.map((c) => (
-                                    <option key={c} value={c}>{c}</option>
-                                ))}
-                            </select>
-                        </div>
+                        <FormInput
+                            label="ไซส์"
+                            name="size"
+                            defaultValue={product?.size || ""}
+                            placeholder="เช่น 28, 30, M, L"
+                        />
+                        <FormInput
+                            label="สี"
+                            name="color"
+                            defaultValue={product?.color || ""}
+                            placeholder="เช่น น้ำเงิน, ดำ"
+                        />
+                        <FormSelect
+                            label="หมวดหมู่"
+                            name="category"
+                            defaultValue={product?.category || ""}
+                        >
+                            <option value="">-- เลือกหมวดหมู่ --</option>
+                            {CATEGORIES.map((c) => (
+                                <option key={c} value={c}>{c}</option>
+                            ))}
+                        </FormSelect>
                     </div>
 
                     {/* Product Type & Price */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                ประเภทสินค้า
-                            </label>
-                            <input
-                                type="text"
-                                name="producttype"
-                                defaultValue={product?.producttype || ""}
-                                placeholder="เช่น ยีนส์ขาเดฟ, ชิโน่"
-                                className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                ราคาขาย (บาท)
-                            </label>
-                            <input
-                                type="number"
-                                name="price"
-                                defaultValue={product?.price ?? ""}
-                                min="0"
-                                step="0.01"
-                                placeholder="0.00"
-                                className="w-full px-4 py-2.5 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors"
-                            />
-                        </div>
+                        <FormInput
+                            label="ประเภทสินค้า"
+                            name="producttype"
+                            defaultValue={product?.producttype || ""}
+                            placeholder="เช่น ยีนส์ขาเดฟ, ชิโน่"
+                        />
+                        <FormInput
+                            label="ราคาขาย (บาท)"
+                            type="number"
+                            name="price"
+                            defaultValue={product?.price ?? ""}
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                        />
                     </div>
                 </div>
 
