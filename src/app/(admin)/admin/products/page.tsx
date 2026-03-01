@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Plus, Tag, Pencil, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { EmptyState } from "@/components/shared";
 import { Prisma } from "@prisma/client";
 import { ProductFilters } from "./ProductFilters";
 import { DeleteProductButton } from "./DeleteProductButton";
@@ -170,17 +171,19 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                 </div>
 
                 {products.length === 0 && (
-                    <div className="py-16 text-center">
-                        <Tag className="mx-auto h-12 w-12 text-slate-300" />
-                        <h3 className="mt-3 text-sm font-semibold text-slate-900">ไม่พบสินค้า</h3>
-                        <p className="mt-1 text-sm text-slate-500">เริ่มเพิ่มสินค้าชิ้นแรกได้เลย</p>
-                        <Link href="/admin/products/create" className="mt-4 inline-block">
-                            <Button variant="outline" size="sm" className="text-teal-600 border-teal-200 hover:bg-teal-50">
-                                <Plus className="mr-2 h-4 w-4" />
-                                เพิ่มสินค้า
-                            </Button>
-                        </Link>
-                    </div>
+                    <EmptyState
+                        icon={Tag}
+                        message="ไม่พบสินค้า"
+                        description="เริ่มเพิ่มสินค้าชิ้นแรกได้เลย"
+                        action={
+                            <Link href="/admin/products/create">
+                                <Button variant="outline" size="sm" className="text-teal-600 border-teal-200 hover:bg-teal-50">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    เพิ่มสินค้า
+                                </Button>
+                            </Link>
+                        }
+                    />
                 )}
             </div>
 

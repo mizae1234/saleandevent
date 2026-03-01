@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Coins, Loader2, DollarSign, Users, Save, CheckCircle2 } from "lucide-react";
+import { Coins, DollarSign, Users, Save, CheckCircle2 } from "lucide-react";
+import { Spinner, SpinnerFullPage } from "@/components/shared";
 import { getChannelCompensationSummary, saveStaffCompensation } from "@/actions/channel";
 
 type StaffSummary = {
@@ -92,8 +93,8 @@ export function EventCompensation({ channelId, readonly = false }: { channelId: 
 
     if (loading) {
         return (
-            <div className="rounded-xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100 flex justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+            <div className="rounded-xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100">
+                <SpinnerFullPage />
             </div>
         );
     }
@@ -145,7 +146,7 @@ export function EventCompensation({ channelId, readonly = false }: { channelId: 
                                 }`}
                         >
                             {saving ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <Spinner size="sm" />
                             ) : saved ? (
                                 <CheckCircle2 className="h-4 w-4" />
                             ) : (

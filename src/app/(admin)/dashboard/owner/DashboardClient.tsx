@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Calendar, Loader2, RefreshCw, LayoutDashboard } from "lucide-react";
+import { Calendar, RefreshCw, LayoutDashboard } from "lucide-react";
+import { SpinnerFullPage, EmptyState } from "@/components/shared";
 import { KpiCards } from "@/components/dashboard/KpiCard";
 import { SalesChart } from "@/components/dashboard/SalesChart";
 import { EventTable } from "@/components/dashboard/EventTable";
@@ -140,8 +141,8 @@ export function DashboardClient() {
                                 key={btn.key}
                                 onClick={() => handleQuick(btn.key)}
                                 className={`px-4 py-2 text-sm font-medium transition-colors ${quickRange === btn.key
-                                        ? "bg-teal-600 text-white"
-                                        : "bg-white text-slate-600 hover:bg-slate-50"
+                                    ? "bg-teal-600 text-white"
+                                    : "bg-white text-slate-600 hover:bg-slate-50"
                                     }`}
                             >
                                 {btn.label}
@@ -179,12 +180,7 @@ export function DashboardClient() {
 
             {/* Loading State */}
             {loading && (
-                <div className="flex items-center justify-center py-20">
-                    <div className="text-center space-y-3">
-                        <Loader2 className="h-8 w-8 animate-spin text-teal-600 mx-auto" />
-                        <p className="text-sm text-slate-500">กำลังโหลดข้อมูล...</p>
-                    </div>
-                </div>
+                <SpinnerFullPage label="กำลังโหลดข้อมูล..." />
             )}
 
             {/* Dashboard Content */}
@@ -222,11 +218,11 @@ export function DashboardClient() {
 
             {/* Empty State */}
             {!loading && !data && (
-                <div className="py-20 text-center">
-                    <LayoutDashboard className="mx-auto h-12 w-12 text-slate-300" />
-                    <h3 className="mt-3 text-sm font-semibold text-slate-700">ไม่สามารถโหลดข้อมูลได้</h3>
-                    <p className="mt-1 text-sm text-slate-400">กรุณาลองใหม่อีกครั้ง</p>
-                </div>
+                <EmptyState
+                    icon={LayoutDashboard}
+                    message="ไม่สามารถโหลดข้อมูลได้"
+                    description="กรุณาลองใหม่อีกครั้ง"
+                />
             )}
         </div>
     );

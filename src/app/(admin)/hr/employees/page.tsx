@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Plus, UserCog, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { EmptyState } from "@/components/shared";
 import { Prisma } from "@prisma/client";
 import { EmployeeFilters } from "./EmployeeFilters";
 import { format } from "date-fns";
@@ -128,17 +129,19 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                 </div>
 
                 {staffList.length === 0 && (
-                    <div className="py-16 text-center">
-                        <UserCog className="mx-auto h-12 w-12 text-slate-300" />
-                        <h3 className="mt-3 text-sm font-semibold text-slate-900">ไม่พบข้อมูลพนักงาน</h3>
-                        <p className="mt-1 text-sm text-slate-500">เริ่มเพิ่มพนักงานคนแรกได้เลย</p>
-                        <Link href="/hr/employees/create" className="mt-4 inline-block">
-                            <Button variant="outline" size="sm" className="text-teal-600 border-teal-200 hover:bg-teal-50">
-                                <Plus className="mr-2 h-4 w-4" />
-                                เพิ่มพนักงาน
-                            </Button>
-                        </Link>
-                    </div>
+                    <EmptyState
+                        icon={UserCog}
+                        message="ไม่พบข้อมูลพนักงาน"
+                        description="เริ่มเพิ่มพนักงานคนแรกได้เลย"
+                        action={
+                            <Link href="/hr/employees/create">
+                                <Button variant="outline" size="sm" className="text-teal-600 border-teal-200 hover:bg-teal-50">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    เพิ่มพนักงาน
+                                </Button>
+                            </Link>
+                        }
+                    />
                 )}
             </div>
 

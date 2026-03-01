@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import Link from "next/link";
 import { Plus, Users, Search, Pencil, Trash2 } from "lucide-react";
+import { EmptyState } from "@/components/shared";
 import { DeleteCustomerButton } from "./DeleteCustomerButton";
 
 const PAGE_SIZE = 20;
@@ -113,8 +114,11 @@ export default async function CustomersPage({
                             ))}
                             {customers.length === 0 && (
                                 <tr>
-                                    <td colSpan={7} className="p-8 text-center text-slate-400 text-sm">
-                                        {search ? 'ไม่พบลูกค้าที่ค้นหา' : 'ยังไม่มีข้อมูลลูกค้า'}
+                                    <td colSpan={7} className="p-0">
+                                        <EmptyState
+                                            icon={Users}
+                                            message={search ? 'ไม่พบลูกค้าที่ค้นหา' : 'ยังไม่มีข้อมูลลูกค้า'}
+                                        />
                                     </td>
                                 </tr>
                             )}
@@ -134,8 +138,8 @@ export default async function CustomersPage({
                                     key={i + 1}
                                     href={`/finance/customers?page=${i + 1}${search ? `&search=${search}` : ''}`}
                                     className={`min-w-[28px] h-7 flex items-center justify-center rounded-lg text-xs font-medium transition-colors ${page === i + 1
-                                            ? 'bg-teal-600 text-white'
-                                            : 'text-slate-600 hover:bg-slate-100'
+                                        ? 'bg-teal-600 text-white'
+                                        : 'text-slate-600 hover:bg-slate-100'
                                         }`}
                                 >
                                     {i + 1}

@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { format } from "date-fns";
 import { Calendar, MapPin, Plus, Store } from "lucide-react";
 import Link from "next/link";
+import { EmptyState } from "@/components/shared";
 
 import { EventFilters } from "./EventFilters";
 import { Prisma } from "@prisma/client";
@@ -127,10 +128,12 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
                 })}
 
                 {events.length === 0 && (
-                    <div className="col-span-full py-20 text-center rounded-2xl bg-white border border-dashed border-slate-200">
-                        <Store className="mx-auto h-10 w-10 text-slate-300" />
-                        <h3 className="mt-3 text-sm font-semibold text-slate-700">ยังไม่มี Event</h3>
-                        <p className="mt-1 text-sm text-slate-400">เริ่มสร้าง Event แรกของคุณได้เลย</p>
+                    <div className="col-span-full">
+                        <EmptyState
+                            icon={Store}
+                            message="ยังไม่มี Event"
+                            description="เริ่มสร้าง Event แรกของคุณได้เลย"
+                        />
                     </div>
                 )}
             </div>
