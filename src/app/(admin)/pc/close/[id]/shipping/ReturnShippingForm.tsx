@@ -8,12 +8,14 @@ import { createReturnShipment } from "@/actions/channel";
 
 type Props = {
     channelId: string;
+    channelName?: string;
     redirectTo?: string;
 };
 
-export function ReturnShippingForm({ channelId, redirectTo }: Props) {
+export function ReturnShippingForm({ channelId, channelName, redirectTo }: Props) {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState("");
+    const [senderName, setSenderName] = useState(channelName || "");
     const [provider, setProvider] = useState("");
     const [trackingNo, setTrackingNo] = useState("");
     const router = useRouter();
@@ -29,7 +31,7 @@ export function ReturnShippingForm({ channelId, redirectTo }: Props) {
 
         startTransition(async () => {
             try {
-                await createReturnShipment(channelId, { provider, trackingNo });
+                await createReturnShipment(channelId, { provider, trackingNo, senderName });
                 router.push(redirectTo || "/pc/close");
                 router.refresh();
             } catch (e: any) {
@@ -49,6 +51,18 @@ export function ReturnShippingForm({ channelId, redirectTo }: Props) {
             )}
 
             <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                        ผู้ส่งสินค้าคืน
+                    </label>
+                    <input
+                        type="text"
+                        value={senderName}
+                        onChange={(e) => setSenderName(e.target.value)}
+                        placeholder="ชื่อร้าน / Event"
+                        className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors"
+                    />
+                </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                         ผู้ให้บริการขนส่ง

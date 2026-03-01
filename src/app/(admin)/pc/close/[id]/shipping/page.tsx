@@ -218,7 +218,7 @@ export default async function ReturnShippingPage({ params }: Props) {
             </div>
 
             {/* Shipping Form */}
-            <ReturnShippingForm channelId={event.id} />
+            <ReturnShippingForm channelId={event.id} channelName={event.name} />
         </div>
     );
 }
