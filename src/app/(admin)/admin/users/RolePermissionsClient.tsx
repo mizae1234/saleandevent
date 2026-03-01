@@ -4,7 +4,8 @@ import { useState, useEffect, useActionState } from "react";
 import { MENU_SECTIONS } from "@/config/menu";
 import { AVAILABLE_ROLES } from "@/config/roles";
 import { saveRolePermissions } from "@/actions/role-permission-actions";
-import { Shield, Check, Save, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Shield, Check, Save, ChevronDown, ChevronUp } from "lucide-react";
+import { Spinner } from "@/components/shared";
 
 interface RolePermissionData {
     role: string;
@@ -93,7 +94,7 @@ export default function RolePermissionsPage({
                     className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-teal-500 text-white font-semibold text-sm shadow-lg shadow-teal-200/50 hover:shadow-teal-300/50 hover:from-teal-700 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                     {isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Spinner size="sm" />
                     ) : (
                         <Save className="h-4 w-4" />
                     )}

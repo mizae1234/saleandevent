@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Package, AlertTriangle, Loader2, CheckCircle2 } from "lucide-react";
+import { Package, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import { closeChannelStock } from "@/actions/channel";
 
 type StockItem = {
@@ -351,7 +352,7 @@ export function CloseEventClient({ channelId, eventName, stockDetails, redirectT
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                     {isPending ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <Spinner />
                     ) : (
                         <CheckCircle2 className="h-5 w-5" />
                     )}

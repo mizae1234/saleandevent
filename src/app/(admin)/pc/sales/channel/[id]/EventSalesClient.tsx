@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition, useMemo } from "react";
-import { ArrowLeft, Search, XCircle, CheckCircle2, Loader2, Ban, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, Search, XCircle, CheckCircle2, Ban, ChevronDown, ChevronRight } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import Link from "next/link";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
@@ -252,7 +253,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                                                                 }}
                                                                 className="flex-1 py-2 text-xs font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-1"
                                                             >
-                                                                {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Ban className="h-3 w-3" />}
+                                                                {isPending ? <Spinner size="xs" /> : <Ban className="h-3 w-3" />}
                                                                 ยืนยันยกเลิก
                                                             </button>
                                                         </div>

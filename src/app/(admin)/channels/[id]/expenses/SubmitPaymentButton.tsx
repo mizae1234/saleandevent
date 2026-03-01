@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Loader2, CheckCircle2 } from "lucide-react";
+import { Send, CheckCircle2 } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import { submitForPaymentApproval } from "@/actions/channel";
 import { useToast } from "@/components/ui/toast";
 
@@ -55,7 +56,7 @@ export function SubmitPaymentButton({ channelId, status }: { channelId: string; 
                     disabled={loading}
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 disabled:opacity-50 transition-colors"
                 >
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                    {loading ? <Spinner size="sm" /> : <CheckCircle2 className="h-4 w-4" />}
                     {loading ? 'กำลังส่ง...' : 'ยืนยัน'}
                 </button>
                 <button

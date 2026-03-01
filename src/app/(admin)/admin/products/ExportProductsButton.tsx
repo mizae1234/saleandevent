@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { FileSpreadsheet, Loader2 } from "lucide-react";
+import { FileSpreadsheet } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import { useSearchParams } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 
@@ -83,7 +84,7 @@ export function ExportProductsButton() {
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl shadow-sm shadow-emerald-200/50 transition-colors disabled:opacity-50"
         >
             {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Spinner size="sm" />
             ) : (
                 <FileSpreadsheet className="h-4 w-4" />
             )}

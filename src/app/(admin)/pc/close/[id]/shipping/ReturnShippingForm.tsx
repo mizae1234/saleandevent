@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Truck, Loader2 } from "lucide-react";
+import { Truck } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import { createReturnShipment } from "@/actions/channel";
 
 type Props = {
@@ -95,7 +96,7 @@ export function ReturnShippingForm({ channelId, redirectTo }: Props) {
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-teal-600 text-white font-medium hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                     {isPending ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <Spinner />
                     ) : (
                         <Truck className="h-5 w-5" />
                     )}

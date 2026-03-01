@@ -2,7 +2,8 @@
 
 import { useActionState } from "react";
 import { createProduct, updateProduct } from "@/actions/product-actions";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import Link from "next/link";
 
 interface ProductFormProps {
@@ -210,7 +211,7 @@ export function ProductForm({ mode, product }: ProductFormProps) {
                         className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-teal-500 text-white font-semibold text-sm shadow-lg shadow-teal-200/50 hover:shadow-teal-300/50 hover:from-teal-700 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                         {isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Spinner size="sm" />
                         ) : (
                             <Save className="h-4 w-4" />
                         )}

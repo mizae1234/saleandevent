@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import Link from "next/link";
 import { useTransition } from "react";
 import { createCustomer, updateCustomer } from "@/actions/customer-actions";
@@ -159,7 +160,7 @@ export function CustomerForm({ customer, isEdit }: { customer?: CustomerData; is
                         className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
                     >
                         {isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Spinner size="sm" />
                         ) : (
                             <Save className="h-4 w-4" />
                         )}

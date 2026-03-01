@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useTransition, useRef } from "react";
-import { Save, ArrowLeft, Loader2, Users, Star, Package, Search, ChevronDown } from "lucide-react";
+import { Save, ArrowLeft, Users, Star, Package, Search, ChevronDown } from "lucide-react";
+import { SpinnerFullPage } from "@/components/shared";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateChannelWithDetails } from "@/actions/channel";
@@ -163,7 +164,7 @@ export default function EditEventClient({ channelId }: { channelId: string }) {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+                <SpinnerFullPage />
             </div>
         );
     }

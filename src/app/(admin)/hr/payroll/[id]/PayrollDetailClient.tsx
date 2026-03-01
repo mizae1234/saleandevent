@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
-import { ArrowLeft, Banknote, CreditCard, Users, CheckCircle2, Circle, Loader2, FileCheck, Clock, Download } from 'lucide-react';
+import { ArrowLeft, Banknote, CreditCard, Users, CheckCircle2, Circle, FileCheck, Clock, Download } from 'lucide-react';
+import { Spinner } from '@/components/shared';
 import Link from 'next/link';
 import { toggleWagePaid, toggleCommissionPaid, markAllWagePaid, markAllCommissionPaid, updateStaffDailyRate } from '@/actions/channel';
 import * as XLSX from 'xlsx';
@@ -263,7 +264,7 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                             disabled={isPending}
                             className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${allWagePaid ? 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
                         >
-                            {loadingId === 'allW' ? <Loader2 className="h-3 w-3 animate-spin" /> : allWagePaid ? <Circle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                            {loadingId === 'allW' ? <Spinner size="xs" /> : allWagePaid ? <Circle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
                             {allWagePaid ? 'ยกเลิกค่าแรง' : 'โอนค่าแรงทั้งหมด'}
                         </button>
                         <button
@@ -271,7 +272,7 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                             disabled={isPending}
                             className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${allComPaid ? 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100' : 'bg-purple-600 text-white hover:bg-purple-700'}`}
                         >
-                            {loadingId === 'allC' ? <Loader2 className="h-3 w-3 animate-spin" /> : allComPaid ? <Circle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                            {loadingId === 'allC' ? <Spinner size="xs" /> : allComPaid ? <Circle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
                             {allComPaid ? 'ยกเลิกคอม' : 'โอนคอมทั้งหมด'}
                         </button>
                     </div>
@@ -310,7 +311,7 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                                                 title={row.isWagePaid ? `โอนค่าแรงแล้ว ${row.wagePaidAt ? format(new Date(row.wagePaidAt), 'd MMM yy HH:mm', { locale: th }) : ''}` : 'ยังไม่โอนค่าแรง'}
                                             >
                                                 {loadingId === `w-${row.channelStaffId}` ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                                                    <Spinner size="sm" className="text-slate-400" />
                                                 ) : row.isWagePaid ? (
                                                     <CheckCircle2 className="h-4 w-4 text-blue-600" />
                                                 ) : (
@@ -326,7 +327,7 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                                                 title={row.isCommissionPaid ? `โอนคอมแล้ว ${row.commissionPaidAt ? format(new Date(row.commissionPaidAt), 'd MMM yy HH:mm', { locale: th }) : ''}` : 'ยังไม่โอนคอม'}
                                             >
                                                 {loadingId === `c-${row.channelStaffId}` ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                                                    <Spinner size="sm" className="text-slate-400" />
                                                 ) : row.isCommissionPaid ? (
                                                     <CheckCircle2 className="h-4 w-4 text-purple-600" />
                                                 ) : (

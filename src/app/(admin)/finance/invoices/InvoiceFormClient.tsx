@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { createInvoice, updateInvoice, submitInvoice } from "@/actions/invoice-actions";
 import { useRouter } from "next/navigation";
-import { Save, Send, RotateCcw, Percent, Loader2 } from "lucide-react";
+import { Save, Send, RotateCcw, Percent } from "lucide-react";
+import { SpinnerFullPage } from "@/components/shared";
 import { useToast } from "@/components/ui/toast";
 import { numberToThaiText } from "@/lib/thai-baht-text";
 
@@ -198,7 +199,7 @@ export function InvoiceFormClient({
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-2xl p-8 w-80 space-y-4">
                         <div className="flex items-center justify-center">
-                            <Loader2 className="h-8 w-8 text-teal-600 animate-spin" />
+                            <SpinnerFullPage />
                         </div>
                         <p className="text-center text-sm font-medium text-slate-700">
                             กำลังบันทึก Invoice...

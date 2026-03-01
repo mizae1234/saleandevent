@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Loader2 } from "lucide-react";
+import { Download } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import { useToast } from "@/components/ui/toast";
 import { generateInvoicePdf, type InvoicePdfData } from "@/lib/invoice-pdf";
 
@@ -38,7 +39,7 @@ export function InvoicePdfButton({ invoiceId, invoiceNumber }: InvoicePdfButtonP
             title={`Download ${invoiceNumber || "Invoice"}`}
         >
             {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Spinner size="sm" />
             ) : (
                 <Download className="h-4 w-4" />
             )}

@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { confirmReceiving } from '@/actions/stock-request';
-import { CheckCircle2, AlertTriangle, Package, ClipboardCheck, Loader2 } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Package, ClipboardCheck } from 'lucide-react';
+import { Spinner } from '@/components/shared';
 import { useToast } from '@/components/ui/toast';
 
 interface Allocation {
@@ -305,7 +306,7 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
                         <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-slate-600 flex items-center gap-2">
-                                    <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+                                    <Spinner size="sm" className="text-emerald-600" />
                                     กำลังบันทึกการรับสินค้า...
                                 </span>
                                 <span className="font-bold text-emerald-700">{Math.round(progress)}%</span>

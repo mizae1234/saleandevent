@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import { approvePayment, closeChannelManual } from "@/actions/channel";
 import { useToast } from "@/components/ui/toast";
 
@@ -40,7 +41,7 @@ export function PaymentApprovalActions({ channelId, status }: { channelId: strin
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 text-sm font-semibold disabled:opacity-50 transition-colors"
                     >
                         {loading === 'approve' ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Spinner size="sm" />
                         ) : (
                             <CheckCircle2 className="h-4 w-4" />
                         )}
@@ -56,7 +57,7 @@ export function PaymentApprovalActions({ channelId, status }: { channelId: strin
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 text-white rounded-xl hover:bg-slate-900 text-sm font-semibold disabled:opacity-50 transition-colors"
                     >
                         {loading === 'close' ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Spinner size="sm" />
                         ) : (
                             <XCircle className="h-4 w-4" />
                         )}

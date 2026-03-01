@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
+import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import { confirmReturnReceived } from "@/actions/channel";
 
 type Props = {
@@ -70,7 +71,7 @@ export function ConfirmReturnClient({ channelId, totalReturn }: Props) {
                             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             {isPending ? (
-                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <Spinner />
                             ) : (
                                 <CheckCircle2 className="h-5 w-5" />
                             )}

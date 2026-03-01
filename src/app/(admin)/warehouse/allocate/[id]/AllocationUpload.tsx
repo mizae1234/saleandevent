@@ -3,7 +3,8 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { uploadAllocation } from '@/actions/stock-request';
-import { Upload, CheckCircle2, AlertTriangle, FileSpreadsheet, X, Download, Trash2, Loader2 } from 'lucide-react';
+import { Upload, CheckCircle2, AlertTriangle, FileSpreadsheet, X, Download, Trash2 } from 'lucide-react';
+import { Spinner } from '@/components/shared';
 import * as XLSX from 'xlsx';
 
 interface Props {
@@ -360,7 +361,7 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
                 <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
                     <div className="flex items-center justify-between text-sm">
                         <span className="text-slate-600 flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+                            <Spinner size="sm" className="text-indigo-600" />
                             กำลังอัปโหลด...
                         </span>
                         <span className="font-bold text-indigo-700">{progress}%</span>
