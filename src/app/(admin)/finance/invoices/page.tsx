@@ -1,24 +1,18 @@
 import { getChannelsForInvoice } from "@/actions/invoice-actions";
 import Link from "next/link";
 import { FileText, Search, ChevronRight } from "lucide-react";
+import { PageHeader, EmptyState } from "@/components/shared";
 
 export default async function InvoicesPage() {
     const channels = await getChannelsForInvoice();
 
     return (
         <div className="max-w-6xl mx-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                        <FileText className="h-6 w-6 text-teal-600" />
-                        ใบแจ้งหนี้ (Invoice)
-                    </h1>
-                    <p className="text-sm text-slate-500 mt-1">
-                        เลือก Event เพื่อจัดการใบแจ้งหนี้
-                    </p>
-                </div>
-            </div>
+            <PageHeader
+                icon={FileText}
+                title="ใบแจ้งหนี้ (Invoice)"
+                subtitle="เลือก Event เพื่อจัดการใบแจ้งหนี้"
+            />
 
             {/* Channel List */}
             <div className="space-y-3">
@@ -62,11 +56,12 @@ export default async function InvoicesPage() {
                 ))}
 
                 {channels.length === 0 && (
-                    <div className="bg-white rounded-xl border border-slate-100 p-12 text-center">
-                        <FileText className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                        <p className="text-slate-500 text-sm">ยังไม่มี Event ที่มีการจัดส่งสินค้า</p>
-                        <p className="text-slate-400 text-xs mt-1">เมื่อมีการจัดส่งสินค้าไปยัง Event แล้ว จะแสดงที่นี่</p>
-                    </div>
+                    <EmptyState
+                        icon={FileText}
+                        message="ยังไม่มี Event ที่มีการจัดส่งสินค้า"
+                        description="เมื่อมีการจัดส่งสินค้าไปยัง Event แล้ว จะแสดงที่นี่"
+                        className="py-12"
+                    />
                 )}
             </div>
         </div>

@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Plus, Tag, Pencil, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { EmptyState } from "@/components/shared";
+import { EmptyState, PageHeader } from "@/components/shared";
 import { Prisma } from "@prisma/client";
 import { ProductFilters } from "./ProductFilters";
 import { DeleteProductButton } from "./DeleteProductButton";
@@ -65,25 +65,22 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
-                        <Tag className="h-8 w-8 text-teal-600" />
-                        จัดการสินค้า
-                    </h2>
-                    <p className="text-slate-500 mt-1">เพิ่ม แก้ไข และจัดการสินค้าทั้งหมดในระบบ</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <ExportProductsButton />
-                    <Link href="/admin/products/create">
-                        <Button className="bg-teal-600 hover:bg-teal-700 text-white">
-                            <Plus className="mr-2 h-4 w-4" />
-                            เพิ่มสินค้า
-                        </Button>
-                    </Link>
-                </div>
-            </div>
+            <PageHeader
+                icon={Tag}
+                title="จัดการสินค้า"
+                subtitle="เพิ่ม แก้ไข และจัดการสินค้าทั้งหมดในระบบ"
+                actions={
+                    <div className="flex items-center gap-3">
+                        <ExportProductsButton />
+                        <Link href="/admin/products/create">
+                            <Button className="bg-teal-600 hover:bg-teal-700 text-white">
+                                <Plus className="mr-2 h-4 w-4" />
+                                เพิ่มสินค้า
+                            </Button>
+                        </Link>
+                    </div>
+                }
+            />
 
             {/* Filters */}
             <ProductFilters />

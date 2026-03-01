@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import Link from "next/link";
 import { Plus, Users, Search, Pencil, Trash2 } from "lucide-react";
-import { EmptyState } from "@/components/shared";
+import { EmptyState, PageHeader } from "@/components/shared";
 import { DeleteCustomerButton } from "./DeleteCustomerButton";
 
 const PAGE_SIZE = 20;
@@ -42,23 +42,20 @@ export default async function CustomersPage({
 
     return (
         <div className="max-w-6xl mx-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                        <Users className="h-6 w-6 text-teal-600" />
-                        จัดการลูกค้า
-                    </h1>
-                    <p className="text-sm text-slate-500 mt-1">ทั้งหมด {total} ราย</p>
-                </div>
-                <Link
-                    href="/finance/customers/create"
-                    className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm font-medium transition-colors shadow-sm"
-                >
-                    <Plus className="h-4 w-4" />
-                    เพิ่มลูกค้า
-                </Link>
-            </div>
+            <PageHeader
+                icon={Users}
+                title="จัดการลูกค้า"
+                subtitle={`ทั้งหมด ${total} ราย`}
+                actions={
+                    <Link
+                        href="/finance/customers/create"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm font-medium transition-colors shadow-sm"
+                    >
+                        <Plus className="h-4 w-4" />
+                        เพิ่มลูกค้า
+                    </Link>
+                }
+            />
 
             {/* Search */}
             <form className="mb-4">

@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { Package, MapPin, ArrowRight, Calendar, TrendingUp, Store } from "lucide-react";
 import Link from "next/link";
+import { PageHeader, EmptyState } from "@/components/shared";
 
 async function getActiveEventsForClose() {
     const events = await db.salesChannel.findMany({
@@ -49,11 +50,11 @@ export default async function CloseEventListPage() {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900">ปิดยอด/ส่งคืน</h1>
-                <p className="text-slate-500">เลือก Event ที่ต้องการปิดยอดและส่งคืนสินค้า</p>
-            </div>
+            <PageHeader
+                icon={Store}
+                title="ปิดยอด/ส่งคืน"
+                subtitle="เลือก Event ที่ต้องการปิดยอดและส่งคืนสินค้า"
+            />
 
             {/* Active Events */}
             <section>
@@ -63,11 +64,12 @@ export default async function CloseEventListPage() {
                 </h2>
 
                 {events.length === 0 ? (
-                    <div className="rounded-xl bg-white p-12 text-center shadow-sm">
-                        <Package className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                        <p className="text-slate-500">ไม่มี Event ที่พร้อมปิดยอด</p>
-                        <p className="text-sm text-slate-400 mt-1">Event ต้องอยู่ในสถานะ Active จึงปิดยอดได้</p>
-                    </div>
+                    <EmptyState
+                        icon={Package}
+                        message="ไม่มี Event ที่พร้อมปิดยอด"
+                        description="Event ต้องอยู่ในสถานะ Active จึงปิดยอดได้"
+                        className="py-12"
+                    />
                 ) : (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {events.map((event) => (

@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { format } from "date-fns";
 import { Calendar, MapPin, Plus, Store } from "lucide-react";
 import Link from "next/link";
-import { EmptyState } from "@/components/shared";
+import { EmptyState, PageHeader } from "@/components/shared";
 
 import { EventFilters } from "./EventFilters";
 import { Prisma } from "@prisma/client";
@@ -69,20 +69,20 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-900">ช่องทางการขาย</h2>
-                    <p className="text-sm text-slate-500 mt-0.5">จัดการข้อมูล Event/สาขา/ออกบูธ</p>
-                </div>
-                <Link
-                    href="/channels/create"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-xl shadow-sm shadow-teal-200/50 transition-colors"
-                >
-                    <Plus className="h-4 w-4" />
-                    สร้าง Event ใหม่
-                </Link>
-            </div>
+            <PageHeader
+                icon={Store}
+                title="ช่องทางการขาย"
+                subtitle="จัดการข้อมูล Event/สาขา/ออกบูธ"
+                actions={
+                    <Link
+                        href="/channels/create"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-xl shadow-sm shadow-teal-200/50 transition-colors"
+                    >
+                        <Plus className="h-4 w-4" />
+                        สร้าง Event ใหม่
+                    </Link>
+                }
+            />
 
             <EventFilters />
 

@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Plus, UserCog, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { EmptyState } from "@/components/shared";
+import { EmptyState, PageHeader } from "@/components/shared";
 import { Prisma } from "@prisma/client";
 import { EmployeeFilters } from "./EmployeeFilters";
 import { format } from "date-fns";
@@ -59,22 +59,19 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
-                        <UserCog className="h-8 w-8 text-teal-600" />
-                        จัดการพนักงาน
-                    </h2>
-                    <p className="text-slate-500 mt-1">เพิ่ม แก้ไข และจัดการข้อมูลพนักงานทั้งหมด</p>
-                </div>
-                <Link href="/hr/employees/create">
-                    <Button className="bg-teal-600 hover:bg-teal-700 text-white">
-                        <Plus className="mr-2 h-4 w-4" />
-                        เพิ่มพนักงาน
-                    </Button>
-                </Link>
-            </div>
+            <PageHeader
+                icon={UserCog}
+                title="จัดการพนักงาน"
+                subtitle="เพิ่ม แก้ไข และจัดการข้อมูลพนักงานทั้งหมด"
+                actions={
+                    <Link href="/hr/employees/create">
+                        <Button className="bg-teal-600 hover:bg-teal-700 text-white">
+                            <Plus className="mr-2 h-4 w-4" />
+                            เพิ่มพนักงาน
+                        </Button>
+                    </Link>
+                }
+            />
 
             {/* Filters */}
             <EmployeeFilters />

@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { Package, Truck, ArrowRight, History, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { PageHeader, EmptyState } from "@/components/shared";
 
 export default async function PCReceivePage() {
     const [shippedRequests, receivedRequests] = await Promise.all([
@@ -33,16 +34,14 @@ export default async function PCReceivePage() {
         <div className="p-6 max-w-4xl mx-auto space-y-8">
             {/* Pending Section */}
             <section>
-                <div className="mb-4">
-                    <h1 className="text-2xl font-bold text-slate-900">รับสินค้า</h1>
-                    <p className="text-sm text-slate-500">{shippedRequests.length} รายการรอรับ</p>
-                </div>
+                <PageHeader
+                    icon={Package}
+                    title="รับสินค้า"
+                    subtitle={`${shippedRequests.length} รายการรอรับ`}
+                />
 
                 {shippedRequests.length === 0 ? (
-                    <div className="bg-white rounded-xl p-12 text-center shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100">
-                        <Package className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                        <p className="text-slate-500">ไม่มีสินค้ารอรับ</p>
-                    </div>
+                    <EmptyState icon={Package} message="ไม่มีสินค้ารอรับ" className="py-12" />
                 ) : (
                     <div className="space-y-3">
                         {shippedRequests.map(req => {
