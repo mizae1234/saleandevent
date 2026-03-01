@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useTransition } from "react";
-import { Users, Plus, X, Search, Loader2 } from "lucide-react";
+import { Users, Plus, X, Search } from "lucide-react";
 import { addStaffToChannel, removeStaffFromChannel } from "@/actions/channel";
 import { useToast } from "@/components/ui/toast";
+import { Spinner, ConfirmDialog } from "@/components/shared";
 
 interface StaffAssignment {
     id: string; // channelStaff id
@@ -81,7 +82,6 @@ export function StaffManager({ channelId, staff }: Props) {
     };
 
     const handleRemove = (channelStaffId: string) => {
-        if (!confirm("ยืนยันลบพนักงานออกจากช่องทางนี้?")) return;
         setRemoving(channelStaffId);
         startTransition(async () => {
             try {
@@ -133,7 +133,7 @@ export function StaffManager({ channelId, staff }: Props) {
                             <div className="max-h-48 overflow-y-auto">
                                 {loadingStaff ? (
                                     <div className="p-4 text-center">
-                                        <Loader2 className="h-4 w-4 animate-spin mx-auto text-slate-400" />
+                                        <Spinner size="sm" />
                                     </div>
                                 ) : filtered.length === 0 ? (
                                     <div className="p-3 text-xs text-center text-slate-400">
@@ -178,18 +178,26 @@ export function StaffManager({ channelId, staff }: Props) {
                         {cs.isMain && (
                             <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">หัวหน้า</span>
                         )}
-                        <button
-                            onClick={() => handleRemove(cs.id)}
-                            disabled={removing === cs.id || isPending}
-                            className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
+                        <ConfirmDialog
+                            trigger={
+                                <button
+                                    disabled={removing === cs.id || isPending}
+                                    className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
+                                    title="ลบพนักงาน"
+                                >
+                                    {removing === cs.id ? (
+                                        <Spinner size="xs" />
+                                    ) : (
+                                        <X className="h-3.5 w-3.5" />
+                                    )}
+                                </button>
+                            }
                             title="ลบพนักงาน"
-                        >
-                            {removing === cs.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                                <X className="h-3.5 w-3.5" />
-                            )}
-                        </button>
+                            message={`ยืนยันลบ ${cs.staff.name} ออกจากช่องทางนี้?`}
+                            confirmText="ลบ"
+                            variant="danger"
+                            onConfirm={() => handleRemove(cs.id)}
+                        />
                     </div>
                 ))}
                 {staff.length === 0 && (

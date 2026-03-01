@@ -3,8 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { closeChannelManual } from "@/actions/channel";
-import { Package, Power, CheckCircle, AlertTriangle, Loader2, DollarSign } from "lucide-react";
+import { Package, Power, CheckCircle, AlertTriangle, DollarSign } from "lucide-react";
 import Link from "next/link";
+import { Spinner } from "@/components/shared";
 import { useToast } from "@/components/ui/toast";
 import {
     AlertDialog,
@@ -115,7 +116,7 @@ export function EventOperations({ channelId, status }: Props) {
                             <AlertDialogFooter>
                                 <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
                                 <AlertDialogAction onClick={handleCloseEvent} className="bg-slate-900 text-white hover:bg-slate-800" disabled={isPending}>
-                                    {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                    {isPending ? <Spinner size="sm" className="mr-2" /> : null}
                                     ยืนยันปิดงาน
                                 </AlertDialogAction>
                             </AlertDialogFooter>

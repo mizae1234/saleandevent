@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition, useRef, useEffect } from "react";
-import { Pencil, Save, X, Search, ChevronDown, Loader2 } from "lucide-react";
+import { Pencil, Save, X, Search, ChevronDown } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import { useRouter } from "next/navigation";
 
 interface Customer {
@@ -255,7 +256,7 @@ export default function ChannelBasicInfoEditor(props: Props) {
                     disabled={isPending || !name.trim() || !location.trim()}
                     className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 text-xs font-medium transition-colors"
                 >
-                    {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    {isPending ? <Spinner size="xs" /> : <Save className="h-3.5 w-3.5" />}
                     {isPending ? 'กำลังบันทึก...' : 'บันทึก'}
                 </button>
                 <button onClick={handleCancel} className="px-3 py-2 text-xs text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Loader2, Download } from "lucide-react";
+import { FileText, Download } from "lucide-react";
+import { Spinner } from "@/components/shared";
 import { useToast } from "@/components/ui/toast";
 import { generateInvoicePdf, type InvoicePdfData } from "@/lib/invoice-pdf";
 
@@ -65,7 +66,7 @@ export function InvoiceDownloadButton({ channelId, channelName }: Props) {
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium disabled:opacity-50 transition-colors"
             >
                 {loading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Spinner size="sm" />
                 ) : (
                     <FileText className="h-4 w-4" />
                 )}

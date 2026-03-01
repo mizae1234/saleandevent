@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Package, ClipboardList, Truck, ChevronLeft, ChevronRight } from "lucide-react";
+import { EmptyState } from "@/components/shared";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 
@@ -145,7 +146,7 @@ export function EventStockTabs({ stock, stockRequests }: Props) {
             {/* Tab: Stock */}
             {activeTab === 'stock' && (
                 stock.length === 0 ? (
-                    <div className="p-6 text-center text-sm text-slate-400">ยังไม่มีสต็อก</div>
+                    <EmptyState icon={Package} message="ยังไม่มีสต็อก" className="py-6" />
                 ) : (
                     <div>
                         <div className="overflow-x-auto">
@@ -222,8 +223,8 @@ export function EventStockTabs({ stock, stockRequests }: Props) {
                                             key={i + 1}
                                             onClick={() => setStockPage(i + 1)}
                                             className={`min-w-[28px] h-7 rounded-lg text-xs font-medium transition-colors ${stockPage === i + 1
-                                                    ? 'bg-teal-600 text-white'
-                                                    : 'text-slate-600 hover:bg-slate-100'
+                                                ? 'bg-teal-600 text-white'
+                                                : 'text-slate-600 hover:bg-slate-100'
                                                 }`}
                                         >
                                             {i + 1}
@@ -247,7 +248,7 @@ export function EventStockTabs({ stock, stockRequests }: Props) {
             {activeTab === 'requests' && (
                 <div className="divide-y divide-slate-100">
                     {stockRequests.length === 0 ? (
-                        <div className="p-6 text-center text-sm text-slate-400">ยังไม่มีคำขอสินค้า</div>
+                        <EmptyState icon={ClipboardList} message="ยังไม่มีคำขอสินค้า" className="py-6" />
                     ) : (
                         stockRequests.map(req => {
                             const reqStatus = requestStatusConfig[req.status] || { label: req.status, color: 'bg-slate-100 text-slate-600' };

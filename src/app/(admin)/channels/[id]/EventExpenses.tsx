@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition, useOptimistic } from "react";
-import { Plus, Receipt, Loader2, Trash2 } from "lucide-react";
+import { Plus, Receipt, Trash2 } from "lucide-react";
+import { Spinner, EmptyState } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -205,7 +206,7 @@ export function EventExpenses({ channelId, expenses, readonly = false }: Props) 
                                 </div>
                                 <DialogFooter className="mt-4">
                                     <Button type="submit" className="bg-teal-600 text-white hover:bg-teal-700 w-full transition-colors" disabled={isPending}>
-                                        {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                        {isPending ? <Spinner size="sm" className="mr-2" /> : null}
                                         บันทึก
                                     </Button>
                                 </DialogFooter>
@@ -256,9 +257,11 @@ export function EventExpenses({ channelId, expenses, readonly = false }: Props) 
                     ))}
                 </div>
             ) : (
-                <p className="text-center text-slate-400 py-8 text-sm border-2 border-dashed border-slate-100 rounded-lg">
-                    ยังไม่มีรายการค่าใช้จ่าย
-                </p>
+                <EmptyState
+                    icon={Receipt}
+                    message="ยังไม่มีรายการค่าใช้จ่าย"
+                    className="py-8"
+                />
             )}
 
             {/* Delete Confirmation Dialog */}
@@ -281,7 +284,7 @@ export function EventExpenses({ channelId, expenses, readonly = false }: Props) 
                                 className="bg-red-600 hover:bg-red-700 text-white"
                                 disabled={isPending}
                             >
-                                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                {isPending ? <Spinner size="sm" className="mr-2" /> : null}
                                 ยืนยันลบ
                             </AlertDialogAction>
                         </AlertDialogFooter>
