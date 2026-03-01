@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
-import { confirmReturnReceived } from "@/actions/channel-actions";
+import { confirmReturnReceived } from "@/actions/channel";
 
 type Props = {
     channelId: string;

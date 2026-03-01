@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Coins, Loader2, DollarSign, Users, Save, CheckCircle2 } from "lucide-react";
-import { getChannelCompensationSummary, saveStaffCompensation } from "@/actions/channel-actions";
+import { getChannelCompensationSummary, saveStaffCompensation } from "@/actions/channel";
 
 type StaffSummary = {
     channelStaffId: string;

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { closeChannelManual } from "@/actions/channel-actions";
+import { closeChannelManual } from "@/actions/channel";
 import { Package, Power, CheckCircle, AlertTriangle, Loader2, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/toast";

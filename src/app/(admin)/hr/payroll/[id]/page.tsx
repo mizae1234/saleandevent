@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
-import { getChannelCompensationSummary } from "@/actions/channel-actions";
+import { getChannelCompensationSummary } from "@/actions/channel";
 import PayrollDetailClient from "./PayrollDetailClient";
 
 export default async function PayrollDetailPage({ params }: { params: Promise<{ id: string }> }) {

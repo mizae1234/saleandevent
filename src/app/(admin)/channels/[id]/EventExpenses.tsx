@@ -31,7 +31,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { addChannelExpense, removeChannelExpense } from "@/actions/channel-actions";
+import { addChannelExpense, removeChannelExpense } from "@/actions/channel";
 import { format } from "date-fns";
 
 type ExpenseItem = {

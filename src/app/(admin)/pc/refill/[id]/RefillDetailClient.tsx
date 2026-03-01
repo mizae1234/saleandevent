@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { ArrowLeft, Package, Clock, CheckCircle, Truck, Pencil, Save, X, MapPin, FileText, Hash } from "lucide-react";
 import Link from "next/link";
-import { updateStockRequest, approveStockRequest, rejectStockRequest } from "@/actions/stock-request-actions";
+import { updateStockRequest, approveStockRequest, rejectStockRequest } from "@/actions/stock-request";
 
 interface Channel {
     id: string;

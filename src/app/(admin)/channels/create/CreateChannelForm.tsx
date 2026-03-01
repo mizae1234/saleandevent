@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { createChannelWithDetails } from '@/actions/channel-actions';
+import { createChannelWithDetails } from '@/actions/channel';
 import { Package, MapPin, Calendar, Users, ChevronRight, Store, CalendarDays, Target, Phone, User, FileText, Hash, Search, ChevronDown } from 'lucide-react';
 
 interface Staff {

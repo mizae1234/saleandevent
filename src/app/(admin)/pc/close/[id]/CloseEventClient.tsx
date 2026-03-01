@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Package, AlertTriangle, Loader2, CheckCircle2 } from "lucide-react";
-import { closeChannelStock } from "@/actions/channel-actions";
+import { closeChannelStock } from "@/actions/channel";
 
 type StockItem = {
     barcode: string;

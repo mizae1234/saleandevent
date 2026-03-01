@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition, useRef } from "react";
 import { Save, ArrowLeft, Loader2, Users, Star, Package, Search, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { updateChannelWithDetails } from "@/actions/channel-actions";
+import { updateChannelWithDetails } from "@/actions/channel";
 
 type Staff = { id: string; name: string; phone: string | null; role: string };
 type Customer = { id: string; code: string; name: string };

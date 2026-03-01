@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition } from "react";
 import { Users, Plus, X, Search, Loader2 } from "lucide-react";
-import { addStaffToChannel, removeStaffFromChannel } from "@/actions/channel-actions";
+import { addStaffToChannel, removeStaffFromChannel } from "@/actions/channel";
 import { useToast } from "@/components/ui/toast";
 
 interface StaffAssignment {

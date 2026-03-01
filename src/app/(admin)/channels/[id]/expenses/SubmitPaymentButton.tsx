@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Send, Loader2, CheckCircle2 } from "lucide-react";
-import { submitForPaymentApproval } from "@/actions/channel-actions";
+import { submitForPaymentApproval } from "@/actions/channel";
 import { useToast } from "@/components/ui/toast";
 
 export function SubmitPaymentButton({ channelId, status }: { channelId: string; status: string }) {

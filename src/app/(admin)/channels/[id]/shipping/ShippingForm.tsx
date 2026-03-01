@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createShipment } from '@/actions/stock-request-actions';
+import { createShipment } from '@/actions/stock-request';
 import { Truck, Send } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 

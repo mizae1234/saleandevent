@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { closeChannelStock, createReturnShipment, confirmReturnReceived, closeChannelManual, submitChannel, approveChannel } from '@/actions/channel-actions';
-import { createStockRequest, submitStockRequest } from '@/actions/stock-request-actions';
+import { closeChannelStock, createReturnShipment, confirmReturnReceived, closeChannelManual, submitChannel, approveChannel } from '@/actions/channel';
+import { createStockRequest, submitStockRequest } from '@/actions/stock-request';
 import { Package, Truck, RotateCcw, CheckCircle2, Plus, Send, ArrowRight } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 

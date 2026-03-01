@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { approveStockRequest, rejectStockRequest } from '@/actions/stock-request-actions';
+import { approveStockRequest, rejectStockRequest } from '@/actions/stock-request';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 

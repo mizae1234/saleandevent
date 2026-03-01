@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Plus, Receipt, Trash2, Loader2, X, Tag, Clock, ChevronDown, CalendarDays, Save, Check, Send, CheckCircle2, Banknote, Lock, Circle } from "lucide-react";
-import { addChannelExpense, removeChannelExpense, updateEmployeeCompensation, submitPayroll } from "@/actions/channel-actions";
+import { addChannelExpense, removeChannelExpense, updateEmployeeCompensation, submitPayroll } from "@/actions/channel";
 import { useRouter } from "next/navigation";
 
 const EXPENSE_CATEGORIES = [

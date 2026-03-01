@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Truck, Loader2 } from "lucide-react";
-import { createReturnShipment } from "@/actions/channel-actions";
+import { createReturnShipment } from "@/actions/channel";
 
 type Props = {
     channelId: string;

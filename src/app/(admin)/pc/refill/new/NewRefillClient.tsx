@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createStockRequest, submitStockRequest } from '@/actions/stock-request-actions';
+import { createStockRequest, submitStockRequest } from '@/actions/stock-request';
 import { ArrowLeft, Send, Package } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import Link from 'next/link';

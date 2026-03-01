@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { uploadAllocation } from '@/actions/stock-request-actions';
+import { uploadAllocation } from '@/actions/stock-request';
 import { Upload, CheckCircle2, AlertTriangle, FileSpreadsheet, X, Download, Trash2, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 

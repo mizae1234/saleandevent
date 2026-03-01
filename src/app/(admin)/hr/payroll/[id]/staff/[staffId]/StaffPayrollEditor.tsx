@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { Banknote, Receipt, Save, Loader2, Check, Plus, X, Trash2, Tag, ChevronDown } from 'lucide-react';
-import { updateEmployeeCompensation, addChannelExpense, removeChannelExpense } from '@/actions/channel-actions';
+import { updateEmployeeCompensation, addChannelExpense, removeChannelExpense } from '@/actions/channel';
 import { useRouter } from 'next/navigation';
 
 const EXPENSE_CATEGORIES = [

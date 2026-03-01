@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { ArrowLeft, Banknote, CreditCard, Users, CheckCircle2, Circle, Loader2, FileCheck, Clock, Download } from 'lucide-react';
 import Link from 'next/link';
-import { toggleWagePaid, toggleCommissionPaid, markAllWagePaid, markAllCommissionPaid, updateStaffDailyRate } from '@/actions/channel-actions';
+import { toggleWagePaid, toggleCommissionPaid, markAllWagePaid, markAllCommissionPaid, updateStaffDailyRate } from '@/actions/channel';
 import * as XLSX from 'xlsx';
 
 type PayrollRow = {

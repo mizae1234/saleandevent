@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { approveChannel } from '@/actions/channel-actions';
+import { approveChannel } from '@/actions/channel';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 

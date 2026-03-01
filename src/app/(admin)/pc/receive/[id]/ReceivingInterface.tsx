@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { confirmReceiving } from '@/actions/stock-request-actions';
+import { confirmReceiving } from '@/actions/stock-request';
 import { CheckCircle2, AlertTriangle, Package, ClipboardCheck, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 
