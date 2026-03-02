@@ -59,7 +59,7 @@ export async function closeChannelStock(
 
 export async function createReturnShipment(
     channelId: string,
-    shipmentData: { provider: string; trackingNo?: string; senderName?: string }
+    shipmentData: { provider: string; trackingNo?: string }
 ) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await db.$transaction(async (tx: any) => {

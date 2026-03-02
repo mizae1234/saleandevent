@@ -15,13 +15,8 @@ export async function uploadAllocation(requestId: string, rows: AllocationRow[],
         throw new Error('Stock request must be in approved status to upload allocation');
     }
 
-    // Validate total packed quantity
+    // Calculate total packed quantity (no blocking — warning shown on client side)
     const totalPacked = rows.reduce((sum, r) => sum + r.packedQuantity, 0);
-    if (totalPacked > request.requestedTotalQuantity && !adminOverride) {
-        throw new Error(
-            `Total packed quantity (${totalPacked}) exceeds requested quantity (${request.requestedTotalQuantity}). Use admin override to proceed.`
-        );
-    }
 
     // Extract product codes — use explicit `code` field if available, fallback to barcode parsing
     const codeSet = [...new Set(rows.map(r => {

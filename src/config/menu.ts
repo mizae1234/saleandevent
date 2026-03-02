@@ -56,6 +56,7 @@ export const MENU_SECTIONS: MenuSection[] = [
         key: "sales_channel",
         title: "Sales Channel (ช่องทางขาย)",
         items: [
+            { title: "Dashboard", href: "/", icon: LayoutDashboard },
             { title: "ภาพรวมช่องทาง", href: "/channels", icon: Calendar },
             { title: "เปิดช่องทางใหม่", href: "/channels/create", icon: PlusCircle },
             { title: "รออนุมัติ", href: "/channels/approvals", icon: Clock },
@@ -99,6 +100,7 @@ export const MENU_SECTIONS: MenuSection[] = [
 
 // Helper: map a route prefix to its menu section key
 export const ROUTE_TO_MENU_KEY: Record<string, string> = {
+    "/": "sales_channel",
     "/pc": "front_office",
     "/channels": "sales_channel",
     "/warehouse": "supply_chain",
