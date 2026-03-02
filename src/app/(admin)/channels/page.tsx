@@ -1,11 +1,13 @@
 import { db } from "@/lib/db";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { Calendar, MapPin, Plus, Store, CalendarDays, Users, ArrowRight, TrendingUp } from "lucide-react";
+import { Calendar, MapPin, Plus, Store, CalendarDays, Users, ArrowRight, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { EmptyState, PageHeader } from "@/components/shared";
 
 import { EventFilters } from "./EventFilters";
+
+const ITEMS_PER_PAGE = 20;
 import { Prisma } from "@prisma/client";
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
@@ -32,6 +34,7 @@ async function getEvents(searchParams: Promise<{ [key: string]: string | string[
     const startDate = typeof params.startDate === 'string' ? params.startDate : undefined;
     const endDate = typeof params.endDate === 'string' ? params.endDate : undefined;
     const type = typeof params.type === 'string' ? params.type : undefined;
+    const page = typeof params.page === 'string' ? Math.max(1, parseInt(params.page) || 1) : 1;
 
     const where: Prisma.SalesChannelWhereInput = {
         AND: []
@@ -62,20 +65,27 @@ async function getEvents(searchParams: Promise<{ [key: string]: string | string[
         });
     }
 
-    const events = await db.salesChannel.findMany({
-        where,
-        orderBy: [{ status: 'asc' }, { startDate: 'desc' }],
-        include: {
-            _count: {
-                select: { sales: true, staff: true },
+    const [events, totalCount] = await Promise.all([
+        db.salesChannel.findMany({
+            where,
+            orderBy: [{ startDate: 'desc' }],
+            skip: (page - 1) * ITEMS_PER_PAGE,
+            take: ITEMS_PER_PAGE,
+            include: {
+                _count: {
+                    select: { sales: true, staff: true },
+                },
+                sales: {
+                    where: { status: 'active' },
+                    select: { totalAmount: true },
+                },
             },
-            sales: {
-                where: { status: 'active' },
-                select: { totalAmount: true },
-            },
-        },
-    });
-    return events;
+        }),
+        db.salesChannel.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+    return { events, totalCount, totalPages, currentPage: page };
 }
 
 function fmt(n: number) {
@@ -83,12 +93,25 @@ function fmt(n: number) {
 }
 
 export default async function EventsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
-    const events = await getEvents(searchParams);
+    const { events, totalCount, totalPages, currentPage } = await getEvents(searchParams);
+    const params = await searchParams;
 
     // Summary stats
-    const totalChannels = events.length;
+    const totalChannels = totalCount;
     const activeChannels = events.filter(e => ['active', 'selling', 'approved'].includes(e.status)).length;
     const totalSales = events.reduce((sum, e) => sum + e.sales.reduce((s, sale) => s + Number(sale.totalAmount), 0), 0);
+
+    // Build pagination URL helper
+    const buildPageUrl = (page: number) => {
+        const p = new URLSearchParams();
+        if (params.q) p.set('q', String(params.q));
+        if (params.type) p.set('type', String(params.type));
+        if (params.startDate) p.set('startDate', String(params.startDate));
+        if (params.endDate) p.set('endDate', String(params.endDate));
+        if (page > 1) p.set('page', String(page));
+        const qs = p.toString();
+        return `/channels${qs ? `?${qs}` : ''}`;
+    };
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
@@ -240,6 +263,51 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
                     </div>
                 )}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-3 flex items-center justify-between">
+                    <p className="text-sm text-slate-500">
+                        แสดง {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} จาก {totalCount} รายการ
+                    </p>
+                    <div className="flex items-center gap-1">
+                        {currentPage > 1 && (
+                            <Link
+                                href={buildPageUrl(currentPage - 1)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                                <ChevronLeft className="h-4 w-4" /> ก่อนหน้า
+                            </Link>
+                        )}
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+                            .map((p, idx, arr) => (
+                                <span key={p}>
+                                    {idx > 0 && arr[idx - 1] !== p - 1 && (
+                                        <span className="px-1 text-slate-300">…</span>
+                                    )}
+                                    <Link
+                                        href={buildPageUrl(p)}
+                                        className={`inline-flex items-center justify-center w-8 h-8 text-sm font-medium rounded-lg transition-colors ${p === currentPage
+                                            ? 'bg-teal-600 text-white'
+                                            : 'text-slate-600 hover:bg-slate-100'
+                                            }`}
+                                    >
+                                        {p}
+                                    </Link>
+                                </span>
+                            ))}
+                        {currentPage < totalPages && (
+                            <Link
+                                href={buildPageUrl(currentPage + 1)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                                ถัดไป <ChevronRight className="h-4 w-4" />
+                            </Link>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
