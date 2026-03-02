@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+
 
 # Rebuild the source code only when needed
 FROM node:20-alpine AS builder
