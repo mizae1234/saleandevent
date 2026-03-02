@@ -1,23 +1,29 @@
 import { db } from "@/lib/db";
 import { format } from "date-fns";
-import { Calendar, MapPin, Plus, Store } from "lucide-react";
+import { th } from "date-fns/locale";
+import { Calendar, MapPin, Plus, Store, CalendarDays, Users, ArrowRight, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { EmptyState, PageHeader } from "@/components/shared";
 
 import { EventFilters } from "./EventFilters";
 import { Prisma } from "@prisma/client";
 
-const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-    draft: { label: "แบบร่าง", bg: "bg-slate-100", text: "text-slate-600" },
-    approved: { label: "อนุมัติ", bg: "bg-emerald-50", text: "text-emerald-700" },
-    active: { label: "กำลังขาย", bg: "bg-blue-50", text: "text-blue-700" },
-    selling: { label: "กำลังขาย", bg: "bg-blue-50", text: "text-blue-700" },
-    packing: { label: "กำลังแพ็ค", bg: "bg-amber-50", text: "text-amber-700" },
-    shipped: { label: "จัดส่งแล้ว", bg: "bg-violet-50", text: "text-violet-700" },
-    received: { label: "รับสินค้าแล้ว", bg: "bg-teal-50", text: "text-teal-700" },
-    returned: { label: "คืนสินค้าแล้ว", bg: "bg-orange-50", text: "text-orange-700" },
-    closed: { label: "ปิดงาน", bg: "bg-slate-100", text: "text-slate-500" },
-    payment_approved: { label: "อนุมัติจ่าย", bg: "bg-emerald-50", text: "text-emerald-700" },
+const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
+    draft: { label: "แบบร่าง", bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200" },
+    approved: { label: "อนุมัติ", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100" },
+    active: { label: "กำลังขาย", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-100" },
+    selling: { label: "กำลังขาย", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-100" },
+    packing: { label: "กำลังแพ็ค", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-100" },
+    shipped: { label: "จัดส่งแล้ว", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-100" },
+    received: { label: "รับสินค้าแล้ว", bg: "bg-teal-50", text: "text-teal-700", border: "border-teal-100" },
+    returned: { label: "คืนสินค้าแล้ว", bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-100" },
+    closed: { label: "ปิดงาน", bg: "bg-slate-100", text: "text-slate-500", border: "border-slate-200" },
+    payment_approved: { label: "อนุมัติจ่าย", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100" },
+};
+
+const TYPE_CONFIG: Record<string, { label: string; icon: typeof CalendarDays; bg: string; iconColor: string }> = {
+    EVENT: { label: "อีเว้นท์", icon: CalendarDays, bg: "bg-violet-50", iconColor: "text-violet-600" },
+    BRANCH: { label: "สาขา", icon: Store, bg: "bg-teal-50", iconColor: "text-teal-600" },
 };
 
 async function getEvents(searchParams: Promise<{ [key: string]: string | string[] | undefined }>) {
@@ -31,7 +37,6 @@ async function getEvents(searchParams: Promise<{ [key: string]: string | string[
         AND: []
     };
 
-    // Filter by type (EVENT / BRANCH)
     if (type) {
         (where.AND as Prisma.SalesChannelWhereInput[]).push({ type });
     }
@@ -59,16 +64,34 @@ async function getEvents(searchParams: Promise<{ [key: string]: string | string[
 
     const events = await db.salesChannel.findMany({
         where,
-        orderBy: [{ status: 'asc' }, { startDate: 'asc' }],
+        orderBy: [{ status: 'asc' }, { startDate: 'desc' }],
+        include: {
+            _count: {
+                select: { sales: true, staff: true },
+            },
+            sales: {
+                where: { status: 'active' },
+                select: { totalAmount: true },
+            },
+        },
     });
     return events;
+}
+
+function fmt(n: number) {
+    return n.toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 export default async function EventsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
     const events = await getEvents(searchParams);
 
+    // Summary stats
+    const totalChannels = events.length;
+    const activeChannels = events.filter(e => ['active', 'selling', 'approved'].includes(e.status)).length;
+    const totalSales = events.reduce((sum, e) => sum + e.sales.reduce((s, sale) => s + Number(sale.totalAmount), 0), 0);
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 max-w-7xl mx-auto">
             <PageHeader
                 icon={Store}
                 title="ช่องทางการขาย"
@@ -84,56 +107,136 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
                 }
             />
 
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-500 to-teal-600 p-5 text-white shadow-lg">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-white/80">ช่องทางทั้งหมด</p>
+                            <p className="text-3xl font-bold mt-1">{totalChannels}</p>
+                            <p className="text-xs text-white/60 mt-1">ช่องทาง</p>
+                        </div>
+                        <div className="rounded-xl p-2.5 bg-teal-400/20">
+                            <Store className="h-6 w-6 text-white" />
+                        </div>
+                    </div>
+                    <div className="absolute -bottom-6 -right-6 h-24 w-24 rounded-full bg-white/5" />
+                </div>
+
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-5 text-white shadow-lg">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-white/80">กำลังเปิดขาย</p>
+                            <p className="text-3xl font-bold mt-1">{activeChannels}</p>
+                            <p className="text-xs text-white/60 mt-1">ช่องทาง</p>
+                        </div>
+                        <div className="rounded-xl p-2.5 bg-emerald-400/20">
+                            <CalendarDays className="h-6 w-6 text-white" />
+                        </div>
+                    </div>
+                    <div className="absolute -bottom-6 -right-6 h-24 w-24 rounded-full bg-white/5" />
+                </div>
+
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-5 text-white shadow-lg">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-white/80">ยอดขายรวม</p>
+                            <p className="text-3xl font-bold mt-1">฿{fmt(totalSales)}</p>
+                            <p className="text-xs text-white/60 mt-1">จากทุกช่องทาง</p>
+                        </div>
+                        <div className="rounded-xl p-2.5 bg-blue-400/20">
+                            <TrendingUp className="h-6 w-6 text-white" />
+                        </div>
+                    </div>
+                    <div className="absolute -bottom-6 -right-6 h-24 w-24 rounded-full bg-white/5" />
+                </div>
+            </div>
+
             <EventFilters />
 
-            {/* Event Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {events.map((event) => {
-                    const status = STATUS_CONFIG[event.status] || { label: event.status, bg: "bg-slate-100", text: "text-slate-600" };
-
-                    return (
-                        <Link
-                            key={event.id}
-                            href={`/channels/${event.id}`}
-                            className="group block rounded-2xl bg-white border border-slate-100 p-5 hover:shadow-lg hover:shadow-slate-200/50 hover:border-slate-200 transition-all duration-200"
-                        >
-                            {/* Top row: Status + Code */}
-                            <div className="flex items-center justify-between mb-3">
-                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${status.bg} ${status.text}`}>
-                                    {status.label}
-                                </span>
-                                <span className="text-[11px] text-slate-400 font-mono">{event.code}</span>
-                            </div>
-
-                            {/* Event name */}
-                            <h3 className="text-base font-bold text-slate-900 mb-3 truncate group-hover:text-teal-700 transition-colors">
-                                {event.name}
-                            </h3>
-
-                            {/* Details */}
-                            <div className="space-y-1.5 text-sm text-slate-500">
-                                <div className="flex items-center gap-2">
-                                    <MapPin className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                                    <span className="truncate">{event.location || '—'}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Calendar className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                                    <span>
-                                        {event.startDate ? format(new Date(event.startDate), "d MMM") : '—'} – {event.endDate ? format(new Date(event.endDate), "d MMM yyyy") : '—'}
-                                    </span>
-                                </div>
-                            </div>
-                        </Link>
-                    );
-                })}
-
-                {events.length === 0 && (
-                    <div className="col-span-full">
+            {/* Channel List */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                {events.length === 0 ? (
+                    <div className="p-8">
                         <EmptyState
                             icon={Store}
                             message="ยังไม่มี Event"
                             description="เริ่มสร้าง Event แรกของคุณได้เลย"
                         />
+                    </div>
+                ) : (
+                    <div className="divide-y divide-slate-50">
+                        {events.map((event) => {
+                            const status = STATUS_CONFIG[event.status] || { label: event.status, bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" };
+                            const typeConf = TYPE_CONFIG[event.type] || TYPE_CONFIG.EVENT;
+                            const TypeIcon = typeConf.icon;
+                            const channelTotalSales = event.sales.reduce((s, sale) => s + Number(sale.totalAmount), 0);
+
+                            return (
+                                <Link
+                                    key={event.id}
+                                    href={`/channels/${event.id}`}
+                                    className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50/80 transition-colors group"
+                                >
+                                    {/* Type Icon */}
+                                    <div className={`flex-shrink-0 p-2.5 rounded-xl ${typeConf.bg}`}>
+                                        <TypeIcon className={`h-5 w-5 ${typeConf.iconColor}`} />
+                                    </div>
+
+                                    {/* Main Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2.5 mb-1">
+                                            <h3 className="text-sm font-bold text-slate-900 truncate group-hover:text-teal-700 transition-colors">
+                                                {event.name}
+                                            </h3>
+                                            <span className="flex-shrink-0 text-[10px] font-mono text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">
+                                                {event.code}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-3 text-xs text-slate-400">
+                                            <span className="flex items-center gap-1">
+                                                <MapPin className="h-3 w-3" />
+                                                {event.location || '—'}
+                                            </span>
+                                            <span className="text-slate-200">·</span>
+                                            <span className="flex items-center gap-1">
+                                                <Calendar className="h-3 w-3" />
+                                                {event.startDate ? format(new Date(event.startDate), "d MMM", { locale: th }) : '—'} – {event.endDate ? format(new Date(event.endDate), "d MMM yy", { locale: th }) : '—'}
+                                            </span>
+                                            {event._count.staff > 0 && (
+                                                <>
+                                                    <span className="text-slate-200">·</span>
+                                                    <span className="flex items-center gap-1">
+                                                        <Users className="h-3 w-3" />
+                                                        {event._count.staff} คน
+                                                    </span>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Sales Amount */}
+                                    <div className="hidden sm:block text-right flex-shrink-0 mr-2">
+                                        {channelTotalSales > 0 ? (
+                                            <>
+                                                <p className="text-sm font-bold text-slate-800">฿{fmt(channelTotalSales)}</p>
+                                                <p className="text-[11px] text-slate-400">{event._count.sales} บิล</p>
+                                            </>
+                                        ) : (
+                                            <p className="text-xs text-slate-300">—</p>
+                                        )}
+                                    </div>
+
+                                    {/* Status Badge */}
+                                    <span className={`flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold ${status.bg} ${status.text} border ${status.border}`}>
+                                        {status.label}
+                                    </span>
+
+                                    {/* Arrow */}
+                                    <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-teal-500 transition-colors flex-shrink-0" />
+                                </Link>
+                            );
+                        })}
                     </div>
                 )}
             </div>
