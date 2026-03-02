@@ -102,21 +102,33 @@ export function RefillListClient({ requests, channels }: Props) {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="bg-white rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100">
-                    <p className="text-xs text-slate-500 uppercase tracking-wider">ทั้งหมด</p>
-                    <p className="text-2xl font-bold text-slate-900 mt-1">{requests.length}</p>
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-600 to-slate-700 p-4 text-white shadow-lg">
+                    <div>
+                        <p className="text-xs font-medium text-white/70">ทั้งหมด</p>
+                        <p className="text-2xl font-bold mt-1">{requests.length}</p>
+                    </div>
+                    <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-white/5" />
                 </div>
-                <div className="bg-white rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-amber-100 bg-gradient-to-br from-amber-50 to-white">
-                    <p className="text-xs text-amber-600 uppercase tracking-wider">รออนุมัติ</p>
-                    <p className="text-2xl font-bold text-amber-700 mt-1">{pendingCount}</p>
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 p-4 text-white shadow-lg">
+                    <div>
+                        <p className="text-xs font-medium text-white/70">รออนุมัติ</p>
+                        <p className="text-2xl font-bold mt-1">{pendingCount}</p>
+                    </div>
+                    <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-white/5" />
                 </div>
-                <div className="bg-white rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-blue-100 bg-gradient-to-br from-blue-50 to-white">
-                    <p className="text-xs text-blue-600 uppercase tracking-wider">กำลังดำเนินการ</p>
-                    <p className="text-2xl font-bold text-blue-700 mt-1">{inProgressCount}</p>
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 text-white shadow-lg">
+                    <div>
+                        <p className="text-xs font-medium text-white/70">กำลังดำเนินการ</p>
+                        <p className="text-2xl font-bold mt-1">{inProgressCount}</p>
+                    </div>
+                    <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-white/5" />
                 </div>
-                <div className="bg-white rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white">
-                    <p className="text-xs text-emerald-600 uppercase tracking-wider">รับแล้ว</p>
-                    <p className="text-2xl font-bold text-emerald-700 mt-1">{completedCount}</p>
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 text-white shadow-lg">
+                    <div>
+                        <p className="text-xs font-medium text-white/70">รับแล้ว</p>
+                        <p className="text-2xl font-bold mt-1">{completedCount}</p>
+                    </div>
+                    <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-white/5" />
                 </div>
             </div>
 

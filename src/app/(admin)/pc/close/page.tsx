@@ -4,22 +4,24 @@ import { th } from "date-fns/locale";
 import { Package, MapPin, ArrowRight, Calendar, TrendingUp, Store } from "lucide-react";
 import Link from "next/link";
 import { PageHeader, EmptyState } from "@/components/shared";
+import { CloseListClient } from "./CloseListClient";
 
-async function getActiveEventsForClose() {
+function fmt(n: number) {
+    return n.toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+async function getEventsForClose() {
     const events = await db.salesChannel.findMany({
         where: {
-            status: 'active'
+            status: { in: ['active', 'selling', 'closed', 'returned', 'shipped', 'received', 'packing'] }
         },
         include: {
-            stock: {
-                select: { quantity: true, soldQuantity: true }
-            },
+            stock: { select: { quantity: true, soldQuantity: true } },
             _count: { select: { sales: true } },
         },
-        orderBy: { endDate: 'asc' }
+        orderBy: { startDate: 'desc' }
     });
 
-    // Single grouped query instead of N+1 aggregates
     const salesAggs = await db.sale.groupBy({
         by: ['channelId'],
         where: {
@@ -34,109 +36,24 @@ async function getActiveEventsForClose() {
         const totalStock = event.stock.reduce((sum, s) => sum + s.quantity, 0);
         const soldQuantity = event.stock.reduce((sum, s) => sum + s.soldQuantity, 0);
         const totalSales = salesMap.get(event.id) || 0;
-
         return {
-            ...event,
+            id: event.id,
+            name: event.name,
+            code: event.code,
+            location: event.location,
+            status: event.status,
+            startDate: event.startDate?.toISOString() || null,
+            endDate: event.endDate?.toISOString() || null,
+            salesCount: event._count.sales,
             totalStock,
             soldQuantity,
             remainingStock: totalStock - soldQuantity,
-            totalSales
+            totalSales,
         };
     });
 }
 
 export default async function CloseEventListPage() {
-    const events = await getActiveEventsForClose();
-
-    return (
-        <div className="space-y-6">
-            <PageHeader
-                icon={Store}
-                title="ปิดยอด/ส่งคืน"
-                subtitle="เลือก Event ที่ต้องการปิดยอดและส่งคืนสินค้า"
-            />
-
-            {/* Active Events */}
-            <section>
-                <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                    <Store className="h-5 w-5 text-emerald-500" />
-                    Event ที่กำลังขาย ({events.length})
-                </h2>
-
-                {events.length === 0 ? (
-                    <EmptyState
-                        icon={Package}
-                        message="ไม่มี Event ที่พร้อมปิดยอด"
-                        description="Event ต้องอยู่ในสถานะ Active จึงปิดยอดได้"
-                        className="py-12"
-                    />
-                ) : (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {events.map((event) => (
-                            <Link
-                                key={event.id}
-                                href={`/pc/close/${event.id}`}
-                                className="block rounded-xl bg-white p-5 shadow-sm hover:shadow-md transition-shadow border border-slate-100"
-                            >
-                                {/* Event Header */}
-                                <div className="flex items-start justify-between mb-4">
-                                    <div>
-                                        <h3 className="font-semibold text-slate-900">{event.name}</h3>
-                                        <p className="text-xs text-slate-400 font-mono">{event.code}</p>
-                                    </div>
-                                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                                        Active
-                                    </span>
-                                </div>
-
-                                {/* Event Info */}
-                                <div className="space-y-2 mb-4">
-                                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                                        <MapPin className="h-4 w-4 text-slate-400" />
-                                        {event.location}
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                                        <Calendar className="h-4 w-4 text-slate-400" />
-                                        {format(new Date(event.startDate!), "d MMM", { locale: th })} - {format(new Date(event.endDate!), "d MMM yyyy", { locale: th })}
-                                    </div>
-                                </div>
-
-                                {/* Stats */}
-                                <div className="grid grid-cols-2 gap-3 mb-4">
-                                    <div className="rounded-lg bg-blue-50 p-3">
-                                        <p className="text-xs text-blue-600 mb-1">ขายแล้ว</p>
-                                        <p className="text-lg font-bold text-blue-700">{event.soldQuantity} <span className="text-sm font-normal">/ {event.totalStock}</span></p>
-                                    </div>
-                                    <div className="rounded-lg bg-emerald-50 p-3">
-                                        <p className="text-xs text-emerald-600 mb-1">ยอดขาย</p>
-                                        <p className="text-lg font-bold text-emerald-700">฿{event.totalSales.toLocaleString()}</p>
-                                    </div>
-                                </div>
-
-                                {/* Remaining Stock Progress */}
-                                <div className="mb-4">
-                                    <div className="flex justify-between text-xs text-slate-500 mb-1">
-                                        <span>คงเหลือ</span>
-                                        <span className="font-medium text-amber-600">{event.remainingStock} ชิ้น</span>
-                                    </div>
-                                    <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                                        <div
-                                            className="h-full bg-amber-400 rounded-full"
-                                            style={{ width: `${(event.remainingStock / event.totalStock) * 100}%` }}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* CTA */}
-                                <div className="flex items-center justify-end gap-2 text-teal-600 font-medium text-sm">
-                                    ปิดยอด
-                                    <ArrowRight className="h-4 w-4" />
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                )}
-            </section>
-        </div>
-    );
+    const events = await getEventsForClose();
+    return <CloseListClient events={events} />;
 }
