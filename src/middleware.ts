@@ -16,9 +16,10 @@ const ROUTE_TO_MENU_KEY: Record<string, string> = {
     '/pc': 'front_office',
     '/channels': 'sales_channel',
     '/warehouse': 'supply_chain',
-    '/finance': 'finance_hr',
-    '/hr': 'finance_hr',
-    '/reports': 'finance_hr',
+    '/finance': 'finance',
+    '/hr': 'hr',
+    '/reports': 'finance',
+    '/dashboard': 'finance',
     '/admin': 'system_admin',
 };
 
@@ -77,20 +78,24 @@ export async function middleware(request: NextRequest) {
 
         // Admin route protection via allowedMenus
         if (allowedMenus.length > 0) {
-            // Find which menu key this route belongs to
-            const matchedPrefix = Object.keys(ROUTE_TO_MENU_KEY).find(prefix =>
-                pathname.startsWith(prefix)
-            );
+            // Check if user has a specific item-level path (e.g., "/hr/employees")
+            const hasItemAccess = allowedMenus.some(m => m.startsWith('/') && pathname.startsWith(m));
 
-            if (matchedPrefix) {
-                const menuKey = ROUTE_TO_MENU_KEY[matchedPrefix];
-                if (!allowedMenus.includes(menuKey)) {
-                    // User doesn't have access to this menu section
-                    // Find the first allowed menu's route
-                    const firstAllowedPrefix = Object.entries(ROUTE_TO_MENU_KEY)
-                        .find(([_, key]) => allowedMenus.includes(key));
-                    const redirectTo = firstAllowedPrefix ? firstAllowedPrefix[0] : '/workspace';
-                    return NextResponse.redirect(new URL(redirectTo, request.url));
+            if (!hasItemAccess) {
+                // Check section-level access
+                const matchedPrefix = Object.keys(ROUTE_TO_MENU_KEY).find(prefix =>
+                    pathname.startsWith(prefix)
+                );
+
+                if (matchedPrefix) {
+                    const menuKey = ROUTE_TO_MENU_KEY[matchedPrefix];
+                    if (!allowedMenus.includes(menuKey)) {
+                        // User doesn't have access to this menu section
+                        const firstAllowedPrefix = Object.entries(ROUTE_TO_MENU_KEY)
+                            .find(([_, key]) => allowedMenus.includes(key));
+                        const redirectTo = firstAllowedPrefix ? firstAllowedPrefix[0] : '/workspace';
+                        return NextResponse.redirect(new URL(redirectTo, request.url));
+                    }
                 }
             }
         } else {

@@ -1,0 +1,1 @@
+ALTER TABLE "staff" ADD COLUMN IF NOT EXISTS "can_view_salary" BOOLEAN NOT NULL DEFAULT false;

@@ -124,12 +124,15 @@ export function ProductForm({ mode, product }: ProductFormProps) {
 
                     {/* Product Type & Price */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormInput
+                        <FormSelect
                             label="ประเภทสินค้า"
                             name="producttype"
                             defaultValue={product?.producttype || ""}
-                            placeholder="เช่น ยีนส์ขาเดฟ, ชิโน่"
-                        />
+                        >
+                            <option value="">-- เลือกประเภท --</option>
+                            <option value="product">product (สินค้า)</option>
+                            <option value="equipment">equipment (อุปกรณ์)</option>
+                        </FormSelect>
                         <FormInput
                             label="ราคาขาย (บาท)"
                             type="number"

@@ -70,20 +70,23 @@ export const MENU_SECTIONS: MenuSection[] = [
             { title: "งานรอแพ็ค", href: "/warehouse/packing", icon: Package },
             { title: "รายการจัดส่ง", href: "/warehouse/shipments", icon: Truck },
             { title: "รับคืนสินค้า", href: "/warehouse/return", icon: Undo2 },
-            // { title: "คลังสินค้าหลัก", href: "/warehouse/stock", icon: Warehouse },
         ],
     },
     {
-        key: "finance_hr",
-        title: "Finance & HR (บัญชี/บุคคล)",
+        key: "finance",
+        title: "Finance (บัญชี)",
         items: [
             { title: "Owner Dashboard", href: "/dashboard/owner", icon: LayoutDashboard },
-            // { title: "ตรวจสอบการปิดงาน", href: "/finance/audit", icon: ClipboardCheck },
             { title: "จัดการลูกค้า", href: "/finance/customers", icon: Contact },
             { title: "ใบแจ้งหนี้ (Invoice)", href: "/finance/invoices", icon: FileText },
+        ],
+    },
+    {
+        key: "hr",
+        title: "HR (บุคคล)",
+        items: [
             { title: "จัดการพนักงาน", href: "/hr/employees", icon: UserCog },
             { title: "เงินเดือน/คอมฯ", href: "/hr/payroll", icon: Banknote },
-            // { title: "รายงานสรุป", href: "/reports", icon: PieChart },
         ],
     },
     {
@@ -92,8 +95,6 @@ export const MENU_SECTIONS: MenuSection[] = [
         items: [
             { title: "จัดการสินค้า", href: "/admin/products", icon: Tag },
             { title: "พนักงาน & สิทธิ์", href: "/admin/users", icon: Users },
-            // { title: "โปรโมชั่น", href: "/admin/promotions", icon: Gift },
-            // { title: "ตั้งค่าระบบ", href: "/admin/settings", icon: Settings },
         ],
     },
 ];
@@ -104,10 +105,9 @@ export const ROUTE_TO_MENU_KEY: Record<string, string> = {
     "/pc": "front_office",
     "/channels": "sales_channel",
     "/warehouse": "supply_chain",
-    "/finance": "finance_hr",
-    "/hr": "finance_hr",
-    "/reports": "finance_hr",
-    "/dashboard": "finance_hr",
+    "/finance": "finance",
+    "/hr": "hr",
+    "/reports": "finance",
+    "/dashboard": "finance",
     "/admin": "system_admin",
 };
-

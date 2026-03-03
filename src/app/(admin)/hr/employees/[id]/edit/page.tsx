@@ -32,6 +32,8 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
         paymentType: staff.paymentType,
         dailyRate: staff.dailyRate ? Number(staff.dailyRate) : null,
         commissionAmount: staff.commissionAmount ? Number(staff.commissionAmount) : null,
+        canViewSalary: staff.canViewSalary,
+        allowedMenus: staff.allowedMenus as string[] | null,
     };
 
     return (

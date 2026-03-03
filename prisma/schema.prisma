@@ -399,6 +399,8 @@ model Staff {
   dailyRate        Decimal?       @map("daily_rate") @db.Decimal(10, 2)
   commissionAmount Decimal?       @map("commission_amount") @db.Decimal(10, 2)
   status           String         @default("active") @db.VarChar(20)
+  canViewSalary    Boolean        @default(false) @map("can_view_salary")
+  allowedMenus     Json?          @map("allowed_menus") // Override role-based menus if set
   
   // Audit fields
   createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)

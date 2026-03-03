@@ -32,14 +32,18 @@ export async function loginAction(_prevState: { error?: string } | undefined, fo
         return { error: 'รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง' };
     }
 
-    // Fetch allowed menus for this role
-    const allowedMenus = await getAllowedMenusForRole(staff.role);
+    // Use per-staff menu override if set, otherwise fall back to role-based
+    const staffMenus = staff.allowedMenus as string[] | null;
+    const allowedMenus = (staffMenus && staffMenus.length > 0)
+        ? staffMenus
+        : await getAllowedMenusForRole(staff.role);
 
     await createSession({
         staffId: staff.id,
         role: staff.role,
         name: staff.name,
         allowedMenus,
+        canViewSalary: staff.canViewSalary,
     });
 
     // Redirect based on role

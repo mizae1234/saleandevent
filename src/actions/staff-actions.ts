@@ -1,6 +1,7 @@
 'use server';
 
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -41,6 +42,9 @@ export async function createStaff(formData: FormData) {
         const paymentType = formData.get('paymentType') as string || 'daily';
         const dailyRateStr = formData.get('dailyRate') as string | null;
         const commissionAmountStr = formData.get('commissionAmount') as string | null;
+        const canViewSalary = formData.get('canViewSalary') === 'true';
+        const selectedMenus = formData.getAll('allowedMenus') as string[];
+        const allowedMenus = selectedMenus.length > 0 ? selectedMenus : Prisma.JsonNull;
 
         if (!name) {
             return { error: 'กรุณากรอกชื่อ-สกุล' };
@@ -60,6 +64,8 @@ export async function createStaff(formData: FormData) {
                 paymentType,
                 dailyRate: dailyRateStr ? parseFloat(dailyRateStr) : null,
                 commissionAmount: commissionAmountStr ? parseFloat(commissionAmountStr) : null,
+                canViewSalary,
+                allowedMenus,
             }
         });
     } catch (error) {
@@ -86,6 +92,9 @@ export async function updateStaff(id: string, formData: FormData) {
         const paymentType = formData.get('paymentType') as string || 'daily';
         const dailyRateStr = formData.get('dailyRate') as string | null;
         const commissionAmountStr = formData.get('commissionAmount') as string | null;
+        const canViewSalary = formData.get('canViewSalary') === 'true';
+        const selectedMenus = formData.getAll('allowedMenus') as string[];
+        const allowedMenus = selectedMenus.length > 0 ? selectedMenus : Prisma.JsonNull;
 
         if (!name) {
             return { error: 'กรุณากรอกชื่อ-สกุล' };
@@ -105,6 +114,8 @@ export async function updateStaff(id: string, formData: FormData) {
                 paymentType,
                 dailyRate: dailyRateStr ? parseFloat(dailyRateStr) : null,
                 commissionAmount: commissionAmountStr ? parseFloat(commissionAmountStr) : null,
+                canViewSalary,
+                allowedMenus,
             }
         });
     } catch (error) {

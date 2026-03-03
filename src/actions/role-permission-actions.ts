@@ -73,3 +73,48 @@ export async function saveRolePermissions(
         return { error: 'เกิดข้อผิดพลาดในการบันทึก' };
     }
 }
+
+// ============ GET STAFF LIST FOR PERMISSION MANAGEMENT ============
+
+export async function getStaffForPermissions() {
+    const staff = await db.staff.findMany({
+        where: { status: 'active' },
+        select: {
+            id: true,
+            code: true,
+            name: true,
+            role: true,
+            allowedMenus: true,
+            canViewSalary: true,
+        },
+        orderBy: [{ role: 'asc' }, { name: 'asc' }],
+    });
+    return staff.map(s => ({
+        ...s,
+        allowedMenus: s.allowedMenus as string[] | null,
+    }));
+}
+
+// ============ SAVE PER-STAFF PERMISSIONS ============
+
+export async function saveStaffPermissions(
+    staffId: string,
+    allowedMenus: string[] | null,
+    canViewSalary: boolean,
+) {
+    try {
+        const { Prisma } = await import('@prisma/client');
+        await db.staff.update({
+            where: { id: staffId },
+            data: {
+                allowedMenus: allowedMenus && allowedMenus.length > 0 ? allowedMenus : Prisma.JsonNull,
+                canViewSalary,
+            },
+        });
+        revalidatePath('/admin/users');
+        return { success: true };
+    } catch (e) {
+        console.error('saveStaffPermissions error:', e);
+        return { error: 'เกิดข้อผิดพลาดในการบันทึก' };
+    }
+}

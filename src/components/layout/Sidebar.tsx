@@ -17,9 +17,23 @@ interface SidebarProps {
 export function Sidebar({ className, onNavigated, allowedMenus = [], userName = "User", userRole = "" }: SidebarProps) {
     const pathname = usePathname();
 
-    // Filter menu sections by allowed menus (empty = show all for backward compat)
+    // Filter menu sections and items by allowedMenus
+    // allowedMenus can contain:
+    // - section keys (e.g., "finance") → show entire section
+    // - item hrefs (e.g., "/hr/employees") → show only that specific item in its section
     const filteredSections = allowedMenus.length > 0
-        ? MENU_SECTIONS.filter((section) => allowedMenus.includes(section.key))
+        ? MENU_SECTIONS.map((section) => {
+            // If the section key is allowed, show entire section
+            if (allowedMenus.includes(section.key)) {
+                return section;
+            }
+            // Otherwise check if any individual items are allowed
+            const allowedItems = section.items.filter(item => allowedMenus.includes(item.href));
+            if (allowedItems.length > 0) {
+                return { ...section, items: allowedItems };
+            }
+            return null;
+        }).filter((s): s is NonNullable<typeof s> => s !== null)
         : MENU_SECTIONS;
 
     // Check if menu item is active - exact match only
@@ -115,4 +129,3 @@ export function Sidebar({ className, onNavigated, allowedMenus = [], userName = 
         </aside>
     );
 }
-
