@@ -88,6 +88,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                             <tr className="border-b border-slate-100 bg-slate-50/50">
                                 <th className="text-left font-semibold text-slate-600 px-6 py-4">รหัส</th>
                                 <th className="text-left font-semibold text-slate-600 px-6 py-4">ชื่อ-สกุล</th>
+                                <th className="text-left font-semibold text-slate-600 px-6 py-4">บทบาท</th>
                                 <th className="text-left font-semibold text-slate-600 px-6 py-4">ประเภท</th>
                                 <th className="text-left font-semibold text-slate-600 px-6 py-4">ตำแหน่ง</th>
                                 <th className="text-left font-semibold text-slate-600 px-6 py-4">วันเกิด</th>
@@ -105,6 +106,15 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 font-medium text-slate-900">{staff.name}</td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${staff.role === 'ADMIN' ? 'bg-purple-100 text-purple-700'
+                                                : staff.role === 'MANAGER' ? 'bg-blue-100 text-blue-700'
+                                                    : staff.role === 'FINANCE' ? 'bg-emerald-100 text-emerald-700'
+                                                        : staff.role === 'HR' ? 'bg-pink-100 text-pink-700'
+                                                            : staff.role === 'WAREHOUSE' ? 'bg-amber-100 text-amber-700'
+                                                                : 'bg-slate-100 text-slate-600'
+                                            }`}>{staff.role}</span>
+                                    </td>
                                     <td className="px-6 py-4 text-slate-600">
                                         {staff.employeeType ? (EMPLOYEE_TYPE_MAP[staff.employeeType] || staff.employeeType) : '-'}
                                     </td>
