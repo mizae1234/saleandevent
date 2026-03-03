@@ -16,13 +16,27 @@ export async function GET() {
     const staffList = await db.staff.findMany({
         where: { status: "active" },
         orderBy: { code: "asc" },
+        select: {
+            code: true,
+            name: true,
+            position: true,
+            role: true,
+            paymentType: true,
+            dailyRate: true,
+            commissionAmount: true,
+            dateOfBirth: true,
+            email: true,
+            phone: true,
+            bankName: true,
+            bankAccountNo: true,
+        },
     });
 
-    // Mask salary fields based on access
+    // Mask salary fields based on access — use "***" string for masked, keep original for permitted
     const masked = staffList.map(s => ({
         ...s,
-        dailyRate: canView(s.paymentType) ? s.dailyRate : null,
-        commissionAmount: canView(s.paymentType) ? s.commissionAmount : null,
+        dailyRate: canView(s.paymentType) ? s.dailyRate : '***',
+        commissionAmount: canView(s.paymentType) ? s.commissionAmount : '***',
     }));
 
     return NextResponse.json(masked);

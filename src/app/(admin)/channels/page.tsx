@@ -75,17 +75,24 @@ async function getEvents(searchParams: Promise<{ [key: string]: string | string[
                 _count: {
                     select: { sales: true, staff: true },
                 },
-                sales: {
-                    where: { status: 'active' },
-                    select: { totalAmount: true },
-                },
             },
         }),
         db.salesChannel.count({ where }),
     ]);
 
+    // Fetch sales aggregates in one batch query for the page's channels
+    const channelIds = events.map(e => e.id);
+    const salesAggs = channelIds.length > 0
+        ? await db.sale.groupBy({
+            by: ['channelId'],
+            where: { channelId: { in: channelIds }, status: 'active' },
+            _sum: { totalAmount: true },
+        })
+        : [];
+    const salesMap = new Map(salesAggs.map(a => [a.channelId, Number(a._sum.totalAmount || 0)]));
+
     const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
-    return { events, totalCount, totalPages, currentPage: page };
+    return { events, totalCount, totalPages, currentPage: page, salesMap };
 }
 
 function fmt(n: number) {
@@ -93,13 +100,13 @@ function fmt(n: number) {
 }
 
 export default async function EventsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
-    const { events, totalCount, totalPages, currentPage } = await getEvents(searchParams);
+    const { events, totalCount, totalPages, currentPage, salesMap } = await getEvents(searchParams);
     const params = await searchParams;
 
     // Summary stats
     const totalChannels = totalCount;
     const activeChannels = events.filter(e => ['active', 'selling', 'approved'].includes(e.status)).length;
-    const totalSales = events.reduce((sum, e) => sum + e.sales.reduce((s, sale) => s + Number(sale.totalAmount), 0), 0);
+    const totalSales = events.reduce((sum, e) => sum + (salesMap.get(e.id) || 0), 0);
 
     // Build pagination URL helper
     const buildPageUrl = (page: number) => {
@@ -193,7 +200,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
                             const status = STATUS_CONFIG[event.status] || { label: event.status, bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" };
                             const typeConf = TYPE_CONFIG[event.type] || TYPE_CONFIG.EVENT;
                             const TypeIcon = typeConf.icon;
-                            const channelTotalSales = event.sales.reduce((s, sale) => s + Number(sale.totalAmount), 0);
+                            const channelTotalSales = salesMap.get(event.id) || 0;
 
                             return (
                                 <Link
