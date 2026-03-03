@@ -43,7 +43,7 @@ export async function loginAction(_prevState: { error?: string } | undefined, fo
         role: staff.role,
         name: staff.name,
         allowedMenus,
-        canViewSalary: staff.canViewSalary,
+        salaryAccess: staff.salaryAccess || undefined,
     });
 
     // Redirect based on role

@@ -18,7 +18,7 @@ interface StaffPermData {
     name: string;
     role: string;
     allowedMenus: string[] | null;
-    canViewSalary: boolean;
+    salaryAccess: string | null;
 }
 
 const STAFF_PAGE_SIZE = 10;
@@ -78,14 +78,14 @@ export default function RolePermissionsPage({
 
     // ======== Per-staff permissions ========
     // allowedMenus can contain section keys ("finance") and/or item hrefs ("/hr/employees")
-    const [staffPerms, setStaffPerms] = useState<Record<string, { menus: string[] | null; salary: boolean; isCustom: boolean }>>(() => {
-        const map: Record<string, { menus: string[] | null; salary: boolean; isCustom: boolean }> = {};
+    const [staffPerms, setStaffPerms] = useState<Record<string, { menus: string[] | null; salaryAccess: string | null; isCustom: boolean }>>(() => {
+        const map: Record<string, { menus: string[] | null; salaryAccess: string | null; isCustom: boolean }> = {};
         for (const s of staffList) {
             // If no custom menus, inherit from role
             const roleMenus = initialPermissions.find(p => p.role === s.role)?.allowedMenus || [];
             map[s.id] = {
                 menus: s.allowedMenus && s.allowedMenus.length > 0 ? s.allowedMenus : roleMenus.length > 0 ? [...roleMenus] : null,
-                salary: s.canViewSalary,
+                salaryAccess: s.salaryAccess,
                 isCustom: s.allowedMenus !== null && s.allowedMenus.length > 0,
             };
         }
@@ -130,7 +130,7 @@ export default function RolePermissionsPage({
     // Toggle entire section for a staff
     const toggleStaffSection = (staffId: string, sectionKey: string) => {
         setStaffPerms(prev => {
-            const current = prev[staffId] || { menus: null, salary: false, isCustom: false };
+            const current = prev[staffId] || { menus: null, salaryAccess: null, isCustom: false };
             const menus = current.menus || [];
             const section = MENU_SECTIONS.find(s => s.key === sectionKey);
             if (!section) return prev;
@@ -181,10 +181,10 @@ export default function RolePermissionsPage({
         });
     };
 
-    const toggleStaffSalary = (staffId: string) => {
+    const setStaffSalaryAccess = (staffId: string, access: string | null) => {
         setStaffPerms(prev => {
-            const current = prev[staffId] || { menus: null, salary: false, isCustom: false };
-            return { ...prev, [staffId]: { ...current, salary: !current.salary } };
+            const current = prev[staffId] || { menus: null, salaryAccess: null, isCustom: false };
+            return { ...prev, [staffId]: { ...current, salaryAccess: access } };
         });
     };
 
@@ -204,7 +204,7 @@ export default function RolePermissionsPage({
         // If not custom, save null to DB (use role default)
         const menusToSave = perm.isCustom ? perm.menus : null;
         startSaving(async () => {
-            await saveStaffPermissions(staffId, menusToSave, perm.salary);
+            await saveStaffPermissions(staffId, menusToSave, perm.salaryAccess);
             setStaffSaved(staffId);
             setTimeout(() => setStaffSaved(null), 2000);
         });
@@ -349,7 +349,7 @@ export default function RolePermissionsPage({
             <div className="space-y-3 mb-4">
                 {pagedStaff.map((staff) => {
                     const isExpanded = expandedStaff === staff.id;
-                    const perm = staffPerms[staff.id] || { menus: null, salary: false };
+                    const perm = staffPerms[staff.id] || { menus: null, salaryAccess: null };
                     const hasCustom = perm.isCustom;
 
                     return (
@@ -365,7 +365,7 @@ export default function RolePermissionsPage({
                                         }`}>{staff.role}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {perm.salary && <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">ดูเงินเดือน</span>}
+                                    {perm.salaryAccess && perm.salaryAccess !== 'none' && <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">ดูเงินเดือน ({perm.salaryAccess === 'all' ? 'ทั้งหมด' : perm.salaryAccess === 'monthly' ? 'รายเดือน' : 'รายวัน'})</span>}
                                     {hasCustom && <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-teal-100 text-teal-700">กำหนดเอง</span>}
                                     {staffSaved === staff.id && <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700">✓ บันทึกแล้ว</span>}
                                     {isExpanded ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
@@ -374,15 +374,21 @@ export default function RolePermissionsPage({
 
                             {isExpanded && (
                                 <div className="px-5 pb-4 border-t border-slate-100 pt-3 space-y-4">
-                                    {/* Salary toggle */}
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                        <input type="checkbox" checked={perm.salary} onChange={() => toggleStaffSalary(staff.id)}
-                                            className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500" />
+                                    {/* Salary access dropdown */}
+                                    <div className="flex items-center gap-3">
                                         <div className="flex items-center gap-1.5">
-                                            {perm.salary ? <Eye className="h-3.5 w-3.5 text-amber-600" /> : <EyeOff className="h-3.5 w-3.5 text-slate-400" />}
-                                            <span className="text-sm text-slate-700">ดูข้อมูลเงินเดือน/ค่าแรง</span>
+                                            {perm.salaryAccess && perm.salaryAccess !== 'none' ? <Eye className="h-3.5 w-3.5 text-amber-600" /> : <EyeOff className="h-3.5 w-3.5 text-slate-400" />}
+                                            <span className="text-sm text-slate-700">สิทธิ์ดูค่าแรง:</span>
                                         </div>
-                                    </label>
+                                        <select value={perm.salaryAccess || 'none'}
+                                            onChange={(e) => setStaffSalaryAccess(staff.id, e.target.value === 'none' ? null : e.target.value)}
+                                            className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                                            <option value="none">ไม่มีสิทธิ์</option>
+                                            <option value="daily">เฉพาะรายวัน</option>
+                                            <option value="monthly">เฉพาะรายเดือน</option>
+                                            <option value="all">ทั้งหมด</option>
+                                        </select>
+                                    </div>
 
                                     {/* Menu selection with submenu drill-down */}
                                     <div>

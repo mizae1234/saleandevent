@@ -85,7 +85,7 @@ export async function getStaffForPermissions() {
             name: true,
             role: true,
             allowedMenus: true,
-            canViewSalary: true,
+            salaryAccess: true,
         },
         orderBy: [{ role: 'asc' }, { name: 'asc' }],
     });
@@ -100,7 +100,7 @@ export async function getStaffForPermissions() {
 export async function saveStaffPermissions(
     staffId: string,
     allowedMenus: string[] | null,
-    canViewSalary: boolean,
+    salaryAccess: string | null,
 ) {
     try {
         const { Prisma } = await import('@prisma/client');
@@ -108,7 +108,7 @@ export async function saveStaffPermissions(
             where: { id: staffId },
             data: {
                 allowedMenus: allowedMenus && allowedMenus.length > 0 ? allowedMenus : Prisma.JsonNull,
-                canViewSalary,
+                salaryAccess: salaryAccess || null,
             },
         });
         revalidatePath('/admin/users');

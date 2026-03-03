@@ -20,7 +20,6 @@ interface StaffData {
     paymentType: string;
     dailyRate?: number | null;
     commissionAmount?: number | null;
-    canViewSalary?: boolean;
 }
 
 interface StaffFormProps {

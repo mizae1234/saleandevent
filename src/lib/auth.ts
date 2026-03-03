@@ -17,7 +17,7 @@ export interface SessionPayload {
     allowedMenus?: string[];
     channelId?: string;
     workMode?: string;
-    canViewSalary?: boolean;
+    salaryAccess?: string; // none, daily, monthly, all
 }
 
 // ============ Password Helpers ============

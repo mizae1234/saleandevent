@@ -46,12 +46,17 @@ interface Props {
     };
     rows: PayrollRow[];
     totalChannelSales: number;
-    canViewSalary?: boolean;
+    salaryAccess?: string | null; // none, daily, monthly, all
 }
 
-export default function PayrollDetailClient({ channel, rows: initialRows, totalChannelSales, canViewSalary = false }: Props) {
-    const hide = !canViewSalary;
-    const mask = (val: number | string) => hide ? '***' : typeof val === 'number' ? val.toLocaleString() : val;
+export default function PayrollDetailClient({ channel, rows: initialRows, totalChannelSales, salaryAccess }: Props) {
+    // Check if a specific payment type is visible
+    const canView = (paymentType: string) => {
+        if (!salaryAccess || salaryAccess === 'none') return false;
+        if (salaryAccess === 'all') return true;
+        return salaryAccess === paymentType; // 'daily' matches 'daily', 'monthly' matches 'monthly'
+    };
+    const mask = (val: number | string, paymentType: string) => !canView(paymentType) ? '***' : typeof val === 'number' ? val.toLocaleString() : val;
     const [isPending, startTransition] = useTransition();
     const [loadingId, setLoadingId] = useState<string | null>(null);
 
@@ -217,19 +222,19 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                 </div>
                 <div className="bg-white rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100">
                     <p className="text-xs text-slate-400 mb-1">ค่าแรงรวม</p>
-                    <p className="text-xl font-bold text-slate-700">{hide ? '***' : `฿${totalWage.toLocaleString()}`}</p>
+                    <p className="text-xl font-bold text-slate-700">{!canView('daily') ? '***' : `฿${totalWage.toLocaleString()}`}</p>
                 </div>
                 <div className="bg-white rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100">
                     <p className="text-xs text-slate-400 mb-1">ค่าคอมรวม</p>
-                    <p className="text-xl font-bold text-purple-700">{hide ? '***' : `฿${totalCommission.toLocaleString()}`}</p>
+                    <p className="text-xl font-bold text-purple-700">{!canView('daily') ? '***' : `฿${totalCommission.toLocaleString()}`}</p>
                 </div>
                 <div className="bg-white rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100">
                     <p className="text-xs text-slate-400 mb-1">ค่าใช้จ่ายเบิก</p>
-                    <p className="text-xl font-bold text-orange-600">{hide ? '***' : `฿${totalExpense.toLocaleString()}`}</p>
+                    <p className="text-xl font-bold text-orange-600">{!canView('daily') ? '***' : `฿${totalExpense.toLocaleString()}`}</p>
                 </div>
                 <div className="bg-gradient-to-r from-emerald-50 to-white rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-emerald-200">
                     <p className="text-xs text-emerald-600 mb-1">ยอดโอนทั้งหมด</p>
-                    <p className="text-xl font-bold text-emerald-700">{hide ? '***' : `฿${totalPay.toLocaleString()}`}</p>
+                    <p className="text-xl font-bold text-emerald-700">{!canView('daily') ? '***' : `฿${totalPay.toLocaleString()}`}</p>
                 </div>
                 <div className={`rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border ${allWagePaid ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-100'}`}>
                     <p className="text-xs text-slate-400 mb-1">โอนค่าแรง</p>
@@ -380,15 +385,15 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                                             )}
                                         </td>
                                         <td className="px-3 py-3 text-center text-slate-600">{row.daysWorked}</td>
-                                        <td className="px-3 py-3 text-right text-slate-600">{mask(row.dailyRate)}</td>
-                                        <td className={`px-3 py-3 text-right font-medium ${row.isWagePaid ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{mask(row.dailyRate * row.daysWorked)}</td>
-                                        <td className={`px-3 py-3 text-right ${row.isWagePaid ? 'text-slate-400 line-through' : 'text-orange-600'}`}>{hide ? '***' : row.expenseAmount > 0 ? row.expenseAmount.toLocaleString() : '-'}</td>
+                                        <td className="px-3 py-3 text-right text-slate-600">{mask(row.dailyRate, row.paymentType)}</td>
+                                        <td className={`px-3 py-3 text-right font-medium ${row.isWagePaid ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{mask(row.dailyRate * row.daysWorked, row.paymentType)}</td>
+                                        <td className={`px-3 py-3 text-right ${row.isWagePaid ? 'text-slate-400 line-through' : 'text-orange-600'}`}>{!canView(row.paymentType) ? '***' : row.expenseAmount > 0 ? row.expenseAmount.toLocaleString() : '-'}</td>
                                         <td className={`px-3 py-3 text-right font-semibold border-l border-r border-slate-100 ${row.isWagePaid ? 'text-slate-400 line-through bg-blue-50/10' : 'text-blue-700 bg-blue-50/20'}`}>
-                                            {hide ? '***' : (row.dailyRate * row.daysWorked + row.expenseAmount) > 0 ? `฿${(row.dailyRate * row.daysWorked + row.expenseAmount).toLocaleString()}` : '-'}
+                                            {!canView(row.paymentType) ? '***' : (row.dailyRate * row.daysWorked + row.expenseAmount) > 0 ? `฿${(row.dailyRate * row.daysWorked + row.expenseAmount).toLocaleString()}` : '-'}
                                         </td>
-                                        <td className={`px-3 py-3 text-right ${row.isCommissionPaid ? 'text-slate-400 line-through' : 'text-purple-600'}`}>{hide ? '***' : row.totalCommission > 0 ? row.totalCommission.toLocaleString() : '-'}</td>
+                                        <td className={`px-3 py-3 text-right ${row.isCommissionPaid ? 'text-slate-400 line-through' : 'text-purple-600'}`}>{!canView(row.paymentType) ? '***' : row.totalCommission > 0 ? row.totalCommission.toLocaleString() : '-'}</td>
                                         <td className={`px-3 py-3 text-right font-bold border-l border-slate-100 ${bothPaid ? 'text-emerald-500 line-through' : 'text-emerald-700 bg-emerald-50/20'}`}>
-                                            {hide ? '***' : `฿${(row.dailyRate * row.daysWorked + row.totalCommission + row.expenseAmount).toLocaleString()}`}
+                                            {!canView(row.paymentType) ? '***' : `฿${(row.dailyRate * row.daysWorked + row.totalCommission + row.expenseAmount).toLocaleString()}`}
                                         </td>
                                     </tr>
                                 );
@@ -397,12 +402,12 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                         <tfoot className="border-t-2 border-slate-200 bg-slate-50 font-semibold">
                             <tr>
                                 <td colSpan={8} className="px-3 py-3 text-right text-slate-500">รวมทั้งหมด</td>
-                                <td className="px-3 py-3 text-right text-slate-900">{hide ? '***' : totalWage.toLocaleString()}</td>
-                                <td className="px-3 py-3 text-right text-orange-700">{hide ? '***' : totalExpense.toLocaleString()}</td>
-                                <td className="px-3 py-3 text-right text-blue-700 border-l border-r border-slate-200 font-bold">{hide ? '***' : `฿${totalWageExp.toLocaleString()}`}</td>
-                                <td className="px-3 py-3 text-right text-purple-700">{hide ? '***' : totalCommission.toLocaleString()}</td>
+                                <td className="px-3 py-3 text-right text-slate-900">{!canView('daily') ? '***' : totalWage.toLocaleString()}</td>
+                                <td className="px-3 py-3 text-right text-orange-700">{!canView('daily') ? '***' : totalExpense.toLocaleString()}</td>
+                                <td className="px-3 py-3 text-right text-blue-700 border-l border-r border-slate-200 font-bold">{!canView('daily') ? '***' : `฿${totalWageExp.toLocaleString()}`}</td>
+                                <td className="px-3 py-3 text-right text-purple-700">{!canView('daily') ? '***' : totalCommission.toLocaleString()}</td>
                                 <td className="px-3 py-3 text-right text-emerald-700 text-base border-l border-slate-200">
-                                    {hide ? '***' : `฿${totalPay.toLocaleString()}`}
+                                    {!canView('daily') ? '***' : `฿${totalPay.toLocaleString()}`}
                                 </td>
                             </tr>
                         </tfoot>

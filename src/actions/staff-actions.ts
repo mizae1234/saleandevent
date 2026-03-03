@@ -42,7 +42,6 @@ export async function createStaff(formData: FormData) {
         const paymentType = formData.get('paymentType') as string || 'daily';
         const dailyRateStr = formData.get('dailyRate') as string | null;
         const commissionAmountStr = formData.get('commissionAmount') as string | null;
-        const canViewSalary = formData.get('canViewSalary') === 'true';
         const selectedMenus = formData.getAll('allowedMenus') as string[];
         const allowedMenus = selectedMenus.length > 0 ? selectedMenus : Prisma.JsonNull;
 
@@ -64,7 +63,6 @@ export async function createStaff(formData: FormData) {
                 paymentType,
                 dailyRate: dailyRateStr ? parseFloat(dailyRateStr) : null,
                 commissionAmount: commissionAmountStr ? parseFloat(commissionAmountStr) : null,
-                canViewSalary,
                 allowedMenus,
             }
         });
@@ -92,7 +90,6 @@ export async function updateStaff(id: string, formData: FormData) {
         const paymentType = formData.get('paymentType') as string || 'daily';
         const dailyRateStr = formData.get('dailyRate') as string | null;
         const commissionAmountStr = formData.get('commissionAmount') as string | null;
-        const canViewSalary = formData.get('canViewSalary') === 'true';
         const selectedMenus = formData.getAll('allowedMenus') as string[];
         const allowedMenus = selectedMenus.length > 0 ? selectedMenus : Prisma.JsonNull;
 
@@ -114,7 +111,6 @@ export async function updateStaff(id: string, formData: FormData) {
                 paymentType,
                 dailyRate: dailyRateStr ? parseFloat(dailyRateStr) : null,
                 commissionAmount: commissionAmountStr ? parseFloat(commissionAmountStr) : null,
-                canViewSalary,
                 allowedMenus,
             }
         });

@@ -7,7 +7,7 @@ import { getSession } from "@/lib/auth";
 export default async function PayrollDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: channelId } = await params;
     const session = await getSession();
-    const canViewSalary = session?.canViewSalary ?? false;
+    const salaryAccess = session?.salaryAccess || null;
 
     const [channel, compensation, expenseAggs] = await Promise.all([
         db.salesChannel.findUnique({
@@ -83,7 +83,7 @@ export default async function PayrollDetailPage({ params }: { params: Promise<{ 
             }}
             rows={rows}
             totalChannelSales={compensation?.totalChannelSales || 0}
-            canViewSalary={canViewSalary}
+            salaryAccess={salaryAccess}
         />
     );
 }
