@@ -194,25 +194,7 @@ export function StaffForm({ initialData, action, isEdit = false }: StaffFormProp
                 </div>
             </div>
 
-            {/* Section: สิทธิ์การเข้าถึง */}
-            <div className="rounded-xl bg-white shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)] p-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-6 pb-3 border-b border-slate-100">สิทธิ์การเข้าถึง</h3>
 
-                <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                        type="checkbox"
-                        name="canViewSalary"
-                        value="true"
-                        defaultChecked={initialData?.canViewSalary ?? false}
-                        className="h-5 w-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                    />
-                    <div>
-                        <span className="text-sm font-medium text-slate-700">ดูข้อมูลเงินเดือน/ค่าแรง</span>
-                        <p className="text-xs text-slate-400 mt-0.5">อนุญาตให้เห็นตัวเลขค่าแรง, ค่าคอม และยอดโอนในหน้าสรุปค่าแรง</p>
-                    </div>
-                </label>
-                <p className="text-xs text-slate-400 mt-4 pt-3 border-t border-slate-100">💡 กำหนดเมนูที่เข้าถึงได้ → ไปที่หน้า "พนักงาน & สิทธิ์"</p>
-            </div>
 
             {/* Actions */}
             <div className="flex items-center justify-between pt-4">
