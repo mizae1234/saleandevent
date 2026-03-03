@@ -96,6 +96,7 @@ export function StaffForm({ initialData, action, isEdit = false }: StaffFormProp
                         <option value="ADMIN">ADMIN (ผู้ดูแลระบบ)</option>
                         <option value="MANAGER">MANAGER (ผู้จัดการ)</option>
                         <option value="FINANCE">FINANCE (บัญชี)</option>
+                        <option value="HR">HR (บุคคล)</option>
                         <option value="WAREHOUSE">WAREHOUSE (คลังสินค้า)</option>
                         <option value="PC">PC (พนักงานขาย)</option>
                         <option value="STAFF">STAFF (พนักงานทั่วไป)</option>
