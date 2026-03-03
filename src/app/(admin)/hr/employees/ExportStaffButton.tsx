@@ -38,7 +38,7 @@ export function ExportStaffButton() {
                     "ตำแหน่ง": s.position || "",
                     "บทบาท": s.role || "",
                     "ประเภทการจ่าย": s.paymentType === "daily" ? "รายวัน" : "รายเดือน",
-                    "อัตราค่าจ้าง": s.dailyRate || 0,
+                    "อัตราค่าจ้าง": s.dailyRate != null ? s.dailyRate : "***",
                     "วันเกิด (ค.ศ.)": dobStr,
                     "รหัสผ่านเริ่มต้น": pwd,
                     "อีเมล": s.email || "",

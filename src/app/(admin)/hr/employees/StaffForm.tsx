@@ -26,10 +26,20 @@ interface StaffFormProps {
     initialData?: StaffData;
     action: (prevState: { error?: string } | undefined, formData: FormData) => Promise<{ error?: string } | undefined>;
     isEdit?: boolean;
+    salaryAccess?: string | null; // none, daily, monthly, all
 }
 
-export function StaffForm({ initialData, action, isEdit = false }: StaffFormProps) {
+export function StaffForm({ initialData, action, isEdit = false, salaryAccess }: StaffFormProps) {
     const [state, formAction, isPending] = useActionState(action, undefined);
+
+    // Check if current user can view salary for this staff's payment type
+    const staffPaymentType = initialData?.paymentType || 'daily';
+    const canViewSalary = () => {
+        if (!salaryAccess || salaryAccess === 'none') return false;
+        if (salaryAccess === 'all') return true;
+        return salaryAccess === staffPaymentType;
+    };
+    const hideSalary = isEdit && !canViewSalary();
 
     const dateOfBirthValue = initialData?.dateOfBirth
         ? (typeof initialData.dateOfBirth === 'string'
@@ -168,28 +178,42 @@ export function StaffForm({ initialData, action, isEdit = false }: StaffFormProp
                     </FormSelect>
 
                     {/* ค่าแรงรายวัน */}
-                    <FormInput
-                        label="ค่าแรง(บาท)"
-                        type="number"
-                        onFocus={(e) => (e.target as HTMLInputElement).select()}
-                        name="dailyRate"
-                        defaultValue={initialData?.dailyRate?.toString() || ''}
-                        placeholder="0.00"
-                        step="0.01"
-                        min="0"
-                    />
+                    {hideSalary ? (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">ค่าแรง(บาท)</label>
+                            <div className="h-10 flex items-center px-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-400 font-mono">***</div>
+                        </div>
+                    ) : (
+                        <FormInput
+                            label="ค่าแรง(บาท)"
+                            type="number"
+                            onFocus={(e) => (e.target as HTMLInputElement).select()}
+                            name="dailyRate"
+                            defaultValue={initialData?.dailyRate?.toString() || ''}
+                            placeholder="0.00"
+                            step="0.01"
+                            min="0"
+                        />
+                    )}
 
                     {/* คอมมิชชั่น */}
-                    <FormInput
-                        label="คอมมิชชั่น (บาท)"
-                        type="number"
-                        onFocus={(e) => (e.target as HTMLInputElement).select()}
-                        name="commissionAmount"
-                        defaultValue={initialData?.commissionAmount?.toString() || ''}
-                        placeholder="0.00"
-                        step="0.01"
-                        min="0"
-                    />
+                    {hideSalary ? (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">คอมมิชชั่น (บาท)</label>
+                            <div className="h-10 flex items-center px-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-400 font-mono">***</div>
+                        </div>
+                    ) : (
+                        <FormInput
+                            label="คอมมิชชั่น (บาท)"
+                            type="number"
+                            onFocus={(e) => (e.target as HTMLInputElement).select()}
+                            name="commissionAmount"
+                            defaultValue={initialData?.commissionAmount?.toString() || ''}
+                            placeholder="0.00"
+                            step="0.01"
+                            min="0"
+                        />
+                    )}
                 </div>
             </div>
 

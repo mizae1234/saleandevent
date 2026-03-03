@@ -50,6 +50,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
             <StaffForm
                 initialData={staffData}
                 isEdit
+                salaryAccess={session?.salaryAccess || null}
                 action={async (_prevState, formData) => {
                     "use server";
                     return await updateStaff(id, formData);
