@@ -1,20 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Receipt, Trash2, X, Tag, Clock, ChevronDown, CalendarDays, Save, Check, Send, CheckCircle2, Banknote, Lock, Circle } from "lucide-react";
+import { Plus, Receipt, Trash2, X, Tag, Clock, ChevronDown, CalendarDays, Save, Check, Send, CheckCircle2, Banknote, Lock, Circle, Paperclip, Upload, FileText, Image as ImageIcon } from "lucide-react";
 import { Spinner } from "@/components/shared";
-import { addChannelExpense, removeChannelExpense, updateEmployeeCompensation, submitPayroll } from "@/actions/channel";
+import { addChannelExpense, removeChannelExpense, updateEmployeeCompensation, submitPayroll, deletePayrollAttachment } from "@/actions/channel";
 import { useRouter } from "next/navigation";
 
-const EXPENSE_CATEGORIES = [
-    "ค่าเดินทาง",
-    "ค่าที่พัก",
-    "ค่าเบี้ยเลี้ยง",
-    "ค่าอาหาร",
-    "ค่าอุปกรณ์สิ้นเปลือง",
-    "ค่าขนส่ง",
-    "อื่นๆ",
-];
+
 
 interface ExpenseItem {
     id: string;
@@ -23,6 +15,14 @@ interface ExpenseItem {
     description: string | null;
     status: string;
     createdAt: string;
+}
+
+interface AttachmentItem {
+    id: string;
+    fileName: string;
+    fileUrl: string;
+    fileType: string;
+    fileSize: number;
 }
 
 interface WageInfo {
@@ -36,6 +36,7 @@ interface WageInfo {
 interface Props {
     channelId: string;
     staffId: string;
+    categories: string[];
     startDate: string | null;
     endDate: string | null;
     expenses: ExpenseItem[];
@@ -46,6 +47,7 @@ interface Props {
     wagePaidAt: string | null;
     isCommissionPaid: boolean;
     commissionPaidAt: string | null;
+    attachments: AttachmentItem[];
 }
 
 function formatDate(isoString: string) {
@@ -66,15 +68,17 @@ function formatDateTime(isoString: string) {
     });
 }
 
-export function PayrollClient({ channelId, staffId, startDate, endDate, expenses: initialExpenses, wage, isSubmitted, submittedAt, isWagePaid, wagePaidAt, isCommissionPaid, commissionPaidAt }: Props) {
+export function PayrollClient({ channelId, staffId, categories, startDate, endDate, expenses: initialExpenses, wage, isSubmitted, submittedAt, isWagePaid, wagePaidAt, isCommissionPaid, commissionPaidAt, attachments }: Props) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [showForm, setShowForm] = useState(false);
-    const [category, setCategory] = useState(EXPENSE_CATEGORIES[0]);
+    const [category, setCategory] = useState(categories[0] || '');
     const [amount, setAmount] = useState("");
     const [description, setDescription] = useState("");
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
     const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState('');
 
     // Compensation editing (days + commission)
     const [editing, setEditing] = useState(false);
@@ -146,6 +150,58 @@ export function PayrollClient({ channelId, staffId, startDate, endDate, expenses
             setShowConfirmSubmit(false);
             router.refresh();
         });
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        setUploading(true);
+        setUploadProgress(`กำลังอัปโหลด ${files.length} ไฟล์...`);
+
+        try {
+            const formData = new FormData();
+            formData.append('channelId', channelId);
+            formData.append('staffId', staffId);
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+
+            const res = await fetch('/api/payroll/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Upload failed');
+            }
+
+            setUploadProgress('');
+            router.refresh();
+        } catch (error) {
+            console.error('Upload error:', error);
+            setUploadProgress('อัปโหลดล้มเหลว');
+            setTimeout(() => setUploadProgress(''), 3000);
+        } finally {
+            setUploading(false);
+            // Reset input
+            e.target.value = '';
+        }
+    };
+
+    const handleDeleteAttachment = (attachmentId: string) => {
+        startTransition(async () => {
+            await deletePayrollAttachment(attachmentId);
+            router.refresh();
+        });
+    };
+
+    const isImage = (type: string) => type.startsWith('image/');
+    const formatFileSize = (bytes: number) => {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
 
     return (
@@ -367,7 +423,7 @@ export function PayrollClient({ channelId, staffId, startDate, endDate, expenses
                                 </button>
                                 {showCategoryPicker && (
                                     <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-                                        {EXPENSE_CATEGORIES.map(cat => (
+                                        {categories.map(cat => (
                                             <button
                                                 key={cat}
                                                 type="button"
@@ -471,6 +527,105 @@ export function PayrollClient({ channelId, staffId, startDate, endDate, expenses
                     <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50/50">
                         <span className="text-sm text-slate-600">รวมค่าใช้จ่าย</span>
                         <span className="text-sm font-bold text-purple-600">฿{totalExpenses.toLocaleString()}</span>
+                    </div>
+                )}
+            </div>
+
+            {/* ── Attachments Section ── */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between p-4 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                        <Paperclip className="h-5 w-5 text-teal-600" />
+                        <h3 className="font-semibold text-slate-900">เอกสาร/รูปภาพแนบ</h3>
+                        {attachments.length > 0 && (
+                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                                {attachments.length}
+                            </span>
+                        )}
+                    </div>
+                    {!locked && (
+                        <label className={`flex items-center gap-1.5 text-sm font-medium text-teal-600 hover:text-teal-700 cursor-pointer transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <Upload className="h-4 w-4" />
+                            {uploading ? 'กำลังอัปโหลด...' : 'แนบไฟล์'}
+                            <input
+                                type="file"
+                                multiple
+                                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                                onChange={handleFileUpload}
+                                className="hidden"
+                                disabled={uploading}
+                            />
+                        </label>
+                    )}
+                </div>
+
+                {uploadProgress && (
+                    <div className="px-4 py-2 bg-teal-50 border-b border-teal-100">
+                        <div className="flex items-center gap-2 text-sm text-teal-700">
+                            <Spinner size="sm" />
+                            <span>{uploadProgress}</span>
+                        </div>
+                    </div>
+                )}
+
+                {attachments.length === 0 ? (
+                    <div className="text-center py-8 text-slate-400">
+                        <Paperclip className="h-10 w-10 mx-auto mb-2 opacity-40" />
+                        <p className="text-sm">ยังไม่มีไฟล์แนบ</p>
+                        <p className="text-xs mt-1">กดปุ่ม "แนบไฟล์" เพื่ออัปโหลดรูปหรือเอกสาร</p>
+                    </div>
+                ) : (
+                    <div className="p-4 space-y-3">
+                        {/* Images Grid */}
+                        {attachments.filter(a => isImage(a.fileType)).length > 0 && (
+                            <div className="grid grid-cols-2 gap-2">
+                                {attachments.filter(a => isImage(a.fileType)).map(att => (
+                                    <div key={att.id} className="relative group rounded-xl overflow-hidden border border-slate-200">
+                                        <a href={att.fileUrl} target="_blank" rel="noopener noreferrer">
+                                            <img
+                                                src={att.fileUrl}
+                                                alt={att.fileName}
+                                                className="w-full h-40 object-cover hover:opacity-90 transition-opacity"
+                                            />
+                                        </a>
+                                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                                            <p className="text-[10px] text-white truncate">{att.fileName}</p>
+                                        </div>
+                                        {!locked && (
+                                            <button
+                                                onClick={() => handleDeleteAttachment(att.id)}
+                                                disabled={isPending}
+                                                className="absolute top-1.5 right-1.5 bg-black/50 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Non-image Files */}
+                        {attachments.filter(a => !isImage(a.fileType)).map(att => (
+                            <div key={att.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 group">
+                                <div className="h-10 w-10 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0">
+                                    <FileText className="h-5 w-5 text-slate-500" />
+                                </div>
+                                <a href={att.fileUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-slate-900 truncate hover:text-teal-600 transition-colors">{att.fileName}</p>
+                                    <p className="text-[10px] text-slate-400">{formatFileSize(att.fileSize)}</p>
+                                </a>
+                                {!locked && (
+                                    <button
+                                        onClick={() => handleDeleteAttachment(att.id)}
+                                        disabled={isPending}
+                                        className="text-red-400 hover:text-red-500 p-1 rounded opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 )}
             </div>

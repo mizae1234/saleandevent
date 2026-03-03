@@ -26,11 +26,19 @@ async function getEventDetails(id: string) {
 
 export default async function EventExpensePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
-    const event = await getEventDetails(id);
+    const [event, expenseCategories] = await Promise.all([
+        getEventDetails(id),
+        db.expenseCategory.findMany({
+            where: { isActive: true },
+            orderBy: { sortOrder: 'asc' },
+            select: { name: true },
+        }),
+    ]);
 
     if (!event) {
         notFound();
     }
+    const categories = expenseCategories.map(c => c.name);
 
     const statusColors: Record<string, string> = {
         draft: "bg-gray-100 text-gray-800",
@@ -94,7 +102,7 @@ export default async function EventExpensePage({ params }: { params: Promise<{ i
                         <Receipt className="h-5 w-5 text-slate-500" />
                         บันทึกค่าใช้จ่าย
                     </div>
-                    <EventExpenses channelId={event.id} expenses={(event.expenses || []).map(e => ({ id: e.id, category: e.category, amount: Number(e.amount), description: e.description || '', status: e.status, createdAt: e.createdAt.toISOString() }))} />
+                    <EventExpenses channelId={event.id} categories={categories} expenses={(event.expenses || []).map(e => ({ id: e.id, category: e.category, amount: Number(e.amount), description: e.description || '', status: e.status, createdAt: e.createdAt.toISOString() }))} />
                 </div>
 
                 {/* Right Column: Compensation */}

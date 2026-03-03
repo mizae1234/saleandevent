@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { deleteFromR2 } from "@/lib/r2";
 
 export async function addChannelExpense(
     channelId: string,
@@ -47,4 +48,27 @@ export async function removeChannelExpense(expenseId: string, channelId: string)
     });
 
     revalidatePath(`/channels/${channelId}`);
+}
+
+export async function deletePayrollAttachment(attachmentId: string) {
+    const attachment = await db.payrollAttachment.findUnique({
+        where: { id: attachmentId },
+        include: { channelStaff: { select: { channelId: true } } },
+    });
+
+    if (!attachment) return;
+
+    // Delete from R2
+    try {
+        await deleteFromR2(attachment.fileUrl);
+    } catch (e) {
+        console.error('Failed to delete from R2:', e);
+    }
+
+    // Delete from DB
+    await db.payrollAttachment.delete({
+        where: { id: attachmentId },
+    });
+
+    revalidatePath(`/hr/payroll/${attachment.channelStaff.channelId}`);
 }

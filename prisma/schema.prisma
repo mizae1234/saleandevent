@@ -438,8 +438,9 @@ model ChannelStaff {
   updatedBy          String?      @map("updated_by") @db.Uuid
   
   // Relations
-  channel            SalesChannel @relation(fields: [channelId], references: [id])
-  staff              Staff        @relation(fields: [staffId], references: [id])
+  channel            SalesChannel       @relation(fields: [channelId], references: [id])
+  staff              Staff              @relation(fields: [staffId], references: [id])
+  attachments        PayrollAttachment[]
 
   @@unique([channelId, staffId])
   @@index([channelId])
@@ -649,4 +650,33 @@ model InvoiceItem {
 
   @@index([invoiceId])
   @@map("invoice_items")
+}
+
+model ExpenseCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.VarChar(100)
+  type      String   @db.VarChar(20) // "emp" = พนักงานเห็น, "admin" = admin เท่านั้น
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("expense_categories")
+}
+
+// ============ PAYROLL ATTACHMENTS ============
+
+model PayrollAttachment {
+  id              String       @id @default(uuid()) @db.Uuid
+  channelStaffId  String       @map("channel_staff_id") @db.Uuid
+  fileName        String       @map("file_name") @db.VarChar(500)
+  fileUrl         String       @map("file_url") @db.VarChar(1000)
+  fileType        String       @map("file_type") @db.VarChar(100)
+  fileSize        Int          @map("file_size")
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy       String?      @map("created_by") @db.Uuid
+
+  channelStaff    ChannelStaff @relation(fields: [channelStaffId], references: [id], onDelete: Cascade)
+
+  @@index([channelStaffId])
+  @@map("payroll_attachments")
 }

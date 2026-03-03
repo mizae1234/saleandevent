@@ -8,7 +8,7 @@ import { EventCompensation } from "@/app/(admin)/channels/[id]/EventCompensation
 import { PaymentApprovalActions } from "./PaymentApprovalActions";
 
 async function getChannelForReview(id: string) {
-    const [channel, salesAgg] = await Promise.all([
+    const [channel, salesAgg, expenseCategories] = await Promise.all([
         db.salesChannel.findUnique({
             where: { id },
             include: {
@@ -20,10 +20,19 @@ async function getChannelForReview(id: string) {
             where: { channelId: id, status: 'active' },
             _sum: { totalAmount: true },
         }),
+        db.expenseCategory.findMany({
+            where: { isActive: true },
+            orderBy: { sortOrder: 'asc' },
+            select: { name: true },
+        }),
     ]);
 
     if (!channel) return null;
-    return { ...channel, totalSalesAmount: Number(salesAgg._sum.totalAmount || 0) };
+    return {
+        ...channel,
+        totalSalesAmount: Number(salesAgg._sum.totalAmount || 0),
+        expenseCategories: expenseCategories.map(c => c.name),
+    };
 }
 
 export default async function PaymentReviewPage({ params }: { params: Promise<{ id: string }> }) {
@@ -102,6 +111,7 @@ export default async function PaymentReviewPage({ params }: { params: Promise<{ 
                     </div>
                     <EventExpenses
                         channelId={channel.id}
+                        categories={channel.expenseCategories}
                         expenses={channel.expenses.map(e => ({
                             id: e.id,
                             category: e.category,

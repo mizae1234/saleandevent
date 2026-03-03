@@ -32,6 +32,11 @@ export default async function EmployeePayrollPage({ params }: { params: Promise<
 
     const assignment = await db.channelStaff.findFirst({
         where: { channelId, staffId: session.staffId },
+        include: {
+            attachments: {
+                orderBy: { createdAt: 'desc' },
+            },
+        },
     });
 
     // Count attendance
@@ -40,10 +45,17 @@ export default async function EmployeePayrollPage({ params }: { params: Promise<
     });
 
     // Get expenses for this channel submitted by this staff
-    const expenses = await db.channelExpense.findMany({
-        where: { channelId, createdBy: session.staffId },
-        orderBy: { createdAt: 'desc' },
-    });
+    const [expenses, expenseCategories] = await Promise.all([
+        db.channelExpense.findMany({
+            where: { channelId, createdBy: session.staffId },
+            orderBy: { createdAt: 'desc' },
+        }),
+        db.expenseCategory.findMany({
+            where: { isActive: true, type: 'emp' },
+            orderBy: { sortOrder: 'asc' },
+            select: { name: true },
+        }),
+    ]);
 
     // Calculate wage summary
     const dailyRate = Number(staff?.dailyRate || 0);
@@ -82,6 +94,7 @@ export default async function EmployeePayrollPage({ params }: { params: Promise<
             <PayrollClient
                 channelId={channelId}
                 staffId={session.staffId}
+                categories={expenseCategories.map(c => c.name)}
                 startDate={channel.startDate?.toISOString() || null}
                 endDate={channel.endDate?.toISOString() || null}
                 expenses={expenseData}
@@ -98,6 +111,13 @@ export default async function EmployeePayrollPage({ params }: { params: Promise<
                 wagePaidAt={assignment?.wagePaidAt?.toISOString() || null}
                 isCommissionPaid={assignment?.isCommissionPaid || false}
                 commissionPaidAt={assignment?.commissionPaidAt?.toISOString() || null}
+                attachments={(assignment?.attachments || []).map(a => ({
+                    id: a.id,
+                    fileName: a.fileName,
+                    fileUrl: a.fileUrl,
+                    fileType: a.fileType,
+                    fileSize: a.fileSize,
+                }))}
             />
         </div>
     );

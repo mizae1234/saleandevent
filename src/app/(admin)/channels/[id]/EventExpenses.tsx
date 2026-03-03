@@ -47,23 +47,17 @@ type ExpenseItem = {
 type Props = {
     channelId: string;
     expenses: ExpenseItem[];
+    categories: string[];
     readonly?: boolean;
 };
 
-const EXPENSE_CATEGORIES = [
-    "ค่าเดินทาง",
-    "ค่าที่พัก",
-    "ค่าเบี้ยเลี้ยง",
-    "ค่าอุปกรณ์สิ้นเปลือง",
-    "ค่าขนส่ง",
-    "อื่นๆ"
-];
+
 
 type OptimisticAction =
     | { type: 'add'; expense: ExpenseItem }
     | { type: 'remove'; id: string };
 
-export function EventExpenses({ channelId, expenses, readonly = false }: Props) {
+export function EventExpenses({ channelId, expenses, categories, readonly = false }: Props) {
     const [isOpen, setIsOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
     const { toastError } = useToast();
@@ -176,7 +170,7 @@ export function EventExpenses({ channelId, expenses, readonly = false }: Props) 
                                             <SelectValue placeholder="เลือกหมวดหมู่" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {EXPENSE_CATEGORIES.map(c => (
+                                            {categories.map(c => (
                                                 <SelectItem key={c} value={c}>{c}</SelectItem>
                                             ))}
                                         </SelectContent>

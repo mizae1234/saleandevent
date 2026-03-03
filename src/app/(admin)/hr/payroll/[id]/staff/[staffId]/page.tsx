@@ -13,7 +13,7 @@ export default async function StaffPayrollDetailPage({
 }) {
     const { id: channelId, staffId } = await params;
 
-    const [channel, staffRecord, assignment, expenses, attendanceDays] = await Promise.all([
+    const [channel, staffRecord, assignment, expenses, attendanceDays, expenseCategories, attachments] = await Promise.all([
         db.salesChannel.findUnique({
             where: { id: channelId },
             select: { id: true, name: true, code: true, startDate: true, endDate: true },
@@ -35,6 +35,17 @@ export default async function StaffPayrollDetailPage({
         }),
         db.attendance.count({
             where: { channelId, staffId },
+        }),
+        db.expenseCategory.findMany({
+            where: { isActive: true },
+            orderBy: { sortOrder: 'asc' },
+            select: { name: true },
+        }),
+        db.payrollAttachment.findMany({
+            where: {
+                channelStaff: { channelId, staffId },
+            },
+            orderBy: { createdAt: 'desc' },
         }),
     ]);
 
@@ -166,6 +177,7 @@ export default async function StaffPayrollDetailPage({
             <StaffPayrollEditor
                 channelId={channelId}
                 staffId={staffId}
+                categories={expenseCategories.map(c => c.name)}
                 wage={{
                     dailyRate,
                     daysWorked,
@@ -175,6 +187,13 @@ export default async function StaffPayrollDetailPage({
                 expenses={expenseData}
                 totalExpense={totalExpense}
                 grandTotal={grandTotal}
+                attachments={attachments.map(a => ({
+                    id: a.id,
+                    fileName: a.fileName,
+                    fileUrl: a.fileUrl,
+                    fileType: a.fileType,
+                    fileSize: a.fileSize,
+                }))}
             />
         </div>
     );

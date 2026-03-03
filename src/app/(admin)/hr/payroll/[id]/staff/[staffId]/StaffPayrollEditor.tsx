@@ -1,15 +1,12 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Banknote, Receipt, Save, Check, Plus, X, Trash2, Tag, ChevronDown } from 'lucide-react';
+import { Banknote, Receipt, Save, Check, Plus, X, Trash2, Tag, ChevronDown, Paperclip, FileText, Download } from 'lucide-react';
 import { Spinner } from '@/components/shared';
-import { updateEmployeeCompensation, addChannelExpense, removeChannelExpense } from '@/actions/channel';
+import { updateEmployeeCompensation, addChannelExpense, removeChannelExpense, deletePayrollAttachment } from '@/actions/channel';
 import { useRouter } from 'next/navigation';
 
-const EXPENSE_CATEGORIES = [
-    "ค่าเดินทาง", "ค่าที่พัก", "ค่าเบี้ยเลี้ยง", "ค่าอาหาร",
-    "ค่าอุปกรณ์สิ้นเปลือง", "ค่าขนส่ง", "อื่นๆ",
-];
+
 
 interface ExpenseItem {
     id: string;
@@ -19,9 +16,18 @@ interface ExpenseItem {
     createdAt: string;
 }
 
+interface AttachmentItem {
+    id: string;
+    fileName: string;
+    fileUrl: string;
+    fileType: string;
+    fileSize: number;
+}
+
 interface Props {
     channelId: string;
     staffId: string;
+    categories: string[];
     wage: {
         dailyRate: number;
         daysWorked: number;
@@ -31,9 +37,10 @@ interface Props {
     expenses: ExpenseItem[];
     totalExpense: number;
     grandTotal: number;
+    attachments: AttachmentItem[];
 }
 
-export default function StaffPayrollEditor({ channelId, staffId, wage, expenses, totalExpense, grandTotal }: Props) {
+export default function StaffPayrollEditor({ channelId, staffId, categories, wage, expenses, totalExpense, grandTotal, attachments }: Props) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
 
@@ -45,7 +52,7 @@ export default function StaffPayrollEditor({ channelId, staffId, wage, expenses,
 
     // Expense adding
     const [showExpenseForm, setShowExpenseForm] = useState(false);
-    const [category, setCategory] = useState(EXPENSE_CATEGORIES[0]);
+    const [category, setCategory] = useState(categories[0] || '');
     const [expenseAmount, setExpenseAmount] = useState('');
     const [expenseDesc, setExpenseDesc] = useState('');
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
@@ -93,6 +100,20 @@ export default function StaffPayrollEditor({ channelId, staffId, wage, expenses,
             await removeChannelExpense(expenseId, channelId);
             router.refresh();
         });
+    };
+
+    const handleDeleteAttachment = (attachmentId: string) => {
+        startTransition(async () => {
+            await deletePayrollAttachment(attachmentId);
+            router.refresh();
+        });
+    };
+
+    const isImage = (type: string) => type.startsWith('image/');
+    const formatFileSize = (bytes: number) => {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
 
     return (
@@ -227,7 +248,7 @@ export default function StaffPayrollEditor({ channelId, staffId, wage, expenses,
                                 </button>
                                 {showCategoryPicker && (
                                     <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
-                                        {EXPENSE_CATEGORIES.map(cat => (
+                                        {categories.map(cat => (
                                             <button
                                                 key={cat}
                                                 type="button"
@@ -312,6 +333,113 @@ export default function StaffPayrollEditor({ channelId, staffId, wage, expenses,
                     <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/50">
                         <span className="text-sm text-slate-600">รวมค่าใช้จ่าย</span>
                         <span className="text-sm font-bold text-orange-600">฿{totalExpense.toLocaleString()}</span>
+                    </div>
+                )}
+            </div>
+
+            {/* Attachments Section */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] overflow-hidden">
+                <div className="px-5 py-3 bg-teal-50 border-b border-teal-100 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-teal-800 flex items-center gap-2">
+                        <Paperclip className="h-4 w-4" /> เอกสาร/รูปภาพแนบ
+                        <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full font-medium">
+                            {attachments.length} ไฟล์
+                        </span>
+                    </h3>
+                </div>
+
+                {attachments.length === 0 ? (
+                    <div className="text-center py-8 text-slate-400 text-sm">ไม่มีไฟล์แนบ</div>
+                ) : (
+                    <div className="p-5 space-y-4">
+                        {/* Inline Images */}
+                        {attachments.filter(a => isImage(a.fileType)).length > 0 && (
+                            <div className="space-y-3">
+                                {attachments.filter(a => isImage(a.fileType)).map(att => (
+                                    <div key={att.id} className="relative group rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50">
+                                        <a href={att.fileUrl} target="_blank" rel="noopener noreferrer">
+                                            <img
+                                                src={att.fileUrl}
+                                                alt={att.fileName}
+                                                className="w-full h-auto object-contain max-h-[300px]"
+                                            />
+                                        </a>
+                                        <div className="flex items-center justify-between px-3 py-2 bg-white border-t border-slate-100">
+                                            <div className="min-w-0">
+                                                <p className="text-xs text-slate-600 truncate">{att.fileName}</p>
+                                                <p className="text-[10px] text-slate-400">{formatFileSize(att.fileSize)}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => handleDeleteAttachment(att.id)}
+                                                disabled={isPending}
+                                                className="text-red-400 hover:text-red-600 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                                                title="ลบ"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* PDF Preview */}
+                        {attachments.filter(a => a.fileType === 'application/pdf').map(att => (
+                            <div key={att.id} className="rounded-xl border border-slate-200 overflow-hidden group">
+                                <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-200">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <FileText className="h-4 w-4 text-red-500 flex-shrink-0" />
+                                        <span className="text-sm font-medium text-slate-700 truncate">{att.fileName}</span>
+                                        <span className="text-[10px] text-slate-400 flex-shrink-0">{formatFileSize(att.fileSize)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <a href={att.fileUrl} target="_blank" rel="noopener noreferrer"
+                                            className="text-teal-600 hover:text-teal-700 p-1.5 rounded transition-colors" title="เปิดในแท็บใหม่">
+                                            <Download className="h-4 w-4" />
+                                        </a>
+                                        <button onClick={() => handleDeleteAttachment(att.id)} disabled={isPending}
+                                            className="text-red-400 hover:text-red-600 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity" title="ลบ">
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
+                                </div>
+                                <iframe
+                                    src={att.fileUrl}
+                                    className="w-full h-[600px] bg-white"
+                                    title={att.fileName}
+                                />
+                            </div>
+                        ))}
+
+                        {/* Other Files (non-image, non-PDF) */}
+                        {attachments.filter(a => !isImage(a.fileType) && a.fileType !== 'application/pdf').map(att => (
+                            <div key={att.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200 group">
+                                <div className="h-10 w-10 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0">
+                                    <FileText className="h-5 w-5 text-slate-500" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-slate-900 truncate">{att.fileName}</p>
+                                    <p className="text-[10px] text-slate-400">{formatFileSize(att.fileSize)}</p>
+                                </div>
+                                <a
+                                    href={att.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-teal-600 hover:text-teal-700 p-1.5 rounded transition-colors flex-shrink-0"
+                                    title="ดาวน์โหลด"
+                                >
+                                    <Download className="h-4 w-4" />
+                                </a>
+                                <button
+                                    onClick={() => handleDeleteAttachment(att.id)}
+                                    disabled={isPending}
+                                    className="text-red-400 hover:text-red-600 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                                    title="ลบ"
+                                >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        ))}
                     </div>
                 )}
             </div>
