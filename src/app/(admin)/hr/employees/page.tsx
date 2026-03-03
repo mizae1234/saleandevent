@@ -5,6 +5,7 @@ import Link from "next/link";
 import { EmptyState, PageHeader } from "@/components/shared";
 import { Prisma } from "@prisma/client";
 import { EmployeeFilters } from "./EmployeeFilters";
+import { ExportStaffButton } from "./ExportStaffButton";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 
@@ -64,12 +65,15 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                 title="จัดการพนักงาน"
                 subtitle="เพิ่ม แก้ไข และจัดการข้อมูลพนักงานทั้งหมด"
                 actions={
-                    <Link href="/hr/employees/create">
-                        <Button className="bg-teal-600 hover:bg-teal-700 text-white">
-                            <Plus className="mr-2 h-4 w-4" />
-                            เพิ่มพนักงาน
-                        </Button>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                        <ExportStaffButton />
+                        <Link href="/hr/employees/create">
+                            <Button className="bg-teal-600 hover:bg-teal-700 text-white">
+                                <Plus className="mr-2 h-4 w-4" />
+                                เพิ่มพนักงาน
+                            </Button>
+                        </Link>
+                    </div>
                 }
             />
 

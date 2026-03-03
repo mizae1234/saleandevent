@@ -409,9 +409,24 @@ model Staff {
   // Relations
   attendance       Attendance[]
   assignments      ChannelStaff[]
+  passwordLogs     PasswordChangeLog[]
 
   @@index([status])
   @@map("staff")
+}
+
+model PasswordChangeLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  staffId     String   @map("staff_id") @db.Uuid
+  changeType  String   @map("change_type") @db.VarChar(20) // self_change, admin_reset
+  changedById String?  @map("changed_by_id") @db.Uuid
+  changedByName String? @map("changed_by_name") @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  staff Staff @relation(fields: [staffId], references: [id])
+
+  @@index([staffId])
+  @@map("password_change_logs")
 }
 
 model ChannelStaff {

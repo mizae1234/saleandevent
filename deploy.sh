@@ -3,17 +3,25 @@ set -e
 
 # ============================================
 #  Saran Jeans — Remote Deploy Script
-#  Usage: bash deploy.sh
+#  Usage: bash deploy.sh [old|new|all]
+#  Default: all (deploy to both servers)
 # ============================================
 
-SERVER="root@srv1100100.hstgr.cloud"
+SERVER_OLD="root@srv1100100.hstgr.cloud"
+SERVER_NEW="root@187.77.134.84"
 REMOTE_DIR="/home/web/saleandevent"
 
-echo ""
-echo "🚀 Deploying Saran Jeans to ${SERVER}..."
-echo "============================================"
+TARGET="${1:-all}"
 
-ssh "$SERVER" bash -s <<'EOF'
+deploy_to() {
+    local SERVER=$1
+    local LABEL=$2
+
+    echo ""
+    echo "🚀 Deploying to ${LABEL} (${SERVER})..."
+    echo "============================================"
+
+    ssh "$SERVER" bash -s <<'EOF'
 set -e
 cd /home/web/saleandevent
 
@@ -42,6 +50,27 @@ else
     exit 1
 fi
 EOF
+
+    echo ""
+    echo "✅ ${LABEL} deployed!"
+}
+
+case "$TARGET" in
+    old)
+        deploy_to "$SERVER_OLD" "OLD Server (saran.popcorn-creator.com)"
+        ;;
+    new)
+        deploy_to "$SERVER_NEW" "NEW Server (saranservices.tech)"
+        ;;
+    all)
+        deploy_to "$SERVER_OLD" "OLD Server (saran.popcorn-creator.com)"
+        deploy_to "$SERVER_NEW" "NEW Server (saranservices.tech)"
+        ;;
+    *)
+        echo "Usage: bash deploy.sh [old|new|all]"
+        exit 1
+        ;;
+esac
 
 echo ""
 echo "🎉 Done!"

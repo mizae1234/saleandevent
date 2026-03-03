@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { User, Mail, Phone, Building2, LogOut, CreditCard, Landmark } from "lucide-react";
 import { LogOutButton } from "@/components/layout/LogOutButton";
+import { ChangePasswordForm } from "./ChangePasswordForm";
 
 export default async function ProfilePage() {
     const session = await getSession();
@@ -69,6 +70,9 @@ export default async function ProfilePage() {
                     </div>
                 </div>
             </div>
+
+            {/* Change Password */}
+            <ChangePasswordForm staffId={staff.id} />
 
             {/* Logout */}
             <div className="rounded-2xl bg-white border border-slate-100 p-4">

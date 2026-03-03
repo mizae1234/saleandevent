@@ -83,7 +83,7 @@ export const MENU_SECTIONS: MenuSection[] = [
             { title: "ใบแจ้งหนี้ (Invoice)", href: "/finance/invoices", icon: FileText },
             { title: "จัดการพนักงาน", href: "/hr/employees", icon: UserCog },
             { title: "เงินเดือน/คอมฯ", href: "/hr/payroll", icon: Banknote },
-            { title: "รายงานสรุป", href: "/reports", icon: PieChart },
+            // { title: "รายงานสรุป", href: "/reports", icon: PieChart },
         ],
     },
     {
@@ -93,7 +93,7 @@ export const MENU_SECTIONS: MenuSection[] = [
             { title: "จัดการสินค้า", href: "/admin/products", icon: Tag },
             { title: "พนักงาน & สิทธิ์", href: "/admin/users", icon: Users },
             // { title: "โปรโมชั่น", href: "/admin/promotions", icon: Gift },
-            { title: "ตั้งค่าระบบ", href: "/admin/settings", icon: Settings },
+            // { title: "ตั้งค่าระบบ", href: "/admin/settings", icon: Settings },
         ],
     },
 ];

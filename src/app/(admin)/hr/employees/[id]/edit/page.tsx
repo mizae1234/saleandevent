@@ -3,9 +3,12 @@ import { updateStaff } from "@/actions/staff-actions";
 import { StaffForm } from "../../StaffForm";
 import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
+import { ResetPasswordButton } from "./ResetPasswordButton";
+import { getSession } from "@/lib/auth";
 
 export default async function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
+    const session = await getSession();
 
     const staff = await db.staff.findUnique({
         where: { id },
@@ -50,6 +53,13 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
                     "use server";
                     return await updateStaff(id, formData);
                 }}
+            />
+
+            {/* Admin Reset Password */}
+            <ResetPasswordButton
+                staffId={staff.id}
+                staffName={staff.name}
+                adminId={session?.staffId || ""}
             />
         </div>
     );

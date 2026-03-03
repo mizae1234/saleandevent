@@ -98,7 +98,55 @@ export async function changePasswordAction(
         data: { passwordHash: hash },
     });
 
+    // Log password change
+    await db.passwordChangeLog.create({
+        data: {
+            staffId,
+            changeType: 'self_change',
+            changedById: staffId,
+            changedByName: staff.name,
+        },
+    });
+
     return { success: true };
+}
+
+// ============ ADMIN RESET PASSWORD (back to DOB) ============
+
+export async function resetPasswordAction(staffId: string, adminId: string) {
+    const [staff, admin] = await Promise.all([
+        db.staff.findUnique({ where: { id: staffId } }),
+        db.staff.findUnique({ where: { id: adminId }, select: { name: true } }),
+    ]);
+
+    if (!staff) {
+        return { error: 'ไม่พบข้อมูลพนักงาน' };
+    }
+
+    // Use DOB or default 01/01/2026
+    const dob = staff.dateOfBirth ? new Date(staff.dateOfBirth) : new Date(2026, 0, 1);
+    const d = dob.getDate().toString().padStart(2, '0');
+    const m = (dob.getMonth() + 1).toString().padStart(2, '0');
+    const y = dob.getFullYear().toString(); // Christian year (ค.ศ.)
+    const dobPassword = `${d}${m}${y}`;
+
+    const hash = await hashPassword(dobPassword);
+    await db.staff.update({
+        where: { id: staffId },
+        data: { passwordHash: hash },
+    });
+
+    // Log password reset
+    await db.passwordChangeLog.create({
+        data: {
+            staffId,
+            changeType: 'admin_reset',
+            changedById: adminId,
+            changedByName: admin?.name || 'Admin',
+        },
+    });
+
+    return { success: true, password: dobPassword };
 }
 
 // ============ BACKFILL PASSWORDS FROM DOB ============

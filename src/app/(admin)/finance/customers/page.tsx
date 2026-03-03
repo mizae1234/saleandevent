@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Plus, Users, Search, Pencil, Trash2 } from "lucide-react";
 import { EmptyState, PageHeader } from "@/components/shared";
 import { DeleteCustomerButton } from "./DeleteCustomerButton";
+import { ExportCustomersButton } from "./ExportCustomersButton";
 
 const PAGE_SIZE = 20;
 
@@ -47,13 +48,16 @@ export default async function CustomersPage({
                 title="จัดการลูกค้า"
                 subtitle={`ทั้งหมด ${total} ราย`}
                 actions={
-                    <Link
-                        href="/finance/customers/create"
-                        className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm font-medium transition-colors shadow-sm"
-                    >
-                        <Plus className="h-4 w-4" />
-                        เพิ่มลูกค้า
-                    </Link>
+                    <div className="flex items-center gap-2">
+                        <ExportCustomersButton />
+                        <Link
+                            href="/finance/customers/create"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm font-medium transition-colors shadow-sm"
+                        >
+                            <Plus className="h-4 w-4" />
+                            เพิ่มลูกค้า
+                        </Link>
+                    </div>
                 }
             />
 
