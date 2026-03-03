@@ -4,6 +4,7 @@ export const AVAILABLE_ROLES = [
     { value: 'MANAGER', label: 'ผู้จัดการ (Manager)' },
     { value: 'WAREHOUSE', label: 'คลังสินค้า (Warehouse)' },
     { value: 'FINANCE', label: 'บัญชี/การเงิน (Finance)' },
+    { value: 'HR', label: 'บุคคล (HR)' },
     { value: 'STAFF', label: 'พนักงาน (Staff)' },
     { value: 'PC', label: 'PC (พนักงานขาย)' },
 ];

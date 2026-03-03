@@ -47,6 +47,7 @@ export function Sidebar({ className, onNavigated, allowedMenus = [], userName = 
         MANAGER: "ผู้จัดการ",
         WAREHOUSE: "คลังสินค้า",
         FINANCE: "บัญชี/การเงิน",
+        HR: "บุคคล",
         STAFF: "พนักงาน",
         PC: "PC",
     };

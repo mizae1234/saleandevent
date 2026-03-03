@@ -284,7 +284,8 @@ export default function RolePermissionsPage({
                                         : role.value === "MANAGER" ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
                                             : role.value === "WAREHOUSE" ? "bg-gradient-to-br from-amber-500 to-amber-600 text-white"
                                                 : role.value === "FINANCE" ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white"
-                                                    : "bg-gradient-to-br from-slate-400 to-slate-500 text-white"
+                                                    : role.value === "HR" ? "bg-gradient-to-br from-pink-500 to-pink-600 text-white"
+                                                        : "bg-gradient-to-br from-slate-400 to-slate-500 text-white"
                                         }`}>{role.value.charAt(0)}</div>
                                     <div className="text-left">
                                         <p className="font-semibold text-slate-900">{role.label}</p>
