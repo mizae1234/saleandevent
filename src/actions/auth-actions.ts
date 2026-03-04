@@ -46,14 +46,20 @@ export async function loginAction(_prevState: { error?: string } | undefined, fo
         salaryAccess: staff.salaryAccess || undefined,
     });
 
-    // Redirect based on role
-    const adminRoles = ['ADMIN', 'MANAGER', 'WAREHOUSE', 'FINANCE', 'HR'];
-    if (adminRoles.includes(staff.role)) {
-        redirect('/dashboard/owner');
-    } else {
-        // STAFF, PC, etc → employee workspace
-        redirect('/workspace');
-    }
+    // Redirect based on allowedMenus (priority-ordered landing page)
+    const landingPriority: [string, string][] = [
+        ['finance', '/dashboard/owner'],
+        ['sales_channel', '/channels'],
+        ['supply_chain', '/warehouse/packing'],
+        ['hr', '/hr/employees'],
+        ['system_admin', '/admin/products'],
+        ['front_office', '/pc/pos'],
+    ];
+
+    const landingPage = landingPriority
+        .find(([key]) => allowedMenus.includes(key))?.[1] || '/workspace';
+
+    redirect(landingPage);
 }
 
 // ============ LOGOUT ============
