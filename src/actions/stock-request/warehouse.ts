@@ -54,6 +54,12 @@ export async function uploadAllocation(requestId: string, inputRows: AllocationR
         }
     }
 
+    // Size normalization: Excel uses XXL but DB uses 2XL
+    const SIZE_MAP: Record<string, string> = {
+        'XXL': '2XL',
+    };
+    const normalizeSize = (s: string | null) => s ? (SIZE_MAP[s] || s) : null;
+
     // Build lookup maps
     // For products WITH size: "CODE-COLOR-SIZE" → real barcode
     // For products WITHOUT size: "CODE-COLOR" → real barcode
@@ -72,24 +78,41 @@ export async function uploadAllocation(requestId: string, inputRows: AllocationR
     }
 
     // Map each row to the real barcode
-    const mappedRows = rows.map(row => {
-        // Try exact match first (code-color-size or code-color)
+    const mappedRows: { stockRequestId: string; barcode: string; size: string | null; packedQuantity: number; price: number }[] = [];
+    const missingBarcodes: string[] = [];
+
+    for (const row of rows) {
+        const normSize = normalizeSize(row.size);
         let lookupKey = row.barcode;
         if (row.code && row.color) {
-            lookupKey = row.size ? `${row.code}-${row.color}-${row.size}` : `${row.code}-${row.color}`;
+            lookupKey = normSize ? `${row.code}-${row.color}-${normSize}` : `${row.code}-${row.color}`;
         }
         const realBarcode = lookupMap.get(lookupKey);
         if (!realBarcode) {
-            throw new Error(`ไม่พบสินค้า barcode สำหรับ ${lookupKey} ในระบบ`);
+            missingBarcodes.push(lookupKey);
+            continue;
         }
-        return {
+        mappedRows.push({
             stockRequestId: requestId,
             barcode: realBarcode,
-            size: row.size,
+            size: normSize,
             packedQuantity: row.packedQuantity,
             price: row.price,
+        });
+    }
+
+    if (missingBarcodes.length > 0 && !adminOverride) {
+        return {
+            error: `ไม่พบสินค้าในระบบ: ${missingBarcodes.join(', ')}`,
+            missingCodes: missingBarcodes,
+            totalPacked: 0,
+            itemCount: 0,
         };
-    });
+    }
+
+    if (mappedRows.length === 0) {
+        return { error: 'ไม่มีสินค้าที่ตรงกับในระบบเลย', missingCodes: missingBarcodes, totalPacked: 0, itemCount: 0 };
+    }
 
     // Delete existing allocations and create new ones
     await db.$transaction(async (tx) => {
