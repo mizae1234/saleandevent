@@ -60,20 +60,24 @@ export async function uploadAllocation(requestId: string, inputRows: AllocationR
     };
     const normalizeSize = (s: string | null) => s ? (SIZE_MAP[s] || s) : null;
 
-    // Build lookup maps
-    // For products WITH size: "CODE-COLOR-SIZE" → real barcode
-    // For products WITHOUT size: "CODE-COLOR" → real barcode
+    // Build lookup maps — handle all combinations of color/size being present or null
     const lookupMap = new Map<string, string>();
     for (const p of products) {
         if (p.code && p.color && p.size) {
+            // CODE-COLOR-SIZE → barcode (e.g. SR044-เข้ม-2XL)
             lookupMap.set(`${p.code}-${p.color}-${p.size}`, p.barcode);
         }
-        if (p.code && p.color) {
-            // Also map without size for size-less products
-            const keyNoSize = `${p.code}-${p.color}`;
-            if (!lookupMap.has(keyNoSize)) {
-                lookupMap.set(keyNoSize, p.barcode);
-            }
+        if (p.code && !p.color && p.size) {
+            // CODE-SIZE → barcode (e.g. P01-S) — products without color
+            lookupMap.set(`${p.code}-${p.size}`, p.barcode);
+        }
+        if (p.code && p.color && !p.size) {
+            // CODE-COLOR → barcode — products without size
+            lookupMap.set(`${p.code}-${p.color}`, p.barcode);
+        }
+        if (p.code && !p.color && !p.size) {
+            // CODE → barcode — products with neither color nor size
+            lookupMap.set(p.code, p.barcode);
         }
     }
 
@@ -83,10 +87,24 @@ export async function uploadAllocation(requestId: string, inputRows: AllocationR
 
     for (const row of rows) {
         const normSize = normalizeSize(row.size);
-        let lookupKey = row.barcode;
-        if (row.code && row.color) {
-            lookupKey = normSize ? `${row.code}-${row.color}-${normSize}` : `${row.code}-${row.color}`;
+        const hasColor = row.color && row.color.trim() !== '';
+
+        // Build lookup key based on available fields
+        let lookupKey: string;
+        if (row.code) {
+            if (hasColor && normSize) {
+                lookupKey = `${row.code}-${row.color}-${normSize}`;       // CODE-COLOR-SIZE
+            } else if (hasColor && !normSize) {
+                lookupKey = `${row.code}-${row.color}`;                    // CODE-COLOR
+            } else if (!hasColor && normSize) {
+                lookupKey = `${row.code}-${normSize}`;                     // CODE-SIZE
+            } else {
+                lookupKey = row.code;                                       // CODE only
+            }
+        } else {
+            lookupKey = row.barcode;
         }
+
         const realBarcode = lookupMap.get(lookupKey);
         if (!realBarcode) {
             missingBarcodes.push(lookupKey);
