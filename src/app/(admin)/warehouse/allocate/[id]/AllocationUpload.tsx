@@ -173,7 +173,7 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
         setProgress(0);
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (adminOverride: boolean = false) => {
         if (rows.length === 0) return;
         setLoading(true);
         setError(null);
@@ -191,12 +191,34 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
             if (batches.length <= 1) {
                 // Single batch — just upload all at once
                 setProgress(50);
-                await uploadAllocation(requestId, rows);
+                const result = await uploadAllocation(requestId, rows, adminOverride);
+                if (result && 'error' in result && result.error) {
+                    // Show error with option to force
+                    if (result.missingCodes && result.missingCodes.length > 0) {
+                        const shouldForce = confirm(
+                            `${result.error}\n\nต้องการข้ามสินค้าที่ไม่พบแล้วจัดสรรเฉพาะสินค้าที่มีในระบบหรือไม่?`
+                        );
+                        if (shouldForce) {
+                            setLoading(false);
+                            return handleSubmit(true);
+                        }
+                    }
+                    setError(result.error);
+                    setProgress(0);
+                    setLoading(false);
+                    return;
+                }
                 setProgress(100);
             } else {
                 // Multiple batches — upload first batch to create, rest to append
                 for (let i = 0; i < batches.length; i++) {
-                    await uploadAllocation(requestId, batches[i]);
+                    const result = await uploadAllocation(requestId, batches[i], adminOverride);
+                    if (result && 'error' in result && result.error) {
+                        setError(result.error);
+                        setProgress(0);
+                        setLoading(false);
+                        return;
+                    }
                     setProgress(Math.round(((i + 1) / batches.length) * 100));
                 }
             }
@@ -380,7 +402,7 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
 
             {/* Submit */}
             <button
-                onClick={handleSubmit}
+                onClick={() => handleSubmit()}
                 disabled={loading || rows.length === 0}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm font-medium transition-colors"
             >

@@ -4,7 +4,8 @@ import { db } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import type { AllocationRow } from '@/types/stock';
 
-export async function uploadAllocation(requestId: string, rows: AllocationRow[], adminOverride: boolean = false) {
+export async function uploadAllocation(requestId: string, inputRows: AllocationRow[], adminOverride: boolean = false) {
+    let rows = inputRows;
     const request = await db.stockRequest.findUnique({
         where: { id: requestId },
         include: { allocations: true },
@@ -35,8 +36,22 @@ export async function uploadAllocation(requestId: string, rows: AllocationRow[],
     // Check for missing codes
     const existingCodes = new Set(products.map(p => p.code));
     const missingCodes = codeSet.filter(c => !existingCodes.has(c));
-    if (missingCodes.length > 0) {
-        throw new Error(`Products not found: ${missingCodes.join(', ')}`);
+    if (missingCodes.length > 0 && !adminOverride) {
+        return {
+            error: `ไม่พบรหัสสินค้าในระบบ: ${missingCodes.join(', ')}`,
+            missingCodes,
+            totalPacked: 0,
+            itemCount: 0,
+        };
+    }
+
+    // If adminOverride, filter out rows with missing codes
+    if (missingCodes.length > 0 && adminOverride) {
+        const missingSet = new Set(missingCodes);
+        rows = rows.filter(r => !missingSet.has(r.code || ''));
+        if (rows.length === 0) {
+            return { error: 'ไม่มีสินค้าที่ตรงกับในระบบเลย', missingCodes, totalPacked: 0, itemCount: 0 };
+        }
     }
 
     // Build lookup maps
