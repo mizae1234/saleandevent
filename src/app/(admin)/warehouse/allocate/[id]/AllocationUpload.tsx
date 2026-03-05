@@ -32,7 +32,7 @@ interface ExcelRow {
     price: number;
 }
 
-const SIZES = ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
+const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
 
 export default function AllocationUpload({ requestId, channelName, requestedTotal }: Props) {
     const router = useRouter();
@@ -49,9 +49,9 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
 
     // ========== Download Template ==========
     const downloadTemplate = () => {
-        const headers = ['ลำดับ', 'ประเภท', 'รุ่น', 'สี', 'S', 'M', 'L', 'XL', 'XXL', '3XL', 'รวม', 'ราคา'];
-        const example1 = [1, 'กางเกง', 'SR4006', 'อ่อน', 1, 2, 3, 4, 5, 6, 21, 790];
-        const example2 = [2, 'เสื้อ', 'SR01', 'ขาว', '', '', '', '', '', '', 20, 590];
+        const headers = ['ลำดับ', 'ประเภท', 'รุ่น', 'สี', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', 'รวม', 'ราคา'];
+        const example1 = [1, 'กางเกง', 'SR4006', 'อ่อน', '', 1, 2, 3, 4, 5, 6, '', 21, 790];
+        const example2 = [2, 'เสื้อ', 'SR01', 'ขาว', '', '', '', '', '', '', '', '', 20, 590];
 
         const ws = XLSX.utils.aoa_to_sheet([headers, example1, example2]);
 
@@ -60,12 +60,14 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
             { wch: 12 },  // ประเภท
             { wch: 12 },  // รุ่น
             { wch: 10 },  // สี
+            { wch: 6 },   // XS
             { wch: 6 },   // S
             { wch: 6 },   // M
             { wch: 6 },   // L
             { wch: 6 },   // XL
-            { wch: 6 },   // XXL
+            { wch: 6 },   // 2XL
             { wch: 6 },   // 3XL
+            { wch: 6 },   // 4XL
             { wch: 8 },   // รวม
             { wch: 10 },  // ราคา
         ];
@@ -110,7 +112,7 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
 
                 const sizeQties: { size: string; qty: number }[] = [];
 
-                // Columns 4-9 are S, M, L, XL, XXL, 3XL
+                // Columns 4-11 are XS, S, M, L, XL, 2XL, 3XL, 4XL
                 SIZES.forEach((size, idx) => {
                     const qty = Number(row[4 + idx]) || 0;
                     if (qty > 0) {
@@ -118,11 +120,11 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
                     }
                 });
 
-                // "รวม" column (col 10) — use it directly if provided, otherwise sum sizes
-                const explicitTotal = Number(row[10]) || 0;
+                // "รวม" column (col 12) — use it directly if provided, otherwise sum sizes
+                const explicitTotal = Number(row[12]) || 0;
                 const sizeSum = sizeQties.reduce((s, q) => s + q.qty, 0);
                 const total = explicitTotal > 0 ? explicitTotal : sizeSum;
-                const price = Number(row[11]) || 0;
+                const price = Number(row[13]) || 0;
 
                 parsedExcelRows.push({ no, type, code, color, sizes: sizeQties, total, price });
 
@@ -279,7 +281,7 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
                 </div>
 
                 <p className="text-xs text-slate-400">
-                    Format: ลำดับ, ประเภท, รุ่น, สี, S, M, L, XL, XXL, 3XL, รวม, ราคา
+                    Format: ลำดับ, ประเภท, รุ่น, สี, XS, S, M, L, XL, 2XL, 3XL, 4XL, รวม, ราคา
                     <br />
                     <span className="text-slate-500">สินค้าที่ไม่มี size ให้ใส่จำนวนใน "รวม" ไม่ต้องกรอกช่อง size</span>
                 </p>

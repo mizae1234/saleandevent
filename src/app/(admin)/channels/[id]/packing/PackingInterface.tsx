@@ -22,7 +22,7 @@ interface Props {
     readonly allocations: Allocation[];
 }
 
-const SIZES = ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
+const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
 
 interface GroupedRow {
     no: number;
@@ -183,7 +183,7 @@ export default function PackingInterface({ requestId, requestedTotal, status, al
                 throw new Error('ไฟล์ Excel ต้องมีอย่างน้อย 1 แถวข้อมูล');
             }
 
-            const rows: { barcode: string; size: string | null; packedQuantity: number; price: number }[] = [];
+            const rows: { barcode: string; code?: string; color?: string; size: string | null; packedQuantity: number; price: number }[] = [];
 
             for (let i = 1; i < rawData.length; i++) {
                 const row = rawData[i];
@@ -193,17 +193,38 @@ export default function PackingInterface({ requestId, requestedTotal, status, al
                 const color = String(row[3] || '').trim();
                 if (!code) continue;
 
+                let hasSizeQty = false;
                 SIZES.forEach((size, idx) => {
                     const qty = Number(row[4 + idx]) || 0;
                     if (qty > 0) {
+                        hasSizeQty = true;
+                        const barcode = color ? `${code}-${color}-${size}` : `${code}-${size}`;
                         rows.push({
-                            barcode: `${code}-${color}-${size}`,
+                            barcode,
+                            code,
+                            color: color || undefined,
                             size,
                             packedQuantity: qty,
-                            price: Number(row[11]) || 0,
+                            price: Number(row[13]) || 0,
                         });
                     }
                 });
+
+                // If no size quantities, check "รวม" column (col 12)
+                if (!hasSizeQty) {
+                    const total = Number(row[12]) || 0;
+                    if (total > 0) {
+                        const barcode = color ? `${code}-${color}` : code;
+                        rows.push({
+                            barcode,
+                            code,
+                            color: color || undefined,
+                            size: null,
+                            packedQuantity: total,
+                            price: Number(row[13]) || 0,
+                        });
+                    }
+                }
             }
 
             if (rows.length === 0) {
