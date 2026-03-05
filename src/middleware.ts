@@ -23,6 +23,13 @@ const ROUTE_TO_MENU_KEY: Record<string, string> = {
     '/admin': 'system_admin',
 };
 
+// Cross-access: certain paths should also be accessible by users with other menu keys
+// e.g. /channels/xxx/packing should be accessible by supply_chain users
+const CROSS_ACCESS_PATTERNS: [RegExp, string][] = [
+    [/^\/channels\/[^/]+\/packing/, 'supply_chain'],    // warehouse can view channel packing
+    [/^\/warehouse\/allocate/, 'sales_channel'],          // sales channel can view allocation
+];
+
 // Admin roles that can access admin routes (fallback when no allowedMenus)
 const ADMIN_ROLES = ['ADMIN', 'MANAGER', 'WAREHOUSE', 'FINANCE'];
 
@@ -90,11 +97,17 @@ export async function middleware(request: NextRequest) {
                 if (matchedPrefix) {
                     const menuKey = ROUTE_TO_MENU_KEY[matchedPrefix];
                     if (!allowedMenus.includes(menuKey)) {
-                        // User doesn't have access to this menu section
-                        const firstAllowedPrefix = Object.entries(ROUTE_TO_MENU_KEY)
-                            .find(([_, key]) => allowedMenus.includes(key));
-                        const redirectTo = firstAllowedPrefix ? firstAllowedPrefix[0] : '/workspace';
-                        return NextResponse.redirect(new URL(redirectTo, request.url));
+                        // Check cross-access patterns before denying
+                        const hasCrossAccess = CROSS_ACCESS_PATTERNS.some(
+                            ([pattern, altKey]) => pattern.test(pathname) && allowedMenus.includes(altKey)
+                        );
+                        if (!hasCrossAccess) {
+                            // User doesn't have access to this menu section
+                            const firstAllowedPrefix = Object.entries(ROUTE_TO_MENU_KEY)
+                                .find(([_, key]) => allowedMenus.includes(key));
+                            const redirectTo = firstAllowedPrefix ? firstAllowedPrefix[0] : '/workspace';
+                            return NextResponse.redirect(new URL(redirectTo, request.url));
+                        }
                     }
                 }
             }
