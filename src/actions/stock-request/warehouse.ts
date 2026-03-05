@@ -164,7 +164,7 @@ export async function uploadAllocation(requestId: string, inputRows: AllocationR
 
     revalidatePath('/warehouse/allocation');
     revalidatePath(`/warehouse/allocation/${requestId}`);
-    revalidatePath(`/channels/${request.channelId}/packing`);
+    revalidatePath(`/warehouse/packing/${requestId}`);
     return { totalPacked, itemCount: rows.length };
 }
 
@@ -184,7 +184,7 @@ export async function updateSingleAllocation(allocationId: string, packedQuantit
         data: { packedQuantity },
     });
 
-    revalidatePath(`/channels/${allocation.request.id}/packing`);
+    revalidatePath(`/warehouse/packing/${allocation.request.id}`);
     revalidatePath('/warehouse/packing');
     return { success: true };
 }
@@ -218,7 +218,7 @@ export async function confirmPacking(requestId: string) {
 
     revalidatePath('/warehouse/packing');
     revalidatePath('/warehouse/shipments');
-    revalidatePath(`/channels/${requestId}/packing`);
+    revalidatePath(`/warehouse/packing/${requestId}`);
     revalidatePath(`/channels/${request.channelId}`);
     return { totalPacked };
 }

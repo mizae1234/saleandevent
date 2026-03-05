@@ -73,7 +73,7 @@ export function PackingListClient({ requests }: { requests: PackingRequest[] }) 
                             const config = STATUS_CONFIG[req.status] || { label: req.status, bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200', action: '' };
                             const targetUrl = req.status === 'approved'
                                 ? `/warehouse/allocate/${req.id}`
-                                : `/channels/${req.id}/packing`;
+                                : `/warehouse/packing/${req.id}`;
 
                             return (
                                 <Link key={req.id} href={targetUrl} className="flex items-center gap-3 sm:gap-4 p-4 sm:p-5 hover:bg-slate-50/80 transition-colors group">
