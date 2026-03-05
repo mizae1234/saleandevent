@@ -99,6 +99,27 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
             const parsedExcelRows: ExcelRow[] = [];
             const parsedAllocRows: AllocationRow[] = [];
 
+            // Auto-detect columns from header row
+            const headers = (rawData[0] || []).map(h => String(h || '').trim());
+            const SIZE_MAP_LOCAL: Record<string, string> = { 'XXL': '2XL' };
+            const ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', '4XL'];
+
+            const sizeColumns: { colIdx: number; size: string }[] = [];
+            let totalColIdx = -1;
+            let priceColIdx = -1;
+
+            headers.forEach((h, idx) => {
+                const upper = h.toUpperCase();
+                if (ALL_SIZES.includes(upper)) {
+                    const normalizedSize = SIZE_MAP_LOCAL[upper] || upper;
+                    sizeColumns.push({ colIdx: idx, size: normalizedSize });
+                } else if (h === 'รวม') {
+                    totalColIdx = idx;
+                } else if (h === 'ราคา') {
+                    priceColIdx = idx;
+                }
+            });
+
             for (let i = 1; i < rawData.length; i++) {
                 const row = rawData[i];
                 if (!row || row.length < 4) continue;
@@ -111,20 +132,18 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
                 if (!code) continue;
 
                 const sizeQties: { size: string; qty: number }[] = [];
+                const price = priceColIdx >= 0 ? (Number(row[priceColIdx]) || 0) : 0;
 
-                // Columns 4-11 are XS, S, M, L, XL, 2XL, 3XL, 4XL
-                SIZES.forEach((size, idx) => {
-                    const qty = Number(row[4 + idx]) || 0;
+                sizeColumns.forEach(({ colIdx, size }) => {
+                    const qty = Number(row[colIdx]) || 0;
                     if (qty > 0) {
                         sizeQties.push({ size, qty });
                     }
                 });
 
-                // "รวม" column (col 12) — use it directly if provided, otherwise sum sizes
-                const explicitTotal = Number(row[12]) || 0;
+                const explicitTotal = totalColIdx >= 0 ? (Number(row[totalColIdx]) || 0) : 0;
                 const sizeSum = sizeQties.reduce((s, q) => s + q.qty, 0);
                 const total = explicitTotal > 0 ? explicitTotal : sizeSum;
-                const price = Number(row[13]) || 0;
 
                 parsedExcelRows.push({ no, type, code, color, sizes: sizeQties, total, price });
 

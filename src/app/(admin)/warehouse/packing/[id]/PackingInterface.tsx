@@ -142,6 +142,28 @@ export default function PackingInterface({ requestId, requestedTotal, status, al
 
             if (rawData.length < 2) throw new Error('ไฟล์ Excel ต้องมีอย่างน้อย 1 แถวข้อมูล');
 
+            // Auto-detect columns from header row
+            const headers = (rawData[0] || []).map(h => String(h || '').trim());
+            const SIZE_MAP: Record<string, string> = { 'XXL': '2XL' };
+            const ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', '4XL'];
+
+            // Find size columns, รวม, ราคา by header name
+            const sizeColumns: { colIdx: number; size: string }[] = [];
+            let totalColIdx = -1;
+            let priceColIdx = -1;
+
+            headers.forEach((h, idx) => {
+                const upper = h.toUpperCase();
+                if (ALL_SIZES.includes(upper)) {
+                    const normalizedSize = SIZE_MAP[upper] || upper;
+                    sizeColumns.push({ colIdx: idx, size: normalizedSize });
+                } else if (h === 'รวม') {
+                    totalColIdx = idx;
+                } else if (h === 'ราคา') {
+                    priceColIdx = idx;
+                }
+            });
+
             const rows: typeof pendingImportRows = [];
             const preview: PreviewRow[] = [];
 
@@ -155,18 +177,19 @@ export default function PackingInterface({ requestId, requestedTotal, status, al
                 if (!code) continue;
 
                 const sizeQties: { size: string; qty: number }[] = [];
-                SIZES.forEach((size, idx) => {
-                    const qty = Number(row[4 + idx]) || 0;
+                const price = priceColIdx >= 0 ? (Number(row[priceColIdx]) || 0) : 0;
+
+                sizeColumns.forEach(({ colIdx, size }) => {
+                    const qty = Number(row[colIdx]) || 0;
                     if (qty > 0) {
                         sizeQties.push({ size, qty });
-                        rows.push({ barcode: color ? `${code}-${color}-${size}` : `${code}-${size}`, code, color: color || undefined, size, packedQuantity: qty, price: Number(row[13]) || 0 });
+                        rows.push({ barcode: color ? `${code}-${color}-${size}` : `${code}-${size}`, code, color: color || undefined, size, packedQuantity: qty, price });
                     }
                 });
 
-                const explicitTotal = Number(row[12]) || 0;
+                const explicitTotal = totalColIdx >= 0 ? (Number(row[totalColIdx]) || 0) : 0;
                 const sizeSum = sizeQties.reduce((s, q) => s + q.qty, 0);
                 const total = explicitTotal > 0 ? explicitTotal : sizeSum;
-                const price = Number(row[13]) || 0;
 
                 if (sizeQties.length === 0 && total > 0) {
                     rows.push({ barcode: color ? `${code}-${color}` : code, code, color: color || undefined, size: null, packedQuantity: total, price });
