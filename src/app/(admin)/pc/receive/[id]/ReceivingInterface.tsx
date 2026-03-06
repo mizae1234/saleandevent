@@ -20,7 +20,7 @@ interface Props {
     readonly redirectTo?: string;
 }
 
-const SIZES = ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
+const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
 
 interface GroupedRow {
     no: number;
@@ -29,6 +29,8 @@ interface GroupedRow {
     color: string;
     sizes: Record<string, { barcode: string; allocated: number }>;
     total: number;
+    noSizeBarcode: string | null;   // barcode for products without size
+    noSizeAllocated: number;        // allocated qty for no-size products
 }
 
 export default function ReceivingInterface({ requestId, allocations, redirectTo }: Props) {
@@ -64,6 +66,8 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
                     color: a.product.color || '-',
                     sizes: {},
                     total: 0,
+                    noSizeBarcode: null,
+                    noSizeAllocated: 0,
                 };
                 map.set(key, row);
             }
@@ -72,12 +76,19 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
                     barcode: a.barcode,
                     allocated: a.packedQuantity,
                 };
+            } else {
+                // Product without size — track barcode for total column input
+                row.noSizeBarcode = a.barcode;
+                row.noSizeAllocated += a.packedQuantity;
             }
             row.total += a.packedQuantity;
         }
 
         return Array.from(map.values());
     }, [allocations]);
+
+    // Check if any row has sizes (to decide whether to show size columns)
+    const hasSizeProducts = groupedRows.some(r => Object.keys(r.sizes).length > 0);
 
     // Size totals
     const sizeTotalsAllocated = useMemo(() => {
@@ -179,7 +190,7 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
                 ))}
             </div>
 
-            {/* Tab Content */}
+            {/* Tab: จำนวนที่ส่ง (Shipped) */}
             {activeTab === 'shipped' && (
                 <div className="overflow-x-auto bg-white border border-slate-200 rounded-xl">
                     <table className="w-full text-sm">
@@ -189,7 +200,7 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
                                 <th className="text-left p-3 text-xs font-semibold text-slate-600">ประเภท</th>
                                 <th className="text-left p-3 text-xs font-semibold text-slate-600">รุ่น</th>
                                 <th className="text-center p-3 text-xs font-semibold text-slate-600">สี</th>
-                                {SIZES.map(s => (
+                                {hasSizeProducts && SIZES.map(s => (
                                     <th key={s} className="text-center p-3 text-xs font-semibold text-slate-600 w-14">{s}</th>
                                 ))}
                                 <th className="text-center p-3 text-xs font-semibold text-slate-600 w-16">รวม</th>
@@ -202,7 +213,7 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
                                     <td className="p-3 text-slate-700">{row.producttype}</td>
                                     <td className="p-3 font-semibold text-indigo-700">{row.code}</td>
                                     <td className="p-3 text-center text-slate-700">{row.color}</td>
-                                    {SIZES.map(s => (
+                                    {hasSizeProducts && SIZES.map(s => (
                                         <td key={s} className="p-3 text-center">
                                             {row.sizes[s] ? (
                                                 <span className="font-medium text-slate-900">{row.sizes[s].allocated}</span>
@@ -218,7 +229,7 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
                         <tfoot className="bg-slate-100 border-t-2 border-slate-300">
                             <tr>
                                 <td colSpan={4} className="p-3 text-sm font-bold text-slate-700">รวมทั้งหมด</td>
-                                {SIZES.map(s => (
+                                {hasSizeProducts && SIZES.map(s => (
                                     <td key={s} className="p-3 text-center font-bold text-slate-700">
                                         {sizeTotalsAllocated[s] > 0 ? sizeTotalsAllocated[s] : '-'}
                                     </td>
@@ -230,6 +241,7 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
                 </div>
             )}
 
+            {/* Tab: รับสินค้า (Receive) */}
             {activeTab === 'receive' && (
                 <>
                     <div className="overflow-x-auto bg-white border border-slate-200 rounded-xl">
@@ -239,7 +251,7 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
                                     <th className="text-center p-3 text-xs font-semibold text-emerald-700 w-10">#</th>
                                     <th className="text-left p-3 text-xs font-semibold text-emerald-700">รุ่น</th>
                                     <th className="text-center p-3 text-xs font-semibold text-emerald-700">สี</th>
-                                    {SIZES.map(s => (
+                                    {hasSizeProducts && SIZES.map(s => (
                                         <th key={s} className="text-center p-3 text-xs font-semibold text-emerald-700 w-14">{s}</th>
                                     ))}
                                     <th className="text-center p-3 text-xs font-semibold text-emerald-700 w-16">รวม</th>
@@ -247,16 +259,20 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {groupedRows.map(row => {
-                                    const receivedTotal = SIZES.reduce((sum, s) => {
+                                    const hasSizes = Object.keys(row.sizes).length > 0;
+                                    const receivedFromSizes = SIZES.reduce((sum, s) => {
                                         const barcode = row.sizes[s]?.barcode;
                                         return sum + (barcode ? (receivedQtys[barcode] || 0) : 0);
                                     }, 0);
+                                    const receivedFromNoSize = row.noSizeBarcode ? (receivedQtys[row.noSizeBarcode] || 0) : 0;
+                                    const receivedTotal = receivedFromSizes + receivedFromNoSize;
+
                                     return (
                                         <tr key={`recv-${row.code}-${row.color}`} className="hover:bg-emerald-50/30">
                                             <td className="p-3 text-center text-slate-400">{row.no}</td>
                                             <td className="p-3 font-semibold text-indigo-700">{row.code}</td>
                                             <td className="p-3 text-center text-slate-700">{row.color}</td>
-                                            {SIZES.map(s => {
+                                            {hasSizeProducts && SIZES.map(s => {
                                                 const sizeInfo = row.sizes[s];
                                                 if (!sizeInfo) {
                                                     return <td key={s} className="p-3 text-center text-slate-300">-</td>;
@@ -282,7 +298,27 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
                                                     </td>
                                                 );
                                             })}
-                                            <td className="p-3 text-center font-bold text-slate-900">{receivedTotal}</td>
+                                            <td className="p-2 text-center">
+                                                {/* For no-size products: show editable input in total column */}
+                                                {!hasSizes && row.noSizeBarcode ? (
+                                                    <input
+                                                        type="number"
+                                                        onFocus={(e) => e.target.select()}
+                                                        value={receivedFromNoSize}
+                                                        onChange={e => setReceivedQtys(prev => ({
+                                                            ...prev,
+                                                            [row.noSizeBarcode!]: parseInt(e.target.value) || 0,
+                                                        }))}
+                                                        min="0"
+                                                        className={`w-16 border rounded px-1 py-1 text-center text-sm font-bold ${row.noSizeAllocated - receivedFromNoSize !== 0
+                                                            ? 'border-amber-400 bg-amber-50 text-amber-700'
+                                                            : 'border-emerald-300 bg-emerald-50 text-emerald-900'
+                                                            }`}
+                                                    />
+                                                ) : (
+                                                    <span className="font-bold text-slate-900">{receivedTotal}</span>
+                                                )}
+                                            </td>
                                         </tr>
                                     );
                                 })}
@@ -290,7 +326,7 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
                             <tfoot className="bg-emerald-50 border-t-2 border-emerald-300">
                                 <tr>
                                     <td colSpan={3} className="p-3 text-sm font-bold text-emerald-700">รวมรับจริง</td>
-                                    {SIZES.map(s => (
+                                    {hasSizeProducts && SIZES.map(s => (
                                         <td key={s} className="p-3 text-center font-bold text-emerald-700">
                                             {sizeTotalsReceived[s] > 0 ? sizeTotalsReceived[s] : '-'}
                                         </td>
