@@ -3,7 +3,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { confirmPacking, uploadAllocation } from '@/actions/stock-request';
-import { CheckCircle2, Upload, AlertTriangle, X } from 'lucide-react';
+import { CheckCircle2, Upload, AlertTriangle, X, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface Allocation {
@@ -127,6 +127,39 @@ export default function PackingInterface({ requestId, requestedTotal, status, al
         } finally { setLoading(false); }
     };
 
+    // ========== Download Template with Product Master ==========
+    const downloadTemplate = async () => {
+        setLoading(true); setError(null);
+        try {
+            const { getProductMasterForTemplate } = await import('@/actions/stock-request');
+            const products = await getProductMasterForTemplate();
+
+            const headers = ['ลำดับ', 'ประเภท', 'รุ่น', 'สี', 'S', 'M', 'L', 'XL', '2XL', '3XL', 'รวม', 'ราคา'];
+            const dataRows = products.map((p, i) => [
+                i + 1,
+                p.producttype === 'pants' ? 'กางเกง' : p.producttype === 'shirt' ? 'เสื้อ' : p.producttype,
+                p.code,
+                p.color,
+                '', '', '', '', '', '',
+                '',
+                p.price || '',
+            ]);
+
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+            ws['!cols'] = [
+                { wch: 6 }, { wch: 12 }, { wch: 12 }, { wch: 10 },
+                { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 },
+                { wch: 8 }, { wch: 10 },
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'จัดสรรสินค้า');
+            XLSX.writeFile(wb, `template_จัดสรรสินค้า.xlsx`);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'ไม่สามารถดาวน์โหลด Template ได้');
+        } finally { setLoading(false); }
+    };
+
     // ========== Import Excel → Parse & Preview ==========
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -241,6 +274,11 @@ export default function PackingInterface({ requestId, requestedTotal, status, al
                         </span>
                     ) : (
                         <>
+                            {/* Download Template */}
+                            <button onClick={downloadTemplate} disabled={loading}
+                                className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium transition-colors disabled:opacity-50">
+                                <Download className="h-4 w-4" /> {loading ? 'กำลังโหลด...' : 'ดาวน์โหลด Template'}
+                            </button>
                             <label className="flex items-center gap-2 px-4 py-2 border border-indigo-300 text-indigo-700 rounded-lg hover:bg-indigo-50 text-sm font-medium cursor-pointer transition-colors">
                                 <Upload className="h-4 w-4" /> {importing ? 'กำลังนำเข้า...' : 'Import ใหม่'}
                                 <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileSelect} className="hidden" disabled={importing} />

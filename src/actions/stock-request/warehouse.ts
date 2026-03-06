@@ -271,3 +271,32 @@ export async function createShipment(
     revalidatePath(`/channels/${request.channelId}`);
     return { totalPacked };
 }
+
+// ========== Get Product Master for Template ==========
+export async function getProductMasterForTemplate() {
+    const products = await db.product.findMany({
+        where: {
+            status: { in: ['active', 'ACTIVE'] },
+            producttype: { not: 'equipment' },
+        },
+        select: { code: true, producttype: true, color: true, size: true, price: true },
+        orderBy: [{ code: 'asc' }, { color: 'asc' }, { size: 'asc' }],
+    });
+
+    // Group by code + color → one row per unique combo
+    const groupMap = new Map<string, { producttype: string; code: string; color: string; price: number }>();
+
+    for (const p of products) {
+        const key = `${p.code}__${p.color || ''}`;
+        if (!groupMap.has(key)) {
+            groupMap.set(key, {
+                producttype: p.producttype || '',
+                code: p.code || '',
+                color: p.color || '',
+                price: Number(p.price) || 0,
+            });
+        }
+    }
+
+    return Array.from(groupMap.values());
+}

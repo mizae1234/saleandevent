@@ -47,34 +47,39 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
 
     const totalQty = rows.reduce((sum, r) => sum + r.packedQuantity, 0);
 
-    // ========== Download Template ==========
-    const downloadTemplate = () => {
-        const headers = ['ลำดับ', 'ประเภท', 'รุ่น', 'สี', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', 'รวม', 'ราคา'];
-        const example1 = [1, 'กางเกง', 'SR4006', 'อ่อน', '', 1, 2, 3, 4, 5, 6, '', 21, 790];
-        const example2 = [2, 'เสื้อ', 'SR01', 'ขาว', '', '', '', '', '', '', '', '', 20, 590];
+    // ========== Download Template with Product Master ==========
+    const downloadTemplate = async () => {
+        setLoading(true);
+        try {
+            const { getProductMasterForTemplate } = await import('@/actions/stock-request');
+            const products = await getProductMasterForTemplate();
 
-        const ws = XLSX.utils.aoa_to_sheet([headers, example1, example2]);
+            const headers = ['ลำดับ', 'ประเภท', 'รุ่น', 'สี', 'S', 'M', 'L', 'XL', '2XL', '3XL', 'รวม', 'ราคา'];
+            const dataRows = products.map((p, i) => [
+                i + 1,
+                p.producttype === 'pants' ? 'กางเกง' : p.producttype === 'shirt' ? 'เสื้อ' : p.producttype,
+                p.code,
+                p.color,
+                '', '', '', '', '', '',  // S, M, L, XL, 2XL, 3XL — user fills these
+                '',                      // รวม
+                p.price || '',           // ราคา
+            ]);
 
-        ws['!cols'] = [
-            { wch: 6 },   // ลำดับ
-            { wch: 12 },  // ประเภท
-            { wch: 12 },  // รุ่น
-            { wch: 10 },  // สี
-            { wch: 6 },   // XS
-            { wch: 6 },   // S
-            { wch: 6 },   // M
-            { wch: 6 },   // L
-            { wch: 6 },   // XL
-            { wch: 6 },   // 2XL
-            { wch: 6 },   // 3XL
-            { wch: 6 },   // 4XL
-            { wch: 8 },   // รวม
-            { wch: 10 },  // ราคา
-        ];
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+            ws['!cols'] = [
+                { wch: 6 }, { wch: 12 }, { wch: 12 }, { wch: 10 },
+                { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 },
+                { wch: 8 }, { wch: 10 },
+            ];
 
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'จัดสรรสินค้า');
-        XLSX.writeFile(wb, `allocation_template.xlsx`);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'จัดสรรสินค้า');
+            XLSX.writeFile(wb, `template_จัดสรรสินค้า.xlsx`);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'ไม่สามารถดาวน์โหลด Template ได้');
+        } finally {
+            setLoading(false);
+        }
     };
 
     // ========== Import Excel ==========
