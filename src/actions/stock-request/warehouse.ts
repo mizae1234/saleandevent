@@ -63,21 +63,24 @@ export async function uploadAllocation(requestId: string, inputRows: AllocationR
     // Build lookup maps — handle all combinations of color/size being present or null
     const lookupMap = new Map<string, string>();
     for (const p of products) {
-        if (p.code && p.color && p.size) {
+        const pCode = p.code?.trim();
+        const pColor = p.color?.trim() || null;
+        const pSize = p.size?.trim() || null;
+        if (pCode && pColor && pSize) {
             // CODE-COLOR-SIZE → barcode (e.g. SR044-เข้ม-2XL)
-            lookupMap.set(`${p.code}-${p.color}-${p.size}`, p.barcode);
+            lookupMap.set(`${pCode}-${pColor}-${pSize}`, p.barcode);
         }
-        if (p.code && !p.color && p.size) {
+        if (pCode && !pColor && pSize) {
             // CODE-SIZE → barcode (e.g. P01-S) — products without color
-            lookupMap.set(`${p.code}-${p.size}`, p.barcode);
+            lookupMap.set(`${pCode}-${pSize}`, p.barcode);
         }
-        if (p.code && p.color && !p.size) {
+        if (pCode && pColor && !pSize) {
             // CODE-COLOR → barcode — products without size
-            lookupMap.set(`${p.code}-${p.color}`, p.barcode);
+            lookupMap.set(`${pCode}-${pColor}`, p.barcode);
         }
-        if (p.code && !p.color && !p.size) {
+        if (pCode && !pColor && !pSize) {
             // CODE → barcode — products with neither color nor size
-            lookupMap.set(p.code, p.barcode);
+            lookupMap.set(pCode, p.barcode);
         }
     }
 
