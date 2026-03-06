@@ -279,7 +279,7 @@ export async function getProductMasterForTemplate() {
             status: { in: ['active', 'ACTIVE'] },
             producttype: { not: 'equipment' },
         },
-        select: { code: true, producttype: true, color: true, size: true, price: true },
+        select: { code: true, name: true, color: true, size: true, price: true },
         orderBy: [{ code: 'asc' }, { color: 'asc' }, { size: 'asc' }],
     });
 
@@ -290,7 +290,7 @@ export async function getProductMasterForTemplate() {
         const key = `${p.code}__${p.color || ''}`;
         if (!groupMap.has(key)) {
             groupMap.set(key, {
-                producttype: p.producttype || '',
+                producttype: p.name || '',
                 code: p.code || '',
                 color: p.color || '',
                 price: Number(p.price) || 0,

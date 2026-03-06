@@ -57,7 +57,7 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
             const headers = ['ลำดับ', 'ประเภท', 'รุ่น', 'สี', 'S', 'M', 'L', 'XL', '2XL', '3XL', 'รวม', 'ราคา'];
             const dataRows = products.map((p, i) => [
                 i + 1,
-                p.producttype === 'pants' ? 'กางเกง' : p.producttype === 'shirt' ? 'เสื้อ' : p.producttype,
+                p.producttype,
                 p.code,
                 p.color,
                 '', '', '', '', '', '',  // S, M, L, XL, 2XL, 3XL — user fills these
