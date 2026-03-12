@@ -265,6 +265,34 @@ export async function submitInvoice(invoiceId: string) {
     return invoiceNumber;
 }
 
+// ============ UPDATE INVOICE NUMBER (submitted only) ============
+
+export async function updateInvoiceNumber(invoiceId: string, newNumber: string) {
+    const trimmed = newNumber.trim();
+    if (!trimmed) throw new Error('กรุณาระบุเลข Invoice');
+
+    const invoice = await db.invoice.findUnique({ where: { id: invoiceId } });
+    if (!invoice) throw new Error('ไม่พบ Invoice');
+    if (invoice.status !== 'submitted') throw new Error('สามารถแก้ได้เฉพาะ Invoice ที่ออกแล้ว');
+
+    try {
+        await db.invoice.update({
+            where: { id: invoiceId },
+            data: { invoiceNumber: trimmed },
+        });
+
+        revalidatePath(`/finance/invoices/${invoice.channelId}`);
+        revalidatePath(`/finance/invoices/${invoice.channelId}/${invoiceId}`);
+        return { success: true };
+    } catch (error: unknown) {
+        // Prisma unique constraint violation
+        if (error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === 'P2002') {
+            throw new Error(`เลข Invoice "${trimmed}" ถูกใช้แล้ว กรุณาใช้เลขอื่น`);
+        }
+        throw error;
+    }
+}
+
 // ============ DELETE INVOICE (draft only) ============
 
 export async function deleteInvoice(invoiceId: string) {

@@ -2,6 +2,7 @@ import { getInvoice, getChannelShippedItems } from "@/actions/invoice-actions";
 import { InvoiceFormClient } from "../../InvoiceFormClient";
 import Link from "next/link";
 import { ArrowLeft, FileText, CheckCircle2 } from "lucide-react";
+import { EditInvoiceNumber } from "./EditInvoiceNumber";
 
 export default async function InvoiceDetailPage({
     params,
@@ -42,10 +43,10 @@ export default async function InvoiceDetailPage({
                 </div>
                 <div className="flex items-center gap-3">
                     {invoice.status === 'submitted' ? (
-                        <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-200">
-                            <CheckCircle2 className="h-4 w-4" />
-                            <span className="text-sm font-medium">ออกแล้ว — {invoice.invoiceNumber}</span>
-                        </div>
+                        <EditInvoiceNumber
+                            invoiceId={invoice.id}
+                            currentNumber={invoice.invoiceNumber || ''}
+                        />
                     ) : (
                         <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-700 rounded-lg border border-amber-200">
                             <span className="text-sm font-medium">ฉบับร่าง — ยังไม่ออกเลข</span>
