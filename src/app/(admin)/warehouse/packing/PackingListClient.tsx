@@ -6,6 +6,7 @@ import { th } from "date-fns/locale";
 import { Package, ArrowRight, MapPin, Clock, CheckCircle2, Hash, Search } from "lucide-react";
 import Link from "next/link";
 import { PageHeader, EmptyState } from "@/components/shared";
+import { PACKING_STATUS } from "@/config/status";
 
 interface PackingRequest {
     id: string;
@@ -17,11 +18,7 @@ interface PackingRequest {
     channel: { id: string; name: string; code: string; location: string };
 }
 
-const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; border: string; action: string }> = {
-    approved: { label: 'รอจัดสรร', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-100', action: 'อัพโหลด Excel' },
-    allocated: { label: 'จัดสรรแล้ว', bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-100', action: 'แพ็คสินค้า' },
-    packed: { label: 'แพ็คแล้ว', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-100', action: 'ดูรายละเอียด' },
-};
+
 
 export function PackingListClient({ requests }: { requests: PackingRequest[] }) {
     const [search, setSearch] = useState('');
@@ -70,7 +67,7 @@ export function PackingListClient({ requests }: { requests: PackingRequest[] }) 
                 ) : (
                     <div className="divide-y divide-slate-50">
                         {filtered.map(req => {
-                            const config = STATUS_CONFIG[req.status] || { label: req.status, bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200', action: '' };
+                            const config = PACKING_STATUS[req.status] || { label: req.status, bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200', action: '' };
                             const targetUrl = req.status === 'approved'
                                 ? `/warehouse/allocate/${req.id}`
                                 : `/warehouse/packing/${req.id}`;

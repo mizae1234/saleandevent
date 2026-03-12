@@ -16,9 +16,7 @@ interface Props {
     data: KpiData;
 }
 
-function fmt(n: number) {
-    return n.toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
+import { fmt } from "@/lib/utils";
 
 function fmtDec(n: number) {
     return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

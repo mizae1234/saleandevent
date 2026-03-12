@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { ArrowUpDown, ExternalLink } from "lucide-react";
 import { useState } from "react";
+import { fmt } from "@/lib/utils";
+import { getChannelStatus } from "@/config/status";
 
 interface ChannelData {
     id: string;
@@ -23,27 +25,7 @@ interface Props {
 
 type SortKey = "sales" | "profit" | "margin" | "expenses";
 
-const STATUS_COLORS: Record<string, string> = {
-    draft: "bg-slate-100 text-slate-600",
-    approved: "bg-emerald-50 text-emerald-700",
-    active: "bg-blue-50 text-blue-700",
-    selling: "bg-blue-50 text-blue-700",
-    closed: "bg-slate-100 text-slate-500",
-    payment_approved: "bg-emerald-50 text-emerald-700",
-};
 
-const STATUS_LABELS: Record<string, string> = {
-    draft: "แบบร่าง",
-    approved: "อนุมัติ",
-    active: "กำลังขาย",
-    selling: "กำลังขาย",
-    closed: "ปิดงาน",
-    payment_approved: "อนุมัติจ่าย",
-};
-
-function fmt(n: number) {
-    return n.toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
 
 export function EventTable({ data }: Props) {
     const [sortKey, setSortKey] = useState<SortKey>("sales");
@@ -141,9 +123,11 @@ export function EventTable({ data }: Props) {
                                     </span>
                                 </td>
                                 <td className="px-4 py-3 text-center">
-                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[ch.status] || "bg-slate-100 text-slate-600"}`}>
-                                        {STATUS_LABELS[ch.status] || ch.status}
+                                    {(() => { const s = getChannelStatus(ch.status); return (
+                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${s.bg} ${s.text}`}>
+                                        {s.label}
                                     </span>
+                                    ); })()}
                                 </td>
                                 <td className="px-4 py-3">
                                     <Link

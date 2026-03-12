@@ -6,6 +6,7 @@ import { th } from "date-fns/locale";
 import { Banknote, Calendar, MapPin, ArrowRight, Users, Search, Store } from "lucide-react";
 import Link from "next/link";
 import { PageHeader, EmptyState } from "@/components/shared";
+import { getChannelStatus } from "@/config/status";
 
 interface PayrollEvent {
     id: string;
@@ -18,18 +19,7 @@ interface PayrollEvent {
     staffCount: number;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
-    submitted: { label: 'รออนุมัติ', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-100' },
-    approved: { label: 'อนุมัติแล้ว', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-100' },
-    active: { label: 'กำลังขาย', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-100' },
-    pending_return: { label: 'รอส่งคืน', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-100' },
-    returning: { label: 'กำลังส่งคืน', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-100' },
-    returned: { label: 'รับคืนแล้ว', bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-100' },
-    pending_payment: { label: 'รออนุมัติจ่าย', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-100' },
-    payment_approved: { label: 'อนุมัติจ่ายแล้ว', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-100' },
-    completed: { label: 'ปิดงาน', bg: 'bg-slate-100', text: 'text-slate-500', border: 'border-slate-200' },
-    closed: { label: 'ปิดงาน', bg: 'bg-slate-100', text: 'text-slate-500', border: 'border-slate-200' },
-};
+
 
 const STATUS_TABS = [
     { key: 'all', label: 'ทั้งหมด' },
@@ -108,7 +98,7 @@ export function PayrollListClient({ events }: { events: PayrollEvent[] }) {
                 ) : (
                     <div className="divide-y divide-slate-50">
                         {filtered.map(event => {
-                            const status = STATUS_CONFIG[event.status] || { label: event.status, bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
+                            const status = getChannelStatus(event.status);
                             return (
                                 <Link
                                     key={event.id}

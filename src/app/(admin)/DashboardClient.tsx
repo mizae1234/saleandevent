@@ -18,6 +18,7 @@ import {
     Calendar,
 } from "lucide-react";
 import Link from "next/link";
+import { fmt } from "@/lib/utils";
 
 interface DashboardData {
     stats: {
@@ -45,9 +46,7 @@ interface DashboardData {
     }[];
 }
 
-function fmt(n: number) {
-    return n.toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
+
 
 function formatDate(iso: string) {
     return new Date(iso).toLocaleDateString("th-TH", {

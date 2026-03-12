@@ -6,10 +6,6 @@ import Link from "next/link";
 import { PageHeader, EmptyState } from "@/components/shared";
 import { CloseListClient } from "./CloseListClient";
 
-function fmt(n: number) {
-    return n.toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
-
 async function getEventsForClose() {
     const events = await db.salesChannel.findMany({
         where: {

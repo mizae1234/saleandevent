@@ -5,6 +5,7 @@ import { ArrowLeft, User2, Banknote, Receipt, CheckCircle2, Clock, FileCheck } f
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import StaffPayrollEditor from "./StaffPayrollEditor";
+import { WithholdingTaxButton } from "./WithholdingTaxButton";
 
 export default async function StaffPayrollDetailPage({
     params,
@@ -194,6 +195,17 @@ export default async function StaffPayrollDetailPage({
                     fileType: a.fileType,
                     fileSize: a.fileSize,
                 }))}
+            />
+
+            {/* Withholding Tax Download */}
+            <WithholdingTaxButton
+                staffName={staffRecord.name}
+                staffCode={staffRecord.code || staffId.slice(0, 8)}
+                channelName={channel.name}
+                channelCode={channel.code || channelId.slice(0, 8)}
+                daysWorked={daysWorked}
+                dailyRate={dailyRate}
+                totalWage={totalWage}
             />
         </div>
     );

@@ -1,27 +1,18 @@
 import { db } from "@/lib/db";
+import { fmt } from "@/lib/utils";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { Calendar, MapPin, Plus, Store, CalendarDays, Users, ArrowRight, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { EmptyState, PageHeader } from "@/components/shared";
+import { getChannelStatus } from "@/config/status";
 
 import { EventFilters } from "./EventFilters";
 
 const ITEMS_PER_PAGE = 20;
 import { Prisma } from "@prisma/client";
 
-const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
-    draft: { label: "แบบร่าง", bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200" },
-    approved: { label: "อนุมัติ", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100" },
-    active: { label: "กำลังขาย", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-100" },
-    selling: { label: "กำลังขาย", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-100" },
-    packing: { label: "กำลังแพ็ค", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-100" },
-    shipped: { label: "จัดส่งแล้ว", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-100" },
-    received: { label: "รับสินค้าแล้ว", bg: "bg-teal-50", text: "text-teal-700", border: "border-teal-100" },
-    returned: { label: "คืนสินค้าแล้ว", bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-100" },
-    closed: { label: "ปิดงาน", bg: "bg-slate-100", text: "text-slate-500", border: "border-slate-200" },
-    payment_approved: { label: "อนุมัติจ่าย", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100" },
-};
+
 
 const TYPE_CONFIG: Record<string, { label: string; icon: typeof CalendarDays; bg: string; iconColor: string }> = {
     EVENT: { label: "อีเว้นท์", icon: CalendarDays, bg: "bg-violet-50", iconColor: "text-violet-600" },
@@ -95,9 +86,7 @@ async function getEvents(searchParams: Promise<{ [key: string]: string | string[
     return { events, totalCount, totalPages, currentPage: page, salesMap };
 }
 
-function fmt(n: number) {
-    return n.toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
+
 
 export default async function EventsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
     const { events, totalCount, totalPages, currentPage, salesMap } = await getEvents(searchParams);
@@ -197,7 +186,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
                 ) : (
                     <div className="divide-y divide-slate-50">
                         {events.map((event) => {
-                            const status = STATUS_CONFIG[event.status] || { label: event.status, bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" };
+                            const status = getChannelStatus(event.status);
                             const typeConf = TYPE_CONFIG[event.type] || TYPE_CONFIG.EVENT;
                             const TypeIcon = typeConf.icon;
                             const channelTotalSales = salesMap.get(event.id) || 0;

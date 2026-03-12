@@ -27,9 +27,7 @@ interface Props {
     deadStock: DeadStockItem[];
 }
 
-function fmt(n: number) {
-    return n.toLocaleString("th-TH", { minimumFractionDigits: 0 });
-}
+import { fmt } from "@/lib/utils";
 
 export function ProductInsight({ topProducts, deadStock }: Props) {
     return (

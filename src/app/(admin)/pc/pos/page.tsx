@@ -1,13 +1,10 @@
 import { db } from "@/lib/db";
+import { fmt } from "@/lib/utils";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { MapPin, Calendar, ArrowRight, ShoppingCart, Store, Package, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { PageHeader, EmptyState } from "@/components/shared";
-
-function fmt(n: number) {
-    return n.toLocaleString("th-TH");
-}
 
 async function getActiveEvents() {
     const events = await db.salesChannel.findMany({

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { fmt } from "@/lib/utils";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { Receipt, Calendar, MapPin, ArrowRight, Search, TrendingUp, Store } from "lucide-react";
 import Link from "next/link";
 import { PageHeader, EmptyState } from "@/components/shared";
+import { getChannelStatus } from "@/config/status";
 
 interface Sale {
     id: string;
@@ -27,17 +29,9 @@ interface Props {
     events: Event[];
 }
 
-const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
-    active: { label: "กำลังขาย", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100" },
-    selling: { label: "กำลังขาย", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100" },
-    closed: { label: "ปิดแล้ว", bg: "bg-slate-100", text: "text-slate-500", border: "border-slate-200" },
-    approved: { label: "อนุมัติ", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-100" },
-    packing: { label: "กำลังแพ็ค", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-100" },
-};
 
-function fmt(n: number) {
-    return n.toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
+
+
 
 export function SalesEventListClient({ events }: Props) {
     const [search, setSearch] = useState('');
@@ -163,7 +157,7 @@ export function SalesEventListClient({ events }: Props) {
                             const todaySales = event.sales.filter(s =>
                                 format(new Date(s.soldAt), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
                             ).length;
-                            const status = STATUS_CONFIG[event.status] || { label: event.status, bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" };
+                            const status = getChannelStatus(event.status);
 
                             return (
                                 <Link

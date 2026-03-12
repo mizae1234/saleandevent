@@ -25,9 +25,7 @@ const COLORS = [
     "#ec4899", "#06b6d4", "#f97316", "#84cc16", "#6366f1",
 ];
 
-function fmt(n: number) {
-    return n.toLocaleString("th-TH", { minimumFractionDigits: 0 });
-}
+import { fmt } from "@/lib/utils";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function CustomTooltip({ active, payload }: any) {
