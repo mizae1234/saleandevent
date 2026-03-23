@@ -91,10 +91,9 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
         if (search) {
             const q = search.toLowerCase();
             return item.productName?.toLowerCase().includes(q) ||
-                item.barcode.toLowerCase().includes(q) ||
+                item.barcode.toLowerCase() === q || // Exact match for barcode scanners
                 item.code?.toLowerCase().includes(q) ||
-                item.color?.toLowerCase().includes(q) ||
-                item.size?.toLowerCase().includes(q);
+                item.color?.toLowerCase().includes(q);
         }
         return true;
     });
@@ -177,7 +176,8 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
 
     // Submit sale
     const handleSubmit = async () => {
-        if (cart.length === 0) return;
+        const canCheckout = cart.length > 0 || adjustments.length > 0;
+        if (!canCheckout) return;
 
         setIsSubmitting(true);
         try {
@@ -450,7 +450,7 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
 
                 <button
                     onClick={() => setShowConfirm(true)}
-                    disabled={cart.length === 0}
+                    disabled={cart.length === 0 && adjustments.length === 0}
                     className="w-full py-3.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:bg-emerald-800 transition-colors shadow-sm"
                 >
                     <Receipt className="h-5 w-5" />
@@ -538,7 +538,7 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
                                 <p>ยืนยันบันทึกการขายรายการนี้?</p>
                                 <div className="bg-slate-50 rounded-lg p-3 mt-2">
                                     <div className="flex justify-between">
-                                        <span>สินค้า {cart.length} รายการ ({cartItemCount} ชิ้น)</span>
+                                        <span>สินค้า {cart.length} รายการ ({cartItemCount} ชิ้น) {adjustments.length > 0 && `และรายการพิเศษ ${adjustments.length} รายการ`}</span>
                                         <span className="font-semibold text-emerald-600">฿{grandTotal.toLocaleString()}</span>
                                     </div>
                                 </div>

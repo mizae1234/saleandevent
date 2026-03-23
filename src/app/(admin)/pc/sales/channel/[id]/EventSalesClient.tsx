@@ -19,6 +19,8 @@ type SaleItem = {
     product: {
         name: string;
         code: string | null;
+        size: string | null;
+        color: string | null;
     };
 };
 
@@ -48,6 +50,8 @@ const PAGE_SIZE = 20;
 export function EventSalesClient({ event, sales, backHref }: Props) {
     const router = useRouter();
     const [search, setSearch] = useState("");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'cancelled'>('all');
     const [cancellingId, setCancellingId] = useState<string | null>(null);
     const [cancelReason, setCancelReason] = useState("");
@@ -57,6 +61,13 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
 
     const filtered = useMemo(() => sales.filter(sale => {
         if (statusFilter !== 'all' && sale.status !== statusFilter) return false;
+
+        if (startDate || endDate) {
+            const saleDateStr = format(new Date(sale.soldAt), 'yyyy-MM-dd');
+            if (startDate && saleDateStr < startDate) return false;
+            if (endDate && saleDateStr > endDate) return false;
+        }
+
         if (search) {
             const q = search.toLowerCase();
             const matchBill = sale.billCode?.toLowerCase().includes(q);
@@ -107,34 +118,55 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
             </div>
 
             {/* Filters */}
-            <div className="flex gap-3 items-center">
-                <div className="flex-1 relative">
-                    <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="ค้นหาบิล, สินค้า..."
-                        value={search}
-                        onChange={e => { setSearch(e.target.value); setVisibleCount(PAGE_SIZE); }}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
-                    />
+            <div className="flex flex-col gap-3">
+                <div className="flex gap-3 items-center">
+                    <div className="flex-1 relative">
+                        <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="ค้นหาบิล, สินค้า..."
+                            value={search}
+                            onChange={e => { setSearch(e.target.value); setVisibleCount(PAGE_SIZE); }}
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                        />
+                    </div>
                 </div>
-                <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-                    {[
-                        { key: 'all' as const, label: 'ทั้งหมด' },
-                        { key: 'active' as const, label: 'สำเร็จ' },
-                        { key: 'cancelled' as const, label: 'ยกเลิก' },
-                    ].map(f => (
-                        <button
-                            key={f.key}
-                            onClick={() => { setStatusFilter(f.key); setVisibleCount(PAGE_SIZE); }}
-                            className={`px-3 py-2 text-xs font-medium transition-colors ${statusFilter === f.key
-                                ? 'bg-indigo-600 text-white'
-                                : 'bg-white text-slate-600 hover:bg-slate-50'
-                                }`}
-                        >
-                            {f.label}
-                        </button>
-                    ))}
+                
+                {/* Date and Status Filters */}
+                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => { setStartDate(e.target.value); setVisibleCount(PAGE_SIZE); }}
+                            className="flex-1 sm:w-36 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-indigo-400 text-slate-600"
+                        />
+                        <span className="text-slate-400 text-sm">ถึง</span>
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => { setEndDate(e.target.value); setVisibleCount(PAGE_SIZE); }}
+                            className="flex-1 sm:w-36 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-indigo-400 text-slate-600"
+                        />
+                    </div>
+                    <div className="flex rounded-lg border border-slate-200 overflow-hidden w-full sm:w-auto">
+                        {[
+                            { key: 'all' as const, label: 'ทั้งหมด' },
+                            { key: 'active' as const, label: 'สำเร็จ' },
+                            { key: 'cancelled' as const, label: 'ยกเลิก' },
+                        ].map(f => (
+                            <button
+                                key={f.key}
+                                onClick={() => { setStatusFilter(f.key); setVisibleCount(PAGE_SIZE); }}
+                                className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${statusFilter === f.key
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-white text-slate-600 hover:bg-slate-50'
+                                    }`}
+                            >
+                                {f.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -201,15 +233,22 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                                             {/* Items */}
                                             <div className="px-4 py-2 space-y-1 border-t border-slate-100 bg-slate-50/50">
                                                 {sale.items.map(item => (
-                                                    <div key={item.id} className="flex items-center justify-between text-sm py-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-slate-700">{item.product.name}</span>
-                                                            {item.isFreebie && (
-                                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-pink-100 text-pink-600 font-medium">แถม</span>
-                                                            )}
-                                                            <span className="text-slate-400 text-xs">×{item.quantity}</span>
+                                                    <div key={item.id} className="flex items-start justify-between text-sm py-1.5 border-b border-slate-100 last:border-0">
+                                                        <div className="flex flex-col pr-4">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-slate-700 font-medium">{item.product.name}</span>
+                                                                {item.isFreebie && (
+                                                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-pink-100 text-pink-600 font-medium">แถม</span>
+                                                                )}
+                                                                <span className="text-slate-500 font-medium text-xs">×{item.quantity}</span>
+                                                            </div>
+                                                            <div className="text-[11px] text-slate-500 mt-0.5 flex flex-wrap gap-x-2">
+                                                                {item.product.code && <span>{item.product.code}</span>}
+                                                                {item.product.size && <span>• ไซส์: {item.product.size}</span>}
+                                                                {item.product.color && <span>• สี: {item.product.color}</span>}
+                                                            </div>
                                                         </div>
-                                                        <span className="text-slate-600">
+                                                        <span className="text-slate-600 mt-0.5">
                                                             ฿{Number(item.totalAmount).toLocaleString()}
                                                         </span>
                                                     </div>

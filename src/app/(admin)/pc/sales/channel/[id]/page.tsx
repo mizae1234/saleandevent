@@ -17,7 +17,9 @@ async function getEventWithSales(channelId: string) {
                             product: {
                                 select: {
                                     name: true,
-                                    code: true
+                                    code: true,
+                                    size: true,
+                                    color: true
                                 }
                             }
                         }
