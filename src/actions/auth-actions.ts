@@ -46,18 +46,26 @@ export async function loginAction(_prevState: { error?: string } | undefined, fo
         salaryAccess: staff.salaryAccess || undefined,
     });
 
-    // Redirect based on allowedMenus (priority-ordered landing page)
-    const landingPriority: [string, string][] = [
-        ['finance', '/dashboard/owner'],
-        ['sales_channel', '/channels'],
-        ['supply_chain', '/warehouse/packing'],
-        ['hr', '/hr/employees'],
-        ['system_admin', '/admin/products'],
-        ['front_office', '/pc/pos'],
-    ];
+    // Default fallback
+    let landingPage = '/workspace';
 
-    const landingPage = landingPriority
-        .find(([key]) => allowedMenus.includes(key))?.[1] || '/workspace';
+    // Explicitly route operational staff to the mobile workspace first, 
+    // even if they have 'front_office' permission
+    if (staff.role === 'PC') {
+        landingPage = '/workspace';
+    } else {
+        // Redirect based on allowedMenus (priority-ordered landing page) for back-office/admins
+        const landingPriority: [string, string][] = [
+            ['finance', '/dashboard/owner'],
+            ['sales_channel', '/channels'],
+            ['supply_chain', '/warehouse/packing'],
+            ['hr', '/hr/employees'],
+            ['system_admin', '/admin/products'],
+            ['front_office', '/pc/pos'],
+        ];
+
+        landingPage = landingPriority.find(([key]) => allowedMenus.includes(key))?.[1] || '/workspace';
+    }
 
     redirect(landingPage);
 }
