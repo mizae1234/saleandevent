@@ -7,6 +7,7 @@ import { KpiCards } from "@/components/dashboard/KpiCard";
 import { SalesChart } from "@/components/dashboard/SalesChart";
 import { EventTable } from "@/components/dashboard/EventTable";
 import { BranchChart } from "@/components/dashboard/BranchChart";
+import { BranchTable } from "@/components/dashboard/BranchTable";
 import { ProductInsight } from "@/components/dashboard/ProductInsight";
 import { ExpenseChart } from "@/components/dashboard/ExpenseChart";
 
@@ -202,8 +203,11 @@ export function DashboardClient() {
                         </div>
                     </div>
 
-                    {/* 3. Event Performance */}
-                    {data.events.length > 0 && <EventTable data={data.events} />}
+                    {/* 3. Performance Tables */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        {data.events.length > 0 && <EventTable data={data.events} />}
+                        {data.branches.length > 0 && <BranchTable data={data.branches} />}
+                    </div>
 
                     {/* 4. Branch Comparison */}
                     {data.branches.length > 0 && <BranchChart data={data.branches} />}
