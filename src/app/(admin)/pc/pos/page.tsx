@@ -147,10 +147,12 @@ export default async function POSSelectPage() {
                                                     <MapPin className="h-3 w-3" /> {event.location}
                                                 </span>
                                                 <span className="hidden sm:inline text-slate-200">·</span>
+                                                {event.startDate && event.endDate && (
                                                 <span className="flex items-center gap-1">
                                                     <Calendar className="h-3 w-3" />
-                                                    {format(new Date(event.startDate!), "d MMM", { locale: th })} – {format(new Date(event.endDate!), "d MMM", { locale: th })}
+                                                    {format(new Date(event.startDate), "d MMM", { locale: th })} – {format(new Date(event.endDate), "d MMM", { locale: th })}
                                                 </span>
+                                                )}
                                             </div>
                                         </div>
 

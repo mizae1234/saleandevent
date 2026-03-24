@@ -103,9 +103,18 @@ export async function middleware(request: NextRequest) {
                         );
                         if (!hasCrossAccess) {
                             // User doesn't have access to this menu section
-                            const firstAllowedPrefix = Object.entries(ROUTE_TO_MENU_KEY)
-                                .find(([_, key]) => allowedMenus.includes(key));
-                            const redirectTo = firstAllowedPrefix ? firstAllowedPrefix[0] : '/workspace';
+                            // Map menu keys to actual landing pages (not bare prefixes which may lack page.tsx)
+                            const MENU_KEY_LANDING: Record<string, string> = {
+                                'front_office': '/pc/pos',
+                                'sales_channel': '/channels',
+                                'supply_chain': '/warehouse/packing',
+                                'finance': '/dashboard/owner',
+                                'hr': '/hr/employees',
+                                'system_admin': '/admin/products',
+                            };
+                            const firstAllowedKey = Object.values(ROUTE_TO_MENU_KEY)
+                                .find(key => allowedMenus.includes(key));
+                            const redirectTo = firstAllowedKey ? (MENU_KEY_LANDING[firstAllowedKey] || '/workspace') : '/workspace';
                             return NextResponse.redirect(new URL(redirectTo, request.url));
                         }
                     }
