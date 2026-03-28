@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { ArrowLeft, Package, Clock, CheckCircle, Truck, Pencil, Save, X, MapPin, FileText, Hash } from "lucide-react";
+import { ArrowLeft, Package, Clock, CheckCircle, Truck, Pencil, Save, X, MapPin, FileText, Hash, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { updateStockRequest, approveStockRequest, rejectStockRequest } from "@/actions/stock-request";
 
@@ -40,6 +40,19 @@ interface StockRequestData {
     approvedAt: string | null;
     channel: Channel;
     allocations: Allocation[];
+    items?: {
+        id: string;
+        barcode: string;
+        quantity: number;
+        notes: string | null;
+        product: {
+            name: string;
+            code: string | null;
+            size: string | null;
+            color: string | null;
+            price: number;
+        };
+    }[];
 }
 
 interface Props {
@@ -246,6 +259,48 @@ export function RefillDetailClient({ request }: Props) {
                     </div>
                 )}
             </div>
+
+            {/* Requested Items (if any) */}
+            {request.items && request.items.length > 0 && (
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden mt-6">
+                    <div className="px-5 py-3 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-indigo-900 flex items-center gap-2">
+                            <ShoppingCart className="h-4 w-4" />
+                            รายการสินค้าที่ต้องการเบิก ({request.items.length} รายการ)
+                        </h3>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                        {request.items.map((item) => (
+                            <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 gap-3 hover:bg-slate-50 transition-colors">
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="text-sm font-semibold text-slate-900 truncate">{item.product.name}</h4>
+                                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                        <span className="text-[10px] font-medium bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
+                                            {item.product.code || item.barcode}
+                                        </span>
+                                        {(item.product.size || item.product.color) && (
+                                            <span className="text-xs text-slate-500">
+                                                {item.product.size}{item.product.size && item.product.color && ' • '}{item.product.color}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {item.notes && (
+                                        <p className="text-xs text-indigo-600 mt-1.5 bg-indigo-50/50 inline-block px-2 py-1 rounded">
+                                            หมายเหตุ: {item.notes}
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
+                                    <div className="text-xs text-slate-500 hidden sm:block">จำนวนที่ขอ</div>
+                                    <div className="text-base sm:text-lg font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg">
+                                        {item.quantity} <span className="text-xs font-semibold text-indigo-400">ชิ้น</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Allocations */}
             {request.allocations.length > 0 && (

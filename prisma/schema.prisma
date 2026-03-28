@@ -96,6 +96,7 @@ model Product {
   saleItems         SaleItem[]
   stockMovements    StockMovement[]
   warehouseStock    WarehouseStock?
+  stockRequestItems StockRequestItem[]
 
   @@map("products")
 }
@@ -200,6 +201,7 @@ model StockRequest {
   
   // Relations
   channel                SalesChannel         @relation(fields: [channelId], references: [id])
+  items                  StockRequestItem[]
   allocations            WarehouseAllocation[]
   shipment               Shipment?
   receiving              Receiving?
@@ -207,6 +209,25 @@ model StockRequest {
   @@index([channelId])
   @@index([status])
   @@map("stock_requests")
+}
+
+model StockRequestItem {
+  id             String       @id @default(uuid()) @db.Uuid
+  stockRequestId String       @map("stock_request_id") @db.Uuid
+  barcode        String       @db.VarChar(50)
+  quantity       Int
+  notes          String?
+  
+  // Audit fields
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  // Relations
+  request        StockRequest @relation(fields: [stockRequestId], references: [id], onDelete: Cascade)
+  product        Product      @relation(fields: [barcode], references: [barcode])
+
+  @@index([stockRequestId])
+  @@map("stock_request_items")
 }
 
 // ============ WAREHOUSE ALLOCATION ============

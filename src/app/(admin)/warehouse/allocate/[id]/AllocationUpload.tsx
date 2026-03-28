@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { uploadAllocation } from '@/actions/stock-request';
 import { Upload, CheckCircle2, AlertTriangle, FileSpreadsheet, X, Download, Trash2 } from 'lucide-react';
@@ -11,6 +11,7 @@ interface Props {
     readonly requestId: string;
     readonly channelName: string;
     readonly requestedTotal: number;
+    readonly requestedItems?: any[];
 }
 
 interface AllocationRow {
@@ -34,7 +35,7 @@ interface ExcelRow {
 
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
 
-export default function AllocationUpload({ requestId, channelName, requestedTotal }: Props) {
+export default function AllocationUpload({ requestId, channelName, requestedTotal, requestedItems }: Props) {
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [excelRows, setExcelRows] = useState<ExcelRow[]>([]);
@@ -46,6 +47,57 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
     const [progress, setProgress] = useState(0);
 
     const totalQty = rows.reduce((sum, r) => sum + r.packedQuantity, 0);
+
+    // ========== Auto-Mapping from Requested Items ==========
+    useEffect(() => {
+        if (requestedItems && requestedItems.length > 0) {
+            const parsedAllocRows: AllocationRow[] = [];
+            const grouped = new Map<string, ExcelRow>();
+
+            requestedItems.forEach(item => {
+                const p = item.product;
+                if (!p) return;
+
+                // Push to alloc rows
+                parsedAllocRows.push({
+                    barcode: item.barcode,
+                    code: p.code,
+                    color: p.color,
+                    size: p.size,
+                    packedQuantity: item.quantity,
+                    price: p.price || 0,
+                });
+
+                // Group for excelRows
+                const key = `${p.code}-${p.color}`;
+                if (!grouped.has(key)) {
+                    grouped.set(key, {
+                        no: grouped.size + 1,
+                        type: p.producttype || '',
+                        code: p.code,
+                        color: p.color,
+                        sizes: [],
+                        total: 0,
+                        price: p.price || 0,
+                    });
+                }
+                const group = grouped.get(key)!;
+                if (p.size) {
+                    const existingSize = group.sizes.find(s => s.size === p.size);
+                    if (existingSize) {
+                        existingSize.qty += item.quantity;
+                    } else {
+                        group.sizes.push({ size: p.size, qty: item.quantity });
+                    }
+                }
+                group.total += item.quantity;
+            });
+
+            setExcelRows(Array.from(grouped.values()));
+            setRows(parsedAllocRows);
+            setFileName('ดึงข้อมูลจากรายการที่ PC ขอมาอัตโนมัติ');
+        }
+    }, [requestedItems]);
 
     // ========== Download Template with Product Master ==========
     const downloadTemplate = async () => {
@@ -79,6 +131,40 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
             setError(err instanceof Error ? err.message : 'ไม่สามารถดาวน์โหลด Template ได้');
         } finally {
             setLoading(false);
+        }
+    };
+
+    // ========== Export Pre-filled Items ==========
+    const downloadRequestedItems = () => {
+        try {
+            if (excelRows.length === 0) return;
+
+            const headers = ['ลำดับ', 'ประเภท', 'รุ่น', 'สี', ...SIZES, 'รวม', 'ราคา'];
+            const dataRows = excelRows.map((r, i) => {
+                const sizeMap = Object.fromEntries(r.sizes.map(s => [s.size, s.qty]));
+                return [
+                    i + 1,
+                    r.type,
+                    r.code,
+                    r.color,
+                    ...SIZES.map(s => sizeMap[s] || ''),
+                    r.total,
+                    r.price || ''
+                ];
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+            ws['!cols'] = [
+                { wch: 6 }, { wch: 12 }, { wch: 12 }, { wch: 10 },
+                ...SIZES.map(() => ({ wch: 6 })),
+                { wch: 8 }, { wch: 10 },
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'รายการขอเบิก');
+            XLSX.writeFile(wb, `รายการแก้ไขจัดสรร.xlsx`);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'นำออกไฟล์ไม่สำเร็จ');
         }
     };
 
@@ -276,10 +362,19 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
                 <div className="flex flex-wrap items-center gap-3">
                     <button
                         onClick={downloadTemplate}
-                        className="flex items-center gap-2 px-4 py-2 border border-indigo-300 text-indigo-700 rounded-lg hover:bg-indigo-50 text-sm font-medium transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium transition-colors"
                     >
-                        <Download className="h-4 w-4" /> ดาวน์โหลด Template
+                        <Download className="h-4 w-4" /> โหลดรายการเปล่าทั้งหมด
                     </button>
+
+                    {(requestedItems && requestedItems.length > 0) && (
+                        <button
+                            onClick={downloadRequestedItems}
+                            className="flex items-center gap-2 px-4 py-2 border border-emerald-300 text-emerald-700 rounded-lg hover:bg-emerald-50 text-sm font-medium transition-colors"
+                        >
+                            <FileSpreadsheet className="h-4 w-4" /> Export ออกไปแก้ไข
+                        </button>
+                    )}
 
                     <label className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium cursor-pointer transition-colors">
                         <Upload className="h-4 w-4" /> {importing ? 'กำลังอ่าน...' : 'Import Excel'}

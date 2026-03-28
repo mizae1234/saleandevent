@@ -7,30 +7,46 @@ export async function createStockRequest(
     channelId: string,
     requestType: 'INITIAL' | 'TOPUP',
     requestedTotalQuantity: number,
-    notes?: string
+    notes?: string,
+    items?: { barcode: string; quantity: number; notes?: string }[],
+    submitNow: boolean = false
 ) {
-    const request = await db.stockRequest.create({
-        data: {
-            channelId,
-            requestType,
-            requestedTotalQuantity,
-            status: 'draft',
-            notes: notes || null,
-        },
-    });
+    const finalStatus = submitNow ? 'submitted' : 'draft';
 
-    // Log
-    await db.channelLog.create({
-        data: {
-            channelId,
-            action: 'stock_request_created',
-            details: {
-                requestId: request.id,
+    const request = await db.$transaction(async (tx) => {
+        const req = await tx.stockRequest.create({
+            data: {
+                channelId,
                 requestType,
                 requestedTotalQuantity,
+                status: finalStatus,
+                notes: notes || null,
+                ...(items && items.length > 0 && {
+                    items: {
+                        create: items.map(item => ({
+                            barcode: item.barcode,
+                            quantity: item.quantity,
+                            notes: item.notes || null,
+                        })),
+                    },
+                }),
             },
-            changedBy: '00000000-0000-0000-0000-000000000000',
-        },
+        });
+
+        await tx.channelLog.create({
+            data: {
+                channelId,
+                action: submitNow ? 'stock_request_submitted' : 'stock_request_created',
+                details: {
+                    requestId: req.id,
+                    requestType,
+                    requestedTotalQuantity,
+                },
+                changedBy: '00000000-0000-0000-0000-000000000000',
+            },
+        });
+
+        return req;
     });
 
     revalidatePath(`/channels/${channelId}`);

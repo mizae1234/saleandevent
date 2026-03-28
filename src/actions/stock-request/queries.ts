@@ -9,6 +9,7 @@ export async function getStockRequestsByChannel(channelId: string) {
             allocations: { include: { product: true } },
             shipment: true,
             receiving: { include: { items: true } },
+            items: { include: { product: true } },
         },
         orderBy: { createdAt: 'desc' },
     });
@@ -29,6 +30,7 @@ export async function getStockRequest(requestId: string) {
                     items: { include: { product: true } },
                 },
             },
+            items: { include: { product: true } },
         },
     });
 }
