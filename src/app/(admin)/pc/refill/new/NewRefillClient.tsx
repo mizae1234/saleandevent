@@ -45,11 +45,23 @@ interface Props {
     readonly backHref?: string;
     readonly preselectedChannelId?: string;
     readonly hideChannelSelect?: boolean;
+    readonly isAdminEdit?: boolean;
+    readonly initialCartItems?: CartItem[];
+    readonly requestId?: string;
 }
 
-export default function NewRefillClient({ channels, redirectTo, backHref, preselectedChannelId, hideChannelSelect }: Props) {
+export default function NewRefillClient({ 
+    channels, 
+    redirectTo, 
+    backHref, 
+    preselectedChannelId, 
+    hideChannelSelect,
+    isAdminEdit,
+    initialCartItems,
+    requestId
+}: Props) {
     const router = useRouter();
-    const { toastError } = useToast();
+    const { toastError, toastSuccess } = useToast();
     
     // State
     const [channelId, setChannelId] = useState(preselectedChannelId || '');
@@ -61,7 +73,7 @@ export default function NewRefillClient({ channels, redirectTo, backHref, presel
     const [loadingProducts, setLoadingProducts] = useState(true);
     const [search, setSearch] = useState("");
     const [categoryFilter, setCategoryFilter] = useState<string>('all');
-    const [cart, setCart] = useState<CartItem[]>([]);
+    const [cart, setCart] = useState<CartItem[]>(initialCartItems || []);
     const [mobileTab, setMobileTab] = useState<'products' | 'cart'>('products');
     const [showConfirm, setShowConfirm] = useState(false);
 
@@ -153,8 +165,17 @@ export default function NewRefillClient({ channels, redirectTo, backHref, presel
                 notes: item.notes
             }));
 
-            const req = await createStockRequest(channelId, 'TOPUP', totalQuantity, mainNotes || undefined, itemsToSubmit, true);
-            router.push(redirectTo || '/pc/refill');
+            if (isAdminEdit && requestId) {
+                // Import dynamic action to avoid module load context issues or missing top-level module
+                const { adminUpdateStockRequest } = await import('@/actions/stock-request/admin-edit');
+                await adminUpdateStockRequest(requestId, itemsToSubmit);
+                toastSuccess('บันทึกการแก้ไขสำเร็จ');
+                router.push(redirectTo || `/warehouse/allocate/${requestId}`);
+            } else {
+                await createStockRequest(channelId, 'TOPUP', totalQuantity, mainNotes || undefined, itemsToSubmit, true);
+                toastSuccess('ส่งคำขอเบิกสินค้าแล้ว');
+                router.push(redirectTo || '/pc/refill');
+            }
         } catch (err) {
             toastError(err instanceof Error ? err.message : 'Error');
         } finally {
@@ -355,7 +376,7 @@ export default function NewRefillClient({ channels, redirectTo, backHref, presel
                     className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:bg-indigo-800 transition-colors shadow-sm"
                 >
                     <Send className="h-5 w-5" />
-                    ส่งคำขอเบิกสินค้า
+                    {isAdminEdit ? 'บันทึกแก้ไข (Save Edit)' : 'ส่งคำขอเบิกสินค้า'}
                 </button>
             </div>
         </div>
@@ -370,8 +391,12 @@ export default function NewRefillClient({ channels, redirectTo, backHref, presel
                         <ArrowLeft className="h-4 w-4" />
                     </Link>
                     <div>
-                        <h1 className="text-xl font-bold text-slate-900">ขอเบิกสินค้า (Item Top-Up)</h1>
-                        <p className="text-sm text-slate-500">เลือกสินค้าและระบุจำนวนที่ต้องการเบิกเพิ่ม</p>
+                        <h1 className="text-xl font-bold text-slate-900">
+                            {isAdminEdit ? 'ทบทวน / แก้ไขรายการขอเบิก (Admin Edit)' : 'ขอเบิกสินค้า (Item Top-Up)'}
+                        </h1>
+                        <p className="text-sm text-slate-500">
+                            {isAdminEdit ? 'อัปเดตรายการและจำนวนใหม่ ระบบจะบันทึกทันที' : 'เลือกสินค้าและระบุจำนวนที่ต้องการเบิกเพิ่ม'}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -381,7 +406,12 @@ export default function NewRefillClient({ channels, redirectTo, backHref, presel
                 <Link href={backHref || "/pc/refill"} className="p-1.5 text-slate-400 hover:text-slate-600">
                     <ArrowLeft className="h-5 w-5" />
                 </Link>
-                <span className="font-bold text-slate-800">เบิกสินค้า (Top-Up)</span>
+                <div className="flex flex-col">
+                    <span className="font-bold text-slate-800 leading-tight">
+                        {isAdminEdit ? 'แก้ไขขอเบิก' : 'เบิกสินค้า (Top-Up)'}
+                    </span>
+                    {isAdminEdit && <span className="text-[10px] text-indigo-500 font-medium leading-tight">Admin Edit</span>}
+                </div>
             </div>
 
             {/* Layout */}
@@ -429,10 +459,12 @@ export default function NewRefillClient({ channels, redirectTo, backHref, presel
             <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
                 <AlertDialogContent className="rounded-2xl max-w-md">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>ยืนยันการส่งคำขอเบิกสินค้า</AlertDialogTitle>
+                        <AlertDialogTitle>{isAdminEdit ? 'ยืนยันการบันทึกแก้ไข' : 'ยืนยันการส่งคำขอเบิกสินค้า'}</AlertDialogTitle>
                         <AlertDialogDescription asChild>
                             <div className="space-y-4 pt-2">
-                                <p className="text-slate-500">คุณต้องการส่งคำขอเบิกสินค้านี้ใช่หรือไม่? เมื่อส่งแล้วจะไม่สามารถแก้ไขประเภทสินค้าได้</p>
+                                <p className="text-slate-500">
+                                    {isAdminEdit ? 'คุณต้องการแก้ไขจำนวนในบิลเบิกนี้ใช่หรือไม่? ยอดเดิมจะถูกแทนที่ด้วยยอดใหม่นี้ทันที' : 'คุณต้องการส่งคำขอเบิกสินค้านี้ใช่หรือไม่? เมื่อส่งแล้วจะไม่สามารถแก้ไขประเภทสินค้าได้'}
+                                </p>
                                 <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex justify-between items-center">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
@@ -448,10 +480,12 @@ export default function NewRefillClient({ channels, redirectTo, backHref, presel
                                         <p className="text-xl font-black text-indigo-600">{totalQuantity} <span className="text-sm">ชิ้น</span></p>
                                     </div>
                                 </div>
-                                <div className="bg-amber-50 rounded-lg p-3 flex gap-2 items-start border border-amber-100">
-                                    <Info className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                                    <p className="text-[11px] text-amber-700 leading-tight">โกดังจะใช้ข้อมูลนี้เป็นแนวทางในการจัดของ แต่อาจมีการส่งทดแทนขึ้นอยู่กับสต็อกคลังกลาง</p>
-                                </div>
+                                {!isAdminEdit && (
+                                    <div className="bg-amber-50 rounded-lg p-3 flex gap-2 items-start border border-amber-100">
+                                        <Info className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                                        <p className="text-[11px] text-amber-700 leading-tight">โกดังจะใช้ข้อมูลนี้เป็นแนวทางในการจัดของ แต่อาจมีการส่งทดแทนขึ้นอยู่กับสต็อกคลังกลาง</p>
+                                    </div>
+                                )}
                             </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -462,7 +496,7 @@ export default function NewRefillClient({ channels, redirectTo, backHref, presel
                             disabled={loading}
                             className="bg-indigo-600 hover:bg-indigo-700 rounded-xl font-medium min-w-[120px]"
                         >
-                            {loading ? 'กำลังส่งคำขอ...' : 'ยืนยันส่งคำขอ'}
+                            {loading ? (isAdminEdit ? 'กำลังบันทึก...' : 'กำลังส่งคำขอ...') : (isAdminEdit ? 'ยืนยันบันทึกแก้ไข' : 'ยืนยันส่งคำขอ')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

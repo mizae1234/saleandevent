@@ -205,6 +205,7 @@ model StockRequest {
   allocations            WarehouseAllocation[]
   shipment               Shipment?
   receiving              Receiving?
+  logs                   StockRequestLog[]
 
   @@index([channelId])
   @@index([status])
@@ -228,6 +229,24 @@ model StockRequestItem {
 
   @@index([stockRequestId])
   @@map("stock_request_items")
+}
+
+model StockRequestLog {
+  id             String       @id @default(uuid()) @db.Uuid
+  stockRequestId String       @map("stock_request_id") @db.Uuid
+  action         String       @db.VarChar(50) // e.g. "ADMIN_EDITED"
+  details        String       @db.Text
+  snapshot       Json?        @map("snapshot") // e.g. { before: [...], after: [...] }
+
+  // Audit fields
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy      String?      @map("created_by") @db.Uuid
+  
+  // Relations
+  request        StockRequest @relation(fields: [stockRequestId], references: [id], onDelete: Cascade)
+
+  @@index([stockRequestId])
+  @@map("stock_request_logs")
 }
 
 // ============ WAREHOUSE ALLOCATION ============

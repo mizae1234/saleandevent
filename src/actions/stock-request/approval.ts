@@ -2,8 +2,12 @@
 
 import { db } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { getSession } from '@/lib/auth';
 
 export async function approveStockRequest(requestId: string) {
+    const session = await getSession();
+    const userId = session?.staffId || '00000000-0000-0000-0000-000000000000';
+
     const request = await db.stockRequest.findUnique({
         where: { id: requestId },
         include: { channel: true },
@@ -17,7 +21,7 @@ export async function approveStockRequest(requestId: string) {
             data: {
                 status: 'approved',
                 approvedAt: new Date(),
-                approvedBy: '00000000-0000-0000-0000-000000000000',
+                approvedBy: userId,
             },
         }),
         db.channelLog.create({
@@ -25,7 +29,7 @@ export async function approveStockRequest(requestId: string) {
                 channelId: request.channelId,
                 action: 'stock_request_approved',
                 details: { requestId },
-                changedBy: '00000000-0000-0000-0000-000000000000',
+                changedBy: userId,
             },
         })
     ];
@@ -49,6 +53,9 @@ export async function approveStockRequest(requestId: string) {
 }
 
 export async function rejectStockRequest(requestId: string, reason?: string) {
+    const session = await getSession();
+    const userId = session?.staffId || '00000000-0000-0000-0000-000000000000';
+
     const request = await db.stockRequest.findUnique({
         where: { id: requestId },
         include: { channel: true },
@@ -62,7 +69,7 @@ export async function rejectStockRequest(requestId: string, reason?: string) {
             data: {
                 status: 'cancelled',
                 rejectedAt: new Date(),
-                rejectedBy: '00000000-0000-0000-0000-000000000000',
+                rejectedBy: userId,
                 rejectionReason: reason || null,
             },
         }),
@@ -71,7 +78,7 @@ export async function rejectStockRequest(requestId: string, reason?: string) {
                 channelId: request.channelId,
                 action: 'stock_request_rejected',
                 details: { requestId, reason },
-                changedBy: '00000000-0000-0000-0000-000000000000',
+                changedBy: userId,
             },
         })
     ]);
