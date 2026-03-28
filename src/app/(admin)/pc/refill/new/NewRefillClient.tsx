@@ -168,7 +168,7 @@ export default function NewRefillClient({ channels, redirectTo, backHref, presel
     }
 
     const stockPanel = (
-        <div className="flex-1 lg:flex-1 h-full lg:h-auto flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 min-h-0">
+        <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 min-h-0 w-full h-full">
             <div className="p-3 md:p-4 border-b border-slate-100 space-y-2 flex-shrink-0 bg-white z-10">
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -247,7 +247,7 @@ export default function NewRefillClient({ channels, redirectTo, backHref, presel
     );
 
     const cartPanel = (
-        <div className="w-full lg:w-96 h-full flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 min-h-0">
+        <div className="w-full lg:w-96 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 min-h-0 h-full">
             <div className="p-3 md:p-4 border-b border-slate-100 bg-indigo-50/50 flex flex-col gap-2 flex-shrink-0">
                 <h2 className="font-semibold text-indigo-800 flex items-center gap-2">
                     <ShoppingCart className="h-5 w-5" />
@@ -415,11 +415,11 @@ export default function NewRefillClient({ channels, redirectTo, backHref, presel
                         </button>
                     </div>
                     
-                    <div className="flex-1 overflow-hidden">
-                        <div className={`h-full ${mobileTab === 'products' ? 'block' : 'hidden'}`}>
+                    <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+                        <div className={`flex-1 flex flex-col min-h-0 ${mobileTab === 'products' ? 'flex' : 'hidden'}`}>
                             {stockPanel}
                         </div>
-                        <div className={`h-full ${mobileTab === 'cart' ? 'block' : 'hidden'}`}>
+                        <div className={`flex-1 flex flex-col min-h-0 ${mobileTab === 'cart' ? 'flex' : 'hidden'}`}>
                             {cartPanel}
                         </div>
                     </div>
