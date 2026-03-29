@@ -17,9 +17,7 @@ async function getProductList(searchParams: Promise<{ [key: string]: string | st
     const category = typeof params.category === 'string' ? params.category : '';
     const page = typeof params.page === 'string' ? Math.max(1, parseInt(params.page, 10) || 1) : 1;
 
-    const where: Prisma.ProductWhereInput = {
-        status: 'active',
-    };
+    const where: Prisma.ProductWhereInput = {};
 
     if (q) {
         where.OR = [
@@ -107,6 +105,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                                 <th className="text-left font-semibold text-slate-600 px-6 py-4">สี</th>
                                 <th className="text-left font-semibold text-slate-600 px-6 py-4">หมวดหมู่</th>
                                 <th className="text-right font-semibold text-slate-600 px-6 py-4">ราคา</th>
+                                <th className="text-center font-semibold text-slate-600 px-6 py-4">สถานะ</th>
                                 <th className="text-right font-semibold text-slate-600 px-6 py-4">สต็อก</th>
                                 <th className="text-center font-semibold text-slate-600 px-6 py-4 w-28"></th>
                             </tr>
@@ -142,6 +141,15 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                                     </td>
                                     <td className="px-6 py-4 text-right font-medium text-slate-900">
                                         {product.price ? `฿${Number(product.price).toLocaleString('th-TH', { minimumFractionDigits: 0 })}` : '-'}
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                                            product.status === 'active' 
+                                                ? 'bg-emerald-50 text-emerald-700' 
+                                                : 'bg-rose-50 text-rose-700'
+                                        }`}>
+                                            {product.status === 'active' ? 'ใช้งาน' : 'ยกเลิก'}
+                                        </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <span className={`font-mono text-xs font-medium px-2 py-1 rounded-md ${(product.warehouseStock?.quantity ?? 0) > 0
