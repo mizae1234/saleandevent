@@ -293,7 +293,7 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
 
         try {
             // Upload in batches with progress
-            const BATCH_SIZE = 50;
+            const BATCH_SIZE = 500;
             const batches: AllocationRow[][] = [];
 
             for (let i = 0; i < rows.length; i += BATCH_SIZE) {
@@ -324,7 +324,8 @@ export default function AllocationUpload({ requestId, channelName, requestedTota
             } else {
                 // Multiple batches — upload first batch to create, rest to append
                 for (let i = 0; i < batches.length; i++) {
-                    const result = await uploadAllocation(requestId, batches[i], adminOverride);
+                    const isAppend = i > 0;
+                    const result = await uploadAllocation(requestId, batches[i], adminOverride, isAppend);
                     if (result && 'error' in result && result.error) {
                         setError(result.error);
                         setProgress(0);

@@ -4,7 +4,12 @@ import { db } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import type { AllocationRow } from '@/types/stock';
 
-export async function uploadAllocation(requestId: string, inputRows: AllocationRow[], adminOverride: boolean = false) {
+export async function uploadAllocation(
+    requestId: string,
+    inputRows: AllocationRow[],
+    adminOverride: boolean = false,
+    isAppend: boolean = false
+) {
     let rows = inputRows;
     const request = await db.stockRequest.findUnique({
         where: { id: requestId },
@@ -135,11 +140,13 @@ export async function uploadAllocation(requestId: string, inputRows: AllocationR
         return { error: 'ไม่มีสินค้าที่ตรงกับในระบบเลย', missingCodes: missingBarcodes, totalPacked: 0, itemCount: 0 };
     }
 
-    // Delete existing allocations and create new ones
+    // Delete existing allocations (if not appending) and create new ones
     await db.$transaction(async (tx) => {
-        await tx.warehouseAllocation.deleteMany({
-            where: { stockRequestId: requestId },
-        });
+        if (!isAppend) {
+            await tx.warehouseAllocation.deleteMany({
+                where: { stockRequestId: requestId },
+            });
+        }
 
         await tx.warehouseAllocation.createMany({
             data: mappedRows,
