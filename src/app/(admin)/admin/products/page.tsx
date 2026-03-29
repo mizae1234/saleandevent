@@ -143,13 +143,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                                         {product.price ? `฿${Number(product.price).toLocaleString('th-TH', { minimumFractionDigits: 0 })}` : '-'}
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                                            product.status === 'active' 
-                                                ? 'bg-emerald-50 text-emerald-700' 
-                                                : 'bg-rose-50 text-rose-700'
-                                        }`}>
-                                            {product.status === 'active' ? 'ใช้งาน' : 'ยกเลิก'}
-                                        </span>
+                                        <DeleteProductButton barcode={product.barcode} name={product.name} status={product.status} />
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <span className={`font-mono text-xs font-medium px-2 py-1 rounded-md ${(product.warehouseStock?.quantity ?? 0) > 0
@@ -168,7 +162,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                                                 <Pencil className="h-3.5 w-3.5" />
                                                 แก้ไข
                                             </Link>
-                                            <DeleteProductButton barcode={product.barcode} name={product.name} status={product.status} />
                                         </div>
                                     </td>
                                 </tr>
