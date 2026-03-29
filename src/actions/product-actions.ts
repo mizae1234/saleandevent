@@ -97,7 +97,7 @@ export async function updateProduct(barcode: string, formData: FormData) {
     redirect('/admin/products');
 }
 
-// ============ DELETE (Soft) ============
+// ============ DELETE (Soft) / TOGGLE STATUS ============
 
 export async function deleteProduct(barcode: string) {
     try {
@@ -108,6 +108,20 @@ export async function deleteProduct(barcode: string) {
     } catch (error) {
         console.error("Failed to delete product:", error);
         return { error: 'เกิดข้อผิดพลาดในการลบสินค้า' };
+    }
+
+    revalidatePath('/admin/products');
+}
+
+export async function toggleProductStatus(barcode: string, currentStatus: string) {
+    try {
+        await db.product.update({
+            where: { barcode },
+            data: { status: currentStatus === 'active' ? 'inactive' : 'active' }
+        });
+    } catch (error) {
+        console.error("Failed to toggle product status:", error);
+        return { error: 'เกิดข้อผิดพลาดในการเปลี่ยนสถานะสินค้า' };
     }
 
     revalidatePath('/admin/products');

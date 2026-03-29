@@ -1,17 +1,17 @@
 "use client";
 
-import { deleteProduct } from "@/actions/product-actions";
-import { Trash2 } from "lucide-react";
+import { toggleProductStatus } from "@/actions/product-actions";
+import { Ban, CheckCircle } from "lucide-react";
 import { useTransition } from "react";
 import { ConfirmDialog } from "@/components/shared";
 
-export function DeleteProductButton({ barcode, name }: { barcode: string; name: string }) {
+export function DeleteProductButton({ barcode, name, status }: { barcode: string; name: string; status: string }) {
     const [isPending, startTransition] = useTransition();
+    const isActive = status === 'active';
 
-    const handleDelete = () => {
+    const handleToggle = () => {
         startTransition(async () => {
-            await deleteProduct(barcode);
-            window.location.reload();
+            await toggleProductStatus(barcode, status);
         });
     };
 
@@ -21,16 +21,28 @@ export function DeleteProductButton({ barcode, name }: { barcode: string; name: 
                 <button
                     type="button"
                     disabled={isPending}
-                    className="inline-flex items-center gap-1 text-sm font-medium text-red-500 hover:text-red-700 transition-colors disabled:opacity-50"
+                    className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors disabled:opacity-50 ${
+                        isActive ? 'text-rose-500 hover:text-rose-700' : 'text-emerald-500 hover:text-emerald-700'
+                    }`}
                 >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    {isActive ? (
+                        <>
+                            <Ban className="h-3.5 w-3.5" />
+                            Inactive
+                        </>
+                    ) : (
+                        <>
+                            <CheckCircle className="h-3.5 w-3.5" />
+                            Active
+                        </>
+                    )}
                 </button>
             }
-            title={`ลบสินค้า "${name}"`}
-            message="เมื่อลบแล้วจะไม่สามารถกู้คืนได้"
-            confirmText="ลบ"
-            variant="danger"
-            onConfirm={handleDelete}
+            title={isActive ? `เปลี่ยนสถานะเป็น Inactive "${name}"` : `เปลี่ยนสถานะเป็น Active "${name}"`}
+            message={isActive ? "สินค้านี้จะไม่สามารถใช้ออกบิลได้ชั่วคราว" : "สินค้าจะกลับมาแสดงให้เลือกในระบบอีกครั้ง"}
+            confirmText="ยืนยัน"
+            variant={isActive ? "danger" : "default"}
+            onConfirm={handleToggle}
             disabled={isPending}
         />
     );

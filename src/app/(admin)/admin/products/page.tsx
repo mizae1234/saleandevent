@@ -168,7 +168,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                                                 <Pencil className="h-3.5 w-3.5" />
                                                 แก้ไข
                                             </Link>
-                                            <DeleteProductButton barcode={product.barcode} name={product.name} />
+                                            <DeleteProductButton barcode={product.barcode} name={product.name} status={product.status} />
                                         </div>
                                     </td>
                                 </tr>
