@@ -2,6 +2,7 @@
 
 import { useState, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { confirmPacking, uploadAllocation } from '@/actions/stock-request';
 import { CheckCircle2, Upload, AlertTriangle, X, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -274,12 +275,15 @@ export default function PackingInterface({ requestId, requestedTotal, status, al
                         </span>
                     ) : (
                         <>
+                            <Link href={`/warehouse/allocate/${requestId}`} className="flex items-center gap-2 px-4 py-2 border border-indigo-300 text-indigo-700 rounded-lg hover:bg-indigo-50 text-sm font-medium transition-colors">
+                                แก้ไขจัดสรร
+                            </Link>
                             {/* Download Template */}
                             <button onClick={downloadTemplate} disabled={loading}
                                 className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium transition-colors disabled:opacity-50">
-                                <Download className="h-4 w-4" /> {loading ? 'กำลังโหลด...' : 'ดาวน์โหลด Template'}
+                                <Download className="h-4 w-4" /> {loading ? 'กำลังโหลด...' : 'โหลด Template'}
                             </button>
-                            <label className="flex items-center gap-2 px-4 py-2 border border-indigo-300 text-indigo-700 rounded-lg hover:bg-indigo-50 text-sm font-medium cursor-pointer transition-colors">
+                            <label className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium cursor-pointer transition-colors">
                                 <Upload className="h-4 w-4" /> {importing ? 'กำลังนำเข้า...' : 'Import ใหม่'}
                                 <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileSelect} className="hidden" disabled={importing} />
                             </label>

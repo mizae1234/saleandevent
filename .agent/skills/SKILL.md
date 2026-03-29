@@ -96,6 +96,7 @@ description: Full codebase reference for the unified sales channel & stock manag
 | `Shipment` | 1:1 with StockRequest — tracking info |
 | `Receiving` | PC confirms received stock — **creates ChannelStock** |
 | `ReceivingItem` | Per-barcode received vs allocated comparison |
+| `StockRequestLog` | Centralized audit log specifically for stock request operations (e.g., admin edits) |
 
 ### Sales & Finance
 
@@ -209,11 +210,12 @@ description: Full codebase reference for the unified sales channel & stock manag
 | `updateStockRequest` | Update qty/notes (blocked if shipped/received/cancelled) |
 | `submitStockRequest` | Status → `submitted` |
 
-#### Approval
+#### Approval & Admin Edit
 | Function | Notes |
 |---|---|
-| `approveStockRequest` | Status → `approved`. Also approves parent channel if still draft/submitted |
-| `rejectStockRequest` | Status → `cancelled` + rejection reason |
+| `approveStockRequest` | Status → `approved`. Also approves parent channel if still draft/submitted. Tracks real user session. |
+| `rejectStockRequest` | Status → `cancelled` + rejection reason. Tracks real user session. |
+| `adminUpdateStockRequest` | Allows roles `ADMIN`, `MANAGER`, `WAREHOUSE` to directly edit request items without re-triggering approval flow. Snapshot logged to `StockRequestLog`. |
 
 #### Warehouse
 | Function | Notes |
@@ -455,7 +457,7 @@ export async function doSomething(id: string) {
 
 ### Key Patterns
 1. **Transaction-safe**: All multi-step operations use `db.$transaction()`
-2. **Audit logging**: Every mutation creates a `ChannelLog` entry
+2. **Audit logging**: Every mutation creates a `ChannelLog` entry (and `StockRequestLog` for stock request edits)
 3. **Soft delete**: Products and Staff use `status: 'inactive'` (Customers hard-delete)
 4. **Auto-generated codes**: Staff `S0001++`, Customer `C00001++`, Channel `EV-YYYYMM-XXX` / `BR-XXX`, Invoice `INV-YYYYMM-XXXX`, Bill `{ChannelCode}-{0001++}`
 5. **Thai localization**: 100% Thai UI labels
@@ -464,6 +466,8 @@ export async function doSomething(id: string) {
 8. **R2 storage**: Payroll attachments only (uploads via API route, deletes via server action)
 9. **FormData pattern**: Most CRUD actions accept `FormData`, not JSON
 10. **Border-bottom inputs**: Standard input style is `border-0 border-b`
+11. **Serialization Safety**: Decimal values from Prisma must be explicitly converted to Numbers when passed from Server to Client Components.
+12. **Real User Tracking**: Server actions extract the exact logging user from `getSession()`, preventing system fallback misattributions.
 
 ### Import Patterns
 ```typescript
@@ -513,7 +517,7 @@ import { cn, fmt } from '@/lib/utils';
 | `/pc/pos` | Point of Sale |
 | `/pc/sales` | Sales history |
 | `/pc/receive` | Receive shipped stock |
-| `/pc/refill` | Request stock top-up |
+| `/pc/refill` | Request stock top-up (Mobile-friendly POS-style itemized flow) |
 | `/pc/close` | Close event / return stock |
 
 ---

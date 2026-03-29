@@ -67,10 +67,13 @@ export async function uploadAllocation(
 
     // Build lookup maps — handle all combinations of color/size being present or null
     const lookupMap = new Map<string, string>();
+    const barcodeMap = new Map<string, string>();
     for (const p of products) {
-        const pCode = p.code?.trim();
-        const pColor = p.color?.trim() || null;
-        const pSize = p.size?.trim() || null;
+        barcodeMap.set(p.barcode, p.barcode);
+        
+        const pCode = p.code?.trim().toUpperCase();
+        const pColor = p.color?.trim().toUpperCase() || null;
+        const pSize = p.size?.trim().toUpperCase() || null;
         if (pCode && pColor && pSize) {
             // CODE-COLOR-SIZE → barcode (e.g. SR044-เข้ม-2XL)
             lookupMap.set(`${pCode}-${pColor}-${pSize}`, p.barcode);
@@ -97,25 +100,32 @@ export async function uploadAllocation(
         const normSize = normalizeSize(row.size);
         const hasColor = row.color && row.color.trim() !== '';
 
-        // Build lookup key based on available fields
-        let lookupKey: string;
-        if (row.code) {
-            if (hasColor && normSize) {
-                lookupKey = `${row.code}-${row.color}-${normSize}`;       // CODE-COLOR-SIZE
-            } else if (hasColor && !normSize) {
-                lookupKey = `${row.code}-${row.color}`;                    // CODE-COLOR
-            } else if (!hasColor && normSize) {
-                lookupKey = `${row.code}-${normSize}`;                     // CODE-SIZE
+        let realBarcode: string | undefined;
+
+        // 1. Try exact barcode match first (for Auto-Mapping from POS)
+        if (row.barcode && barcodeMap.has(row.barcode)) {
+            realBarcode = row.barcode;
+        } else if (row.code) {
+            // 2. Fallback to code-color-size lookup (for Excel Imports)
+            const rowCode = row.code.trim().toUpperCase();
+            const rowColor = row.color?.trim().toUpperCase();
+            const rowSizeStr = normSize?.trim().toUpperCase();
+
+            let lookupKey: string;
+            if (hasColor && rowSizeStr) {
+                lookupKey = `${rowCode}-${rowColor}-${rowSizeStr}`;
+            } else if (hasColor && !rowSizeStr) {
+                lookupKey = `${rowCode}-${rowColor}`;
+            } else if (!hasColor && rowSizeStr) {
+                lookupKey = `${rowCode}-${rowSizeStr}`;
             } else {
-                lookupKey = row.code;                                       // CODE only
+                lookupKey = rowCode;
             }
-        } else {
-            lookupKey = row.barcode;
+            realBarcode = lookupMap.get(lookupKey);
         }
 
-        const realBarcode = lookupMap.get(lookupKey);
         if (!realBarcode) {
-            missingBarcodes.push(lookupKey);
+            missingBarcodes.push(row.barcode || row.code || 'Unknown');
             continue;
         }
         mappedRows.push({
