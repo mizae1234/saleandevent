@@ -94,6 +94,7 @@ export const MENU_SECTIONS: MenuSection[] = [
         title: "System Admin (ตั้งค่า)",
         items: [
             { title: "จัดการสินค้า", href: "/admin/products", icon: Tag },
+            { title: "หมวดหมู่สินค้า", href: "/admin/product-categories", icon: LayoutDashboard },
             { title: "พนักงาน & สิทธิ์", href: "/admin/users", icon: Users },
         ],
     },

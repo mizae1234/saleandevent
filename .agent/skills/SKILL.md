@@ -220,13 +220,13 @@ description: Full codebase reference for the unified sales channel & stock manag
 #### Warehouse
 | Function | Notes |
 |---|---|
-| `uploadAllocation` | **Complex**: Parses Excel rows → matches product by code+color+size → creates WarehouseAllocation records. Size normalization (XXL→2XL). Supports `adminOverride` to skip missing products. Status → `allocated` |
+| `uploadAllocation` | **Complex**: Parses Excel rows or auto-maps from POS. (1) **Tries exact barcode match first** for 100% precision. (2) Fallback: matches product by code+color+size case-insensitively. Size normalization (XXL→2XL). Supports `adminOverride` to skip missing products. Status → `allocated` |
 | `updateSingleAllocation` | Edit one allocation's packedQuantity |
-| `confirmPacking` | Status → `packed` |
+| `confirmPacking` | Status → `packed`. UI now features a **"แก้ไขจัดสรร"** button to toggle back to the `allocated` mapping screen if adjustments are needed. |
 | `createShipment` | Creates Shipment record + status → `shipped` |
 | `getProductMasterForTemplate` | Returns grouped product data for Excel template generation |
 
-**`uploadAllocation` Lookup Logic**: Builds a map of `CODE-COLOR-SIZE → barcode` from DB products. Handles 4 variants: code+color+size, code+size, code+color, code-only.
+**`uploadAllocation` Lookup Logic**: Builds a primary `barcodeMap` for exact match (fixing bugs with trailing spaces/casing from POS requests), and a secondary map of `CODE-COLOR-SIZE → barcode` from DB products. Handles 4 variants: code+color+size, code+size, code+color, code-only.
 
 #### Receiving
 | Function | Notes |

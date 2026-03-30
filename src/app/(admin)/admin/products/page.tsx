@@ -8,6 +8,7 @@ import { ProductFilters } from "./ProductFilters";
 import { DeleteProductButton } from "./DeleteProductButton";
 import { ExportProductsButton } from "./ExportProductsButton";
 import { ImportProductsButton } from "./ImportProductsButton";
+import { getProductCategories } from "@/actions/product-category-actions";
 
 const PAGE_SIZE = 25;
 
@@ -51,6 +52,7 @@ async function getProductList(searchParams: Promise<{ [key: string]: string | st
 
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
     const { products, totalCount, page, q, category } = await getProductList(searchParams);
+    const categoryRes = await getProductCategories(true);
     const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
     function buildPageUrl(targetPage: number) {
@@ -83,7 +85,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
             />
 
             {/* Filters */}
-            <ProductFilters />
+            <ProductFilters categories={categoryRes.data || []} />
 
             {/* Stats bar */}
             <div className="flex items-center gap-4">

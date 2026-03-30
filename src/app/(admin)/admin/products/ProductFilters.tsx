@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { Search } from "lucide-react";
 import { Spinner } from "@/components/shared";
 
-export function ProductFilters() {
+export function ProductFilters({ categories }: { categories: { id: string; name: string }[] }) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
@@ -38,17 +38,6 @@ export function ProductFilters() {
             router.push(`/admin/products?${params.toString()}`);
         });
     };
-
-    const CATEGORIES = [
-        { value: "", label: "ทั้งหมด" },
-        { value: "กางเกงยีนส์", label: "กางเกงยีนส์" },
-        { value: "กางเกงขาสั้น", label: "กางเกงขาสั้น" },
-        { value: "เสื้อ", label: "เสื้อ" },
-        { value: "กระเป๋า", label: "กระเป๋า" },
-        { value: "เข็มขัด", label: "เข็มขัด" },
-        { value: "อื่นๆ", label: "อื่นๆ" },
-    ];
-
     return (
         <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -66,9 +55,10 @@ export function ProductFilters() {
                 onChange={(e) => handleCategoryChange(e.target.value)}
                 className="py-2.5 px-4 rounded-lg border-0 border-b-2 border-slate-200 bg-slate-50 text-sm text-slate-600 focus:border-teal-500 focus:bg-white focus:outline-none transition-colors cursor-pointer"
             >
-                {CATEGORIES.map((c) => (
-                    <option key={c.value} value={c.value}>
-                        {c.label}
+                <option value="">ทั้งหมด</option>
+                {categories.map((c) => (
+                    <option key={c.id} value={c.name}>
+                        {c.name}
                     </option>
                 ))}
             </select>

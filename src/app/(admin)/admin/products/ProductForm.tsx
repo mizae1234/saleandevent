@@ -18,9 +18,10 @@ interface ProductFormProps {
         producttype: string | null;
         color: string | null;
     };
+    categories: { id: string; name: string }[];
 }
 
-export function ProductForm({ mode, product }: ProductFormProps) {
+export function ProductForm({ mode, product, categories }: ProductFormProps) {
     const isEdit = mode === "edit";
 
     const action = isEdit
@@ -32,18 +33,6 @@ export function ProductForm({ mode, product }: ProductFormProps) {
         };
 
     const [state, formAction, isPending] = useActionState(action, undefined);
-
-    const CATEGORIES = [
-        "กางเกงยีนส์",
-        "กางเกงขาสั้น",
-        "เสื้อ",
-        "กระเป๋า",
-        "เข็มขัด",
-        "Display",
-        "Supplies",
-        "อุปกรณ์",
-        "อื่นๆ",
-    ];
 
     return (
         <div className="max-w-2xl mx-auto">
@@ -116,8 +105,8 @@ export function ProductForm({ mode, product }: ProductFormProps) {
                             defaultValue={product?.category || ""}
                         >
                             <option value="">-- เลือกหมวดหมู่ --</option>
-                            {CATEGORIES.map((c) => (
-                                <option key={c} value={c}>{c}</option>
+                            {categories.map((c) => (
+                                <option key={c.id} value={c.name}>{c.name}</option>
                             ))}
                         </FormSelect>
                     </div>
