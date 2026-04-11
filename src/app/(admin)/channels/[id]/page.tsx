@@ -156,6 +156,8 @@ export default async function ChannelDetailPage({ params }: { params: Promise<{ 
                 <div className="lg:col-span-2 space-y-6">
                     {/* Stock & Requests Tabs */}
                     <EventStockTabs
+                        channelName={channel.name}
+                        channelCode={channel.code}
                         stock={channel.stock.map(s => ({
                             id: s.id,
                             barcode: s.barcode,

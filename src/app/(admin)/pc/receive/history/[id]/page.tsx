@@ -37,7 +37,7 @@ export default async function ReceiveHistoryDetailPage({ params }: { params: Pro
     const hasDifference = totalDiff !== 0;
 
     // Group items by code + color
-    const SIZES = ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
+    const SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
     interface GroupedRow {
         no: number;
         producttype: string;

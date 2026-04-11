@@ -84,19 +84,47 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
     }, [stockItems]);
 
     // Filter stock items by search AND category
-    const filteredStock = stockItems.filter(item => {
-        // Category filter (match by code)
-        if (categoryFilter !== 'all' && (item.code || item.barcode) !== categoryFilter) return false;
-        // Search filter
-        if (search) {
-            const q = search.toLowerCase();
-            return item.productName?.toLowerCase().includes(q) ||
-                item.barcode.toLowerCase() === q || // Exact match for barcode scanners
-                item.code?.toLowerCase().includes(q) ||
-                item.color?.toLowerCase().includes(q);
-        }
-        return true;
-    });
+    const filteredStock = useMemo(() => {
+        const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', 'F'];
+        const filtered = stockItems.filter(item => {
+            // Category filter (match by code)
+            if (categoryFilter !== 'all' && (item.code || item.barcode) !== categoryFilter) return false;
+            // Search filter
+            if (search) {
+                const q = search.trim().toLowerCase();
+                if (item.barcode.toLowerCase() === q) return true; // Exact match for barcode scanners
+
+                // Split by spaces or hyphens to support "S04-ดำ-L" or "S04 ดำ L"
+                const terms = q.split(/[- ]+/).filter(Boolean);
+                
+                // All terms must match at least one of the attributes
+                return terms.every(term => 
+                    item.productName?.toLowerCase().includes(term) ||
+                    item.code?.toLowerCase().startsWith(term) ||
+                    item.color?.toLowerCase().startsWith(term) ||
+                    item.size?.toLowerCase().startsWith(term)
+                );
+            }
+            return true;
+        });
+
+        return filtered.sort((a, b) => {
+            const codeA = a.code || '';
+            const codeB = b.code || '';
+            if (codeA !== codeB) return codeA.localeCompare(codeB);
+            
+            const sizeA = a.size || '';
+            const sizeB = b.size || '';
+            const sizeIndexA = SIZES.indexOf(sizeA.toUpperCase());
+            const sizeIndexB = SIZES.indexOf(sizeB.toUpperCase());
+            
+            if (sizeIndexA !== -1 && sizeIndexB !== -1) return sizeIndexA - sizeIndexB;
+            if (sizeIndexA !== -1) return -1;
+            if (sizeIndexB !== -1) return 1;
+            
+            return sizeA.localeCompare(sizeB);
+        });
+    }, [stockItems, search, categoryFilter]);
 
     // Add to cart
     const addToCart = (item: StockItem) => {

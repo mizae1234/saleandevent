@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ReturnShippingForm } from "./ReturnShippingForm";
 
-const SIZES = ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
+const SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
 
 async function getEventForReturnShipping(id: string) {
     const event = await db.salesChannel.findUnique({

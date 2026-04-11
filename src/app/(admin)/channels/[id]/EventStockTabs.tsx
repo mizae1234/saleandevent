@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Package, ClipboardList, Truck, ChevronLeft, ChevronRight } from "lucide-react";
-import { EmptyState } from "@/components/shared";
+import { Package, ClipboardList, Truck, ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react";
+import { EmptyState, Spinner } from "@/components/shared";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
+import { useToast } from "@/components/ui/toast";
 
-const SIZES = ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
+const SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
 const ITEMS_PER_PAGE = 10;
 
 interface StockItem {
@@ -48,6 +49,8 @@ interface GroupedRow {
 interface Props {
     stock: StockItem[];
     stockRequests: StockRequest[];
+    channelName: string;
+    channelCode: string;
 }
 
 const requestStatusConfig: Record<string, { label: string; color: string }> = {
@@ -61,9 +64,75 @@ const requestStatusConfig: Record<string, { label: string; color: string }> = {
     cancelled: { label: 'ยกเลิก', color: 'bg-red-100 text-red-600' },
 };
 
-export function EventStockTabs({ stock, stockRequests }: Props) {
+export function EventStockTabs({ stock, stockRequests, channelName, channelCode }: Props) {
     const [activeTab, setActiveTab] = useState<'requests' | 'stock'>(stock.length > 0 ? 'stock' : 'requests');
     const [stockPage, setStockPage] = useState(1);
+    const [exporting, setExporting] = useState(false);
+    const { toastError, toastSuccess } = useToast();
+
+    const handleExport = async () => {
+        if (groupedRows.length === 0) return;
+        setExporting(true);
+        try {
+            const XLSX = await import("xlsx");
+
+            // Same format as web table: grouped by code+color, size spread as columns
+            const rows = groupedRows.map((row) => {
+                const r: Record<string, string | number> = {
+                    "#": row.no,
+                    "ชื่อสินค้า": row.name,
+                    "รุ่น": row.code,
+                    "สี": row.color,
+                };
+                for (const size of SIZES) {
+                    r[size] = row.sizes[size] ? row.sizes[size].qty - row.sizes[size].sold : 0;
+                }
+                r["รวมรับเข้า"] = row.totalQty;
+                r["ขายแล้ว"] = row.totalSold;
+                r["คงเหลือ"] = row.totalQty - row.totalSold;
+                return r;
+            });
+
+            // Totals row
+            const totalsRow: Record<string, string | number> = {
+                "#": "",
+                "ชื่อสินค้า": "",
+                "รุ่น": "รวมทั้งหมด",
+                "สี": "",
+            };
+            for (const size of SIZES) {
+                totalsRow[size] = sizeTotals[size].qty - sizeTotals[size].sold;
+            }
+            totalsRow["รวมรับเข้า"] = totalStock;
+            totalsRow["ขายแล้ว"] = totalSold;
+            totalsRow["คงเหลือ"] = totalStock - totalSold;
+            rows.push(totalsRow);
+
+            const ws = XLSX.utils.json_to_sheet(rows);
+            ws["!cols"] = [
+                { wch: 5 },  // #
+                { wch: 30 }, // ชื่อสินค้า
+                { wch: 14 }, // รุ่น
+                { wch: 12 }, // สี
+                ...SIZES.map(() => ({ wch: 8 })), // S M L XL 2XL 3XL
+                { wch: 10 }, // รวมรับเข้า
+                { wch: 10 }, // ขายแล้ว
+                { wch: 10 }, // คงเหลือ
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "สต็อก");
+
+            const d = new Date();
+            const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+            XLSX.writeFile(wb, `stock_${channelCode}_${dateStr}.xlsx`);
+            toastSuccess(`Export สำเร็จ ${groupedRows.length} รายการ`);
+        } catch {
+            toastError("เกิดข้อผิดพลาดในการ Export");
+        } finally {
+            setExporting(false);
+        }
+    };
 
     // Group stock by code + color
     const groupedRows: GroupedRow[] = useMemo(() => {
@@ -126,21 +195,34 @@ export function EventStockTabs({ stock, stockRequests }: Props) {
 
     return (
         <div className="bg-white rounded-xl overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100">
-            {/* Tabs */}
-            <div className="flex border-b border-slate-200">
-                {tabs.map(tab => (
-                    <button
-                        key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
-                        className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.key
-                            ? 'border-teal-600 text-teal-700'
-                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+            {/* Tabs + Export Button */}
+            <div className="flex items-center justify-between border-b border-slate-200">
+                <div className="flex">
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.key}
+                            onClick={() => setActiveTab(tab.key)}
+                            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                                activeTab === tab.key
+                                    ? 'border-teal-600 text-teal-700'
+                                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
                             }`}
+                        >
+                            <tab.icon className="h-4 w-4" />
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+                {activeTab === 'stock' && stock.length > 0 && (
+                    <button
+                        onClick={handleExport}
+                        disabled={exporting}
+                        className="mr-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50"
                     >
-                        <tab.icon className="h-4 w-4" />
-                        {tab.label}
+                        {exporting ? <Spinner size="sm" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+                        {exporting ? "กำลัง Export..." : "Export Excel"}
                     </button>
-                ))}
+                )}
             </div>
 
             {/* Tab: Stock */}

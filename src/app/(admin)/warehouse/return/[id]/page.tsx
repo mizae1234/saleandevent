@@ -6,7 +6,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ConfirmReturnClient } from "./ConfirmReturnClient";
 
-const SIZES = ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
+const SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
 
 interface GroupedRow {
     no: number;

@@ -111,16 +111,42 @@ export default function NewRefillClient({
 
     // Filtered Products
     const filteredProducts = useMemo(() => {
-        return products.filter(item => {
+        const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', 'F'];
+        const filtered = products.filter(item => {
             if (categoryFilter !== 'all' && (item.code || item.barcode) !== categoryFilter) return false;
+            
             if (search) {
-                const q = search.toLowerCase();
-                return item.name?.toLowerCase().includes(q) ||
-                    item.barcode.toLowerCase() === q ||
-                    item.code?.toLowerCase().includes(q) ||
-                    (item.color && item.color.toLowerCase().includes(q));
+                const q = search.trim().toLowerCase();
+                if (item.barcode.toLowerCase() === q) return true;
+
+                // Split by spaces or hyphens to support "S04-ดำ-L" or "S04 ดำ L"
+                const terms = q.split(/[- ]+/).filter(Boolean);
+                
+                return terms.every(term => 
+                    item.name?.toLowerCase().includes(term) ||
+                    item.code?.toLowerCase().startsWith(term) ||
+                    item.color?.toLowerCase().startsWith(term) ||
+                    item.size?.toLowerCase().startsWith(term)
+                );
             }
             return true;
+        });
+
+        return filtered.sort((a, b) => {
+            const codeA = a.code || '';
+            const codeB = b.code || '';
+            if (codeA !== codeB) return codeA.localeCompare(codeB);
+            
+            const sizeA = a.size || '';
+            const sizeB = b.size || '';
+            const sizeIndexA = SIZES.indexOf(sizeA.toUpperCase());
+            const sizeIndexB = SIZES.indexOf(sizeB.toUpperCase());
+            
+            if (sizeIndexA !== -1 && sizeIndexB !== -1) return sizeIndexA - sizeIndexB;
+            if (sizeIndexA !== -1) return -1;
+            if (sizeIndexB !== -1) return 1;
+            
+            return sizeA.localeCompare(sizeB);
         });
     }, [products, search, categoryFilter]);
 
