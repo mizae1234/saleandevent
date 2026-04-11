@@ -336,6 +336,10 @@ export async function getInvoice(invoiceId: string) {
                 },
                 orderBy: { createdAt: 'asc' },
             },
+            creditNotes: {
+                include: { items: true },
+                orderBy: { createdAt: 'desc' }
+            }
         },
     });
 }

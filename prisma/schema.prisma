@@ -97,6 +97,7 @@ model Product {
   stockMovements    StockMovement[]
   warehouseStock    WarehouseStock?
   stockRequestItems StockRequestItem[]
+  creditNoteItems   CreditNoteItem[]
 
   @@map("products")
 }
@@ -682,6 +683,7 @@ model Invoice {
   channel         SalesChannel  @relation(fields: [channelId], references: [id])
   customer        Customer?     @relation(fields: [customerId], references: [id])
   items           InvoiceItem[]
+  creditNotes     CreditNote[]
 
   @@index([channelId])
   @@index([status])
@@ -704,6 +706,7 @@ model InvoiceItem {
   // Relations
   invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   product         Product  @relation(fields: [barcode], references: [barcode])
+  creditNoteItems CreditNoteItem[]
 
   @@index([invoiceId])
   @@map("invoice_items")
@@ -748,4 +751,52 @@ model PayrollAttachment {
 
   @@index([channelStaffId])
   @@map("payroll_attachments")
+}
+
+// ============ CREDIT NOTE (ใบลดหนี้) ============
+
+model CreditNote {
+  id              String           @id @default(uuid()) @db.Uuid
+  cnNumber        String?          @unique @map("cn_number") @db.VarChar(30)
+  invoiceId       String           @map("invoice_id") @db.Uuid
+  date            DateTime         @db.Date
+  type            String           @default("VALUE") @db.VarChar(20) // VALUE | ITEM
+  totalAmount     Decimal          @default(0) @map("total_amount") @db.Decimal(12, 2)
+  reason          String?          @db.Text
+  status          String           @default("active") @db.VarChar(20) // active | cancelled
+  
+  // Audit fields
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy       String?          @map("created_by") @db.Uuid
+  updatedBy       String?          @map("updated_by") @db.Uuid
+
+  // Relations
+  invoice         Invoice          @relation(fields: [invoiceId], references: [id])
+  items           CreditNoteItem[]
+
+  @@index([invoiceId])
+  @@map("credit_notes")
+}
+
+model CreditNoteItem {
+  id              String       @id @default(uuid()) @db.Uuid
+  creditNoteId    String       @map("credit_note_id") @db.Uuid
+  invoiceItemId   String?      @map("invoice_item_id") @db.Uuid
+  barcode         String       @db.VarChar(50)
+  quantity        Int          @default(0)
+  unitPrice       Decimal      @map("unit_price") @db.Decimal(10, 2)
+  totalAmount     Decimal      @map("total_amount") @db.Decimal(12, 2)
+
+  // Audit fields
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  creditNote      CreditNote   @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  invoiceItem     InvoiceItem? @relation(fields: [invoiceItemId], references: [id])
+  product         Product      @relation(fields: [barcode], references: [barcode])
+
+  @@index([creditNoteId])
+  @@map("credit_note_items")
 }
