@@ -29,6 +29,11 @@ echo ""
 echo "📥 Pulling latest code..."
 git pull origin main
 
+HAS_DB_CHANGES="false"
+if git diff --name-only ORIG_HEAD HEAD 2>/dev/null | grep -q "^prisma/"; then
+    HAS_DB_CHANGES="true"
+fi
+
 echo ""
 echo "🐳 Rebuilding Docker image..."
 docker compose down
@@ -43,6 +48,20 @@ if docker ps --filter "name=saran-jeans-web" --filter "status=running" -q | grep
     echo ""
     echo "✅ Deploy successful!"
     docker logs --tail 5 saran-jeans-web
+
+    if [ "$HAS_DB_CHANGES" = "true" ]; then
+        echo ""
+        echo "================================================================"
+        echo " ⚠️  WARNING: DATABASE CHANGES DETECTED IN THIS DEPLOYMENT! ⚠️"
+        echo "================================================================"
+        echo " Please verify and apply the database updates manually."
+        echo " Recommended command (if using migrations):"
+        echo "   docker exec -it saran-jeans-web npx prisma migrate deploy"
+        echo " Or for simple prototyping schema sync: "
+        echo "   docker exec -it saran-jeans-web npx prisma db push"
+        echo "================================================================"
+        echo ""
+    fi
 else
     echo ""
     echo "❌ Container failed!"
