@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createSale } from "@/actions/sale-actions";
 import {
@@ -62,6 +62,34 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
     const [adjustments, setAdjustments] = useState<Adjustment[]>([]);
     const [billDiscount, setBillDiscount] = useState(0);
     const [showConfirm, setShowConfirm] = useState(false);
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    // โหลดข้อมูลจาก localStorage
+    useEffect(() => {
+        const savedCart = localStorage.getItem(`pos_cart_${channelId}`);
+        const savedAdjustments = localStorage.getItem(`pos_adjustments_${channelId}`);
+        const savedDiscount = localStorage.getItem(`pos_discount_${channelId}`);
+
+        if (savedCart) {
+            try { setCart(JSON.parse(savedCart)); } catch (e) { }
+        }
+        if (savedAdjustments) {
+            try { setAdjustments(JSON.parse(savedAdjustments)); } catch (e) { }
+        }
+        if (savedDiscount) {
+            try { setBillDiscount(Number(savedDiscount)); } catch (e) { }
+        }
+        setIsLoaded(true);
+    }, [channelId]);
+
+    // บันทึกข้อมูลลง localStorage
+    useEffect(() => {
+        if (isLoaded) {
+            localStorage.setItem(`pos_cart_${channelId}`, JSON.stringify(cart));
+            localStorage.setItem(`pos_adjustments_${channelId}`, JSON.stringify(adjustments));
+            localStorage.setItem(`pos_discount_${channelId}`, String(billDiscount));
+        }
+    }, [cart, adjustments, billDiscount, isLoaded, channelId]);
     const [showAddAdjustment, setShowAddAdjustment] = useState(false);
     const [newAdjustment, setNewAdjustment] = useState({ description: "", amount: 0 });
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -230,6 +258,9 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
             setBillDiscount(0);
             setShowConfirm(false);
             setMobileTab('products');
+            localStorage.removeItem(`pos_cart_${channelId}`);
+            localStorage.removeItem(`pos_adjustments_${channelId}`);
+            localStorage.removeItem(`pos_discount_${channelId}`);
             router.refresh();
         } catch (error) {
             console.error("Failed to create sale:", error);

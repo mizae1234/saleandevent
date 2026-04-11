@@ -76,6 +76,30 @@ export default function NewRefillClient({
     const [cart, setCart] = useState<CartItem[]>(initialCartItems || []);
     const [mobileTab, setMobileTab] = useState<'products' | 'cart'>('products');
     const [showConfirm, setShowConfirm] = useState(false);
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    // โหลดข้อมูลจาก localStorage
+    useEffect(() => {
+        if (!isAdminEdit) {
+            const savedCart = localStorage.getItem('refill_cart_draft');
+            const savedNotes = localStorage.getItem('refill_notes_draft');
+            if (savedCart) {
+                try { setCart(JSON.parse(savedCart)); } catch (e) { }
+            }
+            if (savedNotes) {
+                setMainNotes(savedNotes);
+            }
+        }
+        setIsLoaded(true);
+    }, [isAdminEdit]);
+
+    // บันทึกข้อมูลลง localStorage
+    useEffect(() => {
+        if (isLoaded && !isAdminEdit) {
+            localStorage.setItem('refill_cart_draft', JSON.stringify(cart));
+            localStorage.setItem('refill_notes_draft', mainNotes);
+        }
+    }, [cart, mainNotes, isLoaded, isAdminEdit]);
 
     // Fetch Products on mount
     useEffect(() => {
@@ -200,6 +224,8 @@ export default function NewRefillClient({
             } else {
                 await createStockRequest(channelId, 'TOPUP', totalQuantity, mainNotes || undefined, itemsToSubmit, true);
                 toastSuccess('ส่งคำขอเบิกสินค้าแล้ว');
+                localStorage.removeItem('refill_cart_draft');
+                localStorage.removeItem('refill_notes_draft');
                 router.push(redirectTo || '/pc/refill');
             }
         } catch (err) {
