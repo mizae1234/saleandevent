@@ -28,7 +28,14 @@ export async function createCustomer(formData: FormData) {
 
     if (!name) throw new Error('กรุณากรอกชื่อลูกค้า');
 
-    const code = customCode || await generateCustomerCode();
+    const code = customCode?.trim() || await generateCustomerCode();
+
+    const existingCode = await db.customer.findUnique({
+        where: { code }
+    });
+    if (existingCode) {
+        throw new Error('รหัสลูกค้านี้มีอยู่ในระบบแล้ว กรุณาใช้รหัสอื่น');
+    }
 
     await db.customer.create({
         data: {
@@ -50,6 +57,7 @@ export async function createCustomer(formData: FormData) {
 // ============ UPDATE ============
 export async function updateCustomer(id: string, formData: FormData) {
     const name = formData.get('name') as string;
+    const customCode = formData.get('code') as string | null;
     const taxId = formData.get('taxId') as string | null;
     const address = formData.get('address') as string | null;
     const phone = formData.get('phone') as string | null;
@@ -59,9 +67,19 @@ export async function updateCustomer(id: string, formData: FormData) {
 
     if (!name) throw new Error('กรุณากรอกชื่อลูกค้า');
 
+    const code = customCode?.trim() || await generateCustomerCode();
+
+    const existingCode = await db.customer.findUnique({
+        where: { code }
+    });
+    if (existingCode && existingCode.id !== id) {
+        throw new Error('รหัสลูกค้านี้มีอยู่ในระบบแล้ว กรุณาใช้รหัสอื่น');
+    }
+
     await db.customer.update({
         where: { id },
         data: {
+            code,
             name,
             taxId: taxId || null,
             address: address || null,

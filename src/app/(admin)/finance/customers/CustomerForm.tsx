@@ -5,6 +5,7 @@ import { Spinner, FormInput, FormTextarea, PageHeader } from "@/components/share
 import Link from "next/link";
 import { useTransition } from "react";
 import { createCustomer, updateCustomer } from "@/actions/customer-actions";
+import { useToast } from "@/components/ui/toast";
 
 interface CustomerData {
     id?: string;
@@ -20,13 +21,20 @@ interface CustomerData {
 
 export function CustomerForm({ customer, isEdit }: { customer?: CustomerData; isEdit?: boolean }) {
     const [isPending, startTransition] = useTransition();
+    const { toastError, toastSuccess } = useToast();
 
     const handleSubmit = (formData: FormData) => {
         startTransition(async () => {
-            if (isEdit && customer?.id) {
-                await updateCustomer(customer.id, formData);
-            } else {
-                await createCustomer(formData);
+            try {
+                if (isEdit && customer?.id) {
+                    await updateCustomer(customer.id, formData);
+                    toastSuccess("บันทึกข้อมูลเรียบร้อย");
+                } else {
+                    await createCustomer(formData);
+                    toastSuccess("เพิ่มลูกค้าเรียบร้อย");
+                }
+            } catch (error: any) {
+                toastError(error.message || "เกิดข้อผิดพลาดในการบันทึก");
             }
         });
     };
@@ -40,14 +48,22 @@ export function CustomerForm({ customer, isEdit }: { customer?: CustomerData; is
 
             <form action={handleSubmit}>
                 <div className="bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100 space-y-5">
-                    {/* Row 1: Name */}
-                    <FormInput
-                        label="ชื่อลูกค้า *"
-                        name="name"
-                        defaultValue={customer?.name || ''}
-                        required
-                        placeholder="ชื่อบริษัท หรือ ชื่อบุคคล"
-                    />
+                    {/* Row 1: Code + Name */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <FormInput
+                            label="รหัสลูกค้า"
+                            name="code"
+                            defaultValue={customer?.code || ''}
+                            placeholder="เว้นว่างไว้เพื่อให้ระบบสร้างอัตโนมัติ"
+                        />
+                        <FormInput
+                            label="ชื่อลูกค้า *"
+                            name="name"
+                            defaultValue={customer?.name || ''}
+                            required
+                            placeholder="ชื่อบริษัท หรือ ชื่อบุคคล"
+                        />
+                    </div>
 
                     {/* Row 2: Tax ID + Phone */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
