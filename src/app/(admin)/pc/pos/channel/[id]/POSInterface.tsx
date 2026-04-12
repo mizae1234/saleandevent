@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createSale } from "@/actions/sale-actions";
 import {
     Search, Plus, Minus, Trash2, ShoppingCart,
-    CheckCircle, X, Receipt, Tag, PlusCircle, Package
+    CheckCircle, X, Receipt, Tag, PlusCircle, Package, CalendarDays
 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -95,6 +95,10 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [mobileTab, setMobileTab] = useState<'products' | 'cart'>('products');
     const [categoryFilter, setCategoryFilter] = useState<string>('all');
+
+    // วันที่ขาย — default เป็นวันนี้
+    const todayStr = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD format
+    const [saleDate, setSaleDate] = useState(todayStr);
 
     // Extract unique categories from product codes (e.g., SR4006, SR6001)
     const categories = useMemo(() => {
@@ -237,6 +241,11 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
 
         setIsSubmitting(true);
         try {
+            // สร้าง soldAt: ใช้วันที่ที่เลือก + เวลา ณ ตอนนี้
+            const [y, m, d] = saleDate.split("-").map(Number);
+            const now = new Date();
+            const soldAt = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds());
+
             await createSale({
                 channelId,
                 items: cart.map(item => ({
@@ -249,7 +258,8 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
                     description: a.description,
                     amount: a.amount
                 })),
-                discount: billDiscount
+                discount: billDiscount,
+                soldAt,
             });
 
             // Clear and refresh
@@ -384,63 +394,55 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
                     </div>
                 ) : (
                     cart.map(item => (
-                        <div key={item.barcode} className="bg-slate-50/70 rounded-lg px-3 py-2 border border-slate-100">
-                            {/* Row 1: Product info + delete + price */}
-                            <div className="flex items-center gap-2">
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="font-medium text-slate-900 text-sm truncate">{item.productName}</span>
-                                        <span className="text-[10px] text-slate-400 flex-shrink-0">{item.code || item.barcode}</span>
-                                    </div>
+                        <div key={item.barcode} className="bg-slate-50/70 rounded-md px-2 py-1.5 border border-slate-100 flex items-center gap-1.5 group">
+                            {/* 1. Name & Variants */}
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-baseline gap-1">
+                                    <span className="font-semibold text-slate-900 text-sm truncate">{item.productName}</span>
                                     {(item.size || item.color) && (
-                                        <p className="text-[11px] text-slate-500 leading-tight">
-                                            {item.size}{item.size && item.color && ' • '}{item.color}
-                                        </p>
+                                        <span className="text-[10px] text-slate-500 truncate flex-shrink-0">
+                                            {item.size}{item.size && item.color && '·'}{item.color}
+                                        </span>
                                     )}
                                 </div>
-                                <p className="text-sm font-semibold text-slate-900 flex-shrink-0">
+                                <div className="text-[9px] text-slate-400">
+                                    {item.code || item.barcode} <span className="ml-1 text-[9px]">@฿{item.unitPrice.toLocaleString()}</span>
+                                </div>
+                            </div>
+
+                            {/* 2. Quantity */}
+                            <div className="flex items-center bg-white border border-slate-200 rounded text-slate-600 shadow-sm flex-shrink-0">
+                                <button onClick={() => updateQuantity(item.barcode, -1)} className="px-1.5 py-0.5 hover:bg-slate-50 active:bg-slate-100 border-r border-slate-100"><Minus className="h-3 w-3" /></button>
+                                <span className="w-4 text-center text-[10px] font-bold">{item.quantity}</span>
+                                <button onClick={() => updateQuantity(item.barcode, 1)} className="px-1.5 py-0.5 hover:bg-slate-50 active:bg-slate-100 border-l border-slate-100"><Plus className="h-3 w-3" /></button>
+                            </div>
+
+                            {/* 3. Discount Input */}
+                            <div className="w-[52px] flex-shrink-0">
+                                <input
+                                    type="number"
+                                    onFocus={(e) => e.target.select()}
+                                    placeholder="ลด"
+                                    value={item.discount || ''}
+                                    onChange={(e) => updateItemDiscount(item.barcode, parseFloat(e.target.value) || 0)}
+                                    className="w-full text-[11px] text-center px-1 py-1 bg-white rounded border border-slate-200 focus:outline-none focus:border-emerald-300"
+                                />
+                            </div>
+
+                            {/* 4. Total Price */}
+                            <div className="text-right flex-shrink-0 min-w-[36px]">
+                                <p className="text-xs font-bold text-slate-900 leading-none">
                                     ฿{((item.unitPrice - item.discount) * item.quantity).toLocaleString()}
                                 </p>
-                                <button
-                                    onClick={() => removeFromCart(item.barcode)}
-                                    className="text-red-400 hover:text-red-500 p-1 rounded transition-colors flex-shrink-0"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                </button>
                             </div>
-                            {/* Row 2: Quantity + discount */}
-                            <div className="flex items-center justify-between mt-1.5">
-                                <div className="flex items-center gap-1.5">
-                                    <button
-                                        onClick={() => updateQuantity(item.barcode, -1)}
-                                        className="h-6 w-6 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition-colors"
-                                    >
-                                        <Minus className="h-2.5 w-2.5" />
-                                    </button>
-                                    <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
-                                    <button
-                                        onClick={() => updateQuantity(item.barcode, 1)}
-                                        className="h-6 w-6 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition-colors"
-                                    >
-                                        <Plus className="h-2.5 w-2.5" />
-                                    </button>
-                                    <span className="text-[10px] text-slate-400 ml-1">× ฿{item.unitPrice.toLocaleString()}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <Tag className="h-2.5 w-2.5 text-slate-300" />
-                                    <input
-                                        type="number"
-                                        onFocus={(e) => e.target.select()}
-                                        placeholder="ลด"
-                                        value={item.discount || ''}
-                                        onChange={(e) => updateItemDiscount(item.barcode, parseFloat(e.target.value) || 0)}
-                                        className="w-16 text-xs text-right px-1.5 py-0.5 bg-white/80 rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
-                                    />
-                                </div>
-                            </div>
-                            {item.discount > 0 && (
-                                <p className="text-[10px] text-red-500 text-right mt-0.5">ลด -฿{(item.discount * item.quantity).toLocaleString()}</p>
-                            )}
+
+                            {/* 5. Delete Button */}
+                            <button
+                                onClick={() => removeFromCart(item.barcode)}
+                                className="text-slate-300 hover:text-red-500 transition-colors flex-shrink-0 ml-0.5"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
                         </div>
                     ))
                 )}
@@ -476,43 +478,44 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
             </div>
 
             {/* Summary */}
-            <div className="p-3 md:p-4 border-t border-slate-100 bg-slate-50/50">
-                <div className="space-y-2 mb-3">
-                    <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">รวมสินค้า</span>
-                        <span className="font-medium">฿{subtotal.toLocaleString()}</span>
+            <div className="px-3 py-2 md:px-4 md:py-3 border-t border-slate-100 bg-slate-50/50 flex flex-col gap-2">
+                <div className="space-y-1 mt-1">
+                    <div className="flex justify-between text-xs text-slate-500">
+                        <span>รวมสินค้า</span>
+                        <span className="font-medium text-slate-700">฿{subtotal.toLocaleString()}</span>
                     </div>
                     {adjustmentTotal !== 0 && (
-                        <div className="flex justify-between text-sm">
+                        <div className="flex justify-between text-xs">
                             <span className="text-slate-500">รายการพิเศษ</span>
-                            <span className={adjustmentTotal >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                            <span className={`font-medium ${adjustmentTotal >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                                 {adjustmentTotal >= 0 ? '+' : ''}{adjustmentTotal.toLocaleString()}
                             </span>
                         </div>
                     )}
-                    <div className="flex justify-between text-sm items-center">
+                    <div className="flex justify-between text-xs items-center">
                         <span className="text-slate-500">ส่วนลดท้ายบิล</span>
                         <input
                             type="number"
                             onFocus={(e) => e.target.select()}
                             value={billDiscount || ''}
                             onChange={(e) => setBillDiscount(parseFloat(e.target.value) || 0)}
-                            className="w-24 text-right text-sm px-2 py-1.5 bg-white/80 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/20 focus:border-emerald-300"
+                            className="w-20 text-right px-1.5 py-0.5 bg-white rounded border border-slate-200 focus:outline-none focus:border-emerald-300"
                             placeholder="0"
                         />
                     </div>
-                    <div className="flex justify-between text-lg font-bold pt-2 border-t border-slate-200">
-                        <span>ยอดรวม</span>
-                        <span className="text-emerald-600">฿{grandTotal.toLocaleString()}</span>
-                    </div>
+                </div>
+
+                <div className="flex justify-between items-center border-t border-slate-200 pt-1.5 mt-0.5">
+                    <span className="text-sm font-bold text-slate-800">ยอดรวม</span>
+                    <span className="text-base font-bold text-emerald-600">฿{grandTotal.toLocaleString()}</span>
                 </div>
 
                 <button
                     onClick={() => setShowConfirm(true)}
                     disabled={cart.length === 0 && adjustments.length === 0}
-                    className="w-full py-3.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:bg-emerald-800 transition-colors shadow-sm"
+                    className="w-full mt-1 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:bg-emerald-800 transition-colors shadow-sm text-sm"
                 >
-                    <Receipt className="h-5 w-5" />
+                    <Receipt className="h-4 w-4" />
                     ชำระเงิน
                 </button>
             </div>
@@ -593,12 +596,36 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
                             ยืนยันการขาย
                         </AlertDialogTitle>
                         <AlertDialogDescription asChild>
-                            <div className="space-y-2">
-                                <p>ยืนยันบันทึกการขายรายการนี้?</p>
-                                <div className="bg-slate-50 rounded-lg p-3 mt-2">
-                                    <div className="flex justify-between">
-                                        <span>สินค้า {cart.length} รายการ ({cartItemCount} ชิ้น) {adjustments.length > 0 && `และรายการพิเศษ ${adjustments.length} รายการ`}</span>
-                                        <span className="font-semibold text-emerald-600">฿{grandTotal.toLocaleString()}</span>
+                            <div className="space-y-2 text-slate-700 text-base">
+                                <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mt-2 space-y-4">
+                                    {/* Sale Date Picker inside Confirm */}
+                                    <div className="flex items-center justify-between">
+                                        <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                            <CalendarDays className="h-4 w-4 text-emerald-600" />
+                                            การรับรู้ยอดขาย
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                            {saleDate !== todayStr && (
+                                                <span className="text-[10px] text-amber-600 font-bold bg-amber-100 px-1.5 py-0.5 rounded">ย้อนหลัง</span>
+                                            )}
+                                            <input
+                                                type="date"
+                                                value={saleDate}
+                                                onChange={(e) => setSaleDate(e.target.value || todayStr)}
+                                                className="text-sm font-medium px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 text-slate-800"
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="pt-3 border-t border-slate-200">
+                                        <div className="flex justify-between items-end mb-1">
+                                            <span className="text-sm font-medium text-slate-500">ยอดรวมสุทธิ</span>
+                                            <span className="font-bold text-xl text-emerald-600">฿{grandTotal.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between text-[11px] text-slate-400">
+                                            <span>สินค้า {cart.length} รายการ ({cartItemCount} ชิ้น)</span>
+                                            {adjustments.length > 0 && <span>+ พิเศษ {adjustments.length} รายการ</span>}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

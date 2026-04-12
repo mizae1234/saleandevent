@@ -22,6 +22,7 @@ interface CreateSaleInput {
     items: SaleItemInput[];
     adjustments?: AdjustmentInput[];
     discount?: number;
+    soldAt?: Date; // วันที่ขาย (บันทึกย้อนหลังได้)
 }
 
 export async function createSale(data: CreateSaleInput) {
@@ -69,7 +70,7 @@ export async function createSale(data: CreateSaleInput) {
                     channelId: data.channelId || null,
                     totalAmount: totalAmount,
                     discount: data.discount || 0,
-                    soldAt: new Date(),
+                    soldAt: data.soldAt ?? new Date(),
                     createdBy: "00000000-0000-0000-0000-000000000000",
                 }
             });

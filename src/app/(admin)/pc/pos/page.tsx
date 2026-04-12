@@ -5,10 +5,29 @@ import { th } from "date-fns/locale";
 import { MapPin, Calendar, ArrowRight, ShoppingCart, Store, Package, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { PageHeader, EmptyState } from "@/components/shared";
+import { POSFilters } from "./POSFilters";
+import { Prisma } from "@prisma/client";
 
-async function getActiveEvents() {
+async function getActiveEvents(searchParams: Promise<{ [key: string]: string | string[] | undefined }>) {
+    const params = await searchParams;
+    const q = typeof params.q === 'string' ? params.q : undefined;
+    const status = typeof params.status === 'string' ? params.status : 'active';
+
+    const where: Prisma.SalesChannelWhereInput = {};
+
+    if (status && status !== 'all') {
+        where.status = status;
+    }
+
+    if (q) {
+        where.OR = [
+            { name: { contains: q, mode: 'insensitive' } },
+            { code: { contains: q, mode: 'insensitive' } },
+        ];
+    }
+
     const events = await db.salesChannel.findMany({
-        where: { status: 'active' },
+        where,
         include: {
             stock: { select: { quantity: true, soldQuantity: true } },
             _count: { select: { sales: true } },
@@ -16,14 +35,17 @@ async function getActiveEvents() {
         orderBy: { startDate: 'asc' },
     });
 
-    const salesAggs = await db.sale.groupBy({
-        by: ['channelId'],
-        where: {
-            channelId: { in: events.map(e => e.id) },
-            status: 'active',
-        },
-        _sum: { totalAmount: true },
-    });
+    const channelIds = events.map(e => e.id);
+    const salesAggs = channelIds.length > 0 
+        ? await db.sale.groupBy({
+            by: ['channelId'],
+            where: {
+                channelId: { in: channelIds },
+                status: 'active',
+            },
+            _sum: { totalAmount: true },
+        })
+        : [];
     const salesMap = new Map(salesAggs.map(a => [a.channelId, Number(a._sum.totalAmount || 0)]));
 
     return events.map(event => {
@@ -40,11 +62,18 @@ async function getActiveEvents() {
     });
 }
 
-export default async function POSSelectPage() {
-    const events = await getActiveEvents();
+export default async function POSSelectPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+    const params = await searchParams;
+    const status = typeof params.status === 'string' ? params.status : 'active';
+
+    const events = await getActiveEvents(searchParams);
 
     const totalAllSales = events.reduce((s, e) => s + e.totalSales, 0);
     const totalAllSold = events.reduce((s, e) => s + e.totalSold, 0);
+    
+    const listTitle = status === 'all' ? 'Event / สาขา ทั้งหมด' 
+                    : status === 'active' ? 'Event / สาขา ที่กำลังขาย'
+                    : `Event / สาขา สถานะ: ${status}`;
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
@@ -97,12 +126,14 @@ export default async function POSSelectPage() {
                 </div>
             </div>
 
+            <POSFilters />
+
             {/* Event List */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50">
                     <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                        Event ที่กำลังขาย
+                        {status === 'active' && <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />}
+                        {listTitle}
                         <span className="ml-auto text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{events.length}</span>
                     </h2>
                 </div>
