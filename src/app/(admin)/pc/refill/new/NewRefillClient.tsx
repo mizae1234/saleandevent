@@ -142,13 +142,15 @@ export default function NewRefillClient({
             if (search) {
                 const q = search.trim().toLowerCase();
                 if (item.barcode.toLowerCase() === q) return true;
+                if (item.code?.toLowerCase().includes(q)) return true; // Match code with hyphens correctly
+                if (item.name?.toLowerCase().includes(q)) return true; // Match full name
 
                 // Split by spaces or hyphens to support "S04-ดำ-L" or "S04 ดำ L"
                 const terms = q.split(/[- ]+/).filter(Boolean);
                 
                 return terms.every(term => 
                     item.name?.toLowerCase().includes(term) ||
-                    item.code?.toLowerCase().startsWith(term) ||
+                    item.code?.toLowerCase().includes(term) ||
                     item.color?.toLowerCase().startsWith(term) ||
                     item.size?.toLowerCase().startsWith(term)
                 );

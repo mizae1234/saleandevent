@@ -125,6 +125,8 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
             if (search) {
                 const q = search.trim().toLowerCase();
                 if (item.barcode.toLowerCase() === q) return true; // Exact match for barcode scanners
+                if (item.code?.toLowerCase().includes(q)) return true; // Exact match for code with hyphens
+                if (item.productName?.toLowerCase().includes(q)) return true; // Exact match for full product name
 
                 // Split by spaces or hyphens to support "S04-ดำ-L" or "S04 ดำ L"
                 const terms = q.split(/[- ]+/).filter(Boolean);
@@ -132,7 +134,7 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
                 // All terms must match at least one of the attributes
                 return terms.every(term => 
                     item.productName?.toLowerCase().includes(term) ||
-                    item.code?.toLowerCase().startsWith(term) ||
+                    item.code?.toLowerCase().includes(term) ||
                     item.color?.toLowerCase().startsWith(term) ||
                     item.size?.toLowerCase().startsWith(term)
                 );
