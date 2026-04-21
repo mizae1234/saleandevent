@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useTransition, useMemo } from "react";
-import { ArrowLeft, Search, XCircle, CheckCircle2, Ban, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, Search, XCircle, CheckCircle2, Ban, ChevronDown, ChevronRight, FileSpreadsheet } from "lucide-react";
 import { Spinner } from "@/components/shared";
 import Link from "next/link";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { cancelSale } from "@/actions/sale-actions";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/toast";
 
 type SaleItem = {
     id: string;
@@ -49,6 +50,7 @@ const PAGE_SIZE = 20;
 
 export function EventSalesClient({ event, sales, backHref }: Props) {
     const router = useRouter();
+    const { toastSuccess, toastError } = useToast();
     const [search, setSearch] = useState("");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
@@ -58,6 +60,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
     const [isPending, startTransition] = useTransition();
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+    const [exporting, setExporting] = useState(false);
 
     const filtered = useMemo(() => sales.filter(sale => {
         if (statusFilter !== 'all' && sale.status !== statusFilter) return false;
@@ -77,7 +80,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
             if (!matchBill && !matchItem) return false;
         }
         return true;
-    }), [sales, statusFilter, search]);
+    }), [sales, statusFilter, search, startDate, endDate]);
 
     const visible = filtered.slice(0, visibleCount);
     const hasMore = visibleCount < filtered.length;
@@ -87,6 +90,86 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
 
     const toggleExpand = (id: string) => {
         setExpandedId(prev => prev === id ? null : id);
+    };
+
+    const handleExportExcel = async () => {
+        if (filtered.length === 0) return;
+        setExporting(true);
+        try {
+            const XLSX = await import("xlsx");
+
+            // Sheet 1: สรุปรายการขาย (Bill Summary)
+            const summaryRows = filtered.map((sale, idx) => ({
+                "#": idx + 1,
+                "เลขบิล": sale.billCode || sale.id.slice(0, 8),
+                "วันที่": format(new Date(sale.soldAt), "d/MM/yyyy HH:mm", { locale: th }),
+                "จำนวนรายการ": sale.items.length,
+                "ส่วนลด": Number(sale.discount),
+                "ยอดรวม": Number(sale.totalAmount),
+                "สถานะ": sale.status === 'active' ? 'สำเร็จ' : 'ยกเลิก',
+            }));
+
+            const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+            wsSummary["!cols"] = [
+                { wch: 5 },  // #
+                { wch: 24 }, // เลขบิล
+                { wch: 18 }, // วันที่
+                { wch: 12 }, // จำนวนรายการ
+                { wch: 10 }, // ส่วนลด
+                { wch: 12 }, // ยอดรวม
+                { wch: 10 }, // สถานะ
+            ];
+
+            // Sheet 2: รายละเอียดสินค้า (Item Details)
+            const detailRows: Record<string, string | number>[] = [];
+            filtered.forEach(sale => {
+                sale.items.forEach(item => {
+                    detailRows.push({
+                        "เลขบิล": sale.billCode || sale.id.slice(0, 8),
+                        "วันที่": format(new Date(sale.soldAt), "d/MM/yyyy HH:mm", { locale: th }),
+                        "รหัสสินค้า": item.product.code || "-",
+                        "Barcode": item.barcode,
+                        "ชื่อสินค้า": item.product.name,
+                        "ไซส์": item.product.size || "-",
+                        "สี": item.product.color || "-",
+                        "จำนวน": item.quantity,
+                        "ราคาต่อชิ้น": Number(item.unitPrice),
+                        "รวม": Number(item.totalAmount),
+                        "แถม": item.isFreebie ? "ใช่" : "-",
+                        "สถานะบิล": sale.status === 'active' ? 'สำเร็จ' : 'ยกเลิก',
+                    });
+                });
+            });
+
+            const wsDetail = XLSX.utils.json_to_sheet(detailRows);
+            wsDetail["!cols"] = [
+                { wch: 24 }, // เลขบิล
+                { wch: 18 }, // วันที่
+                { wch: 14 }, // รหัสสินค้า
+                { wch: 16 }, // Barcode
+                { wch: 30 }, // ชื่อสินค้า
+                { wch: 8 },  // ไซส์
+                { wch: 10 }, // สี
+                { wch: 8 },  // จำนวน
+                { wch: 12 }, // ราคาต่อชิ้น
+                { wch: 12 }, // รวม
+                { wch: 6 },  // แถม
+                { wch: 10 }, // สถานะบิล
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, wsSummary, "สรุปรายการขาย");
+            XLSX.utils.book_append_sheet(wb, wsDetail, "รายละเอียดสินค้า");
+
+            const d = new Date();
+            const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+            XLSX.writeFile(wb, `sales_${event.code}_${dateStr}.xlsx`);
+            toastSuccess(`Export สำเร็จ ${filtered.length} บิล, ${detailRows.length} รายการ`);
+        } catch {
+            toastError("เกิดข้อผิดพลาดในการ Export");
+        } finally {
+            setExporting(false);
+        }
     };
 
     return (
@@ -170,10 +253,20 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                 </div>
             </div>
 
-            {/* Result count */}
-            <p className="text-xs text-slate-400">
-                แสดง {visible.length} จาก {filtered.length} รายการ
-            </p>
+            {/* Result count + Export Button */}
+            <div className="flex items-center justify-between">
+                <p className="text-xs text-slate-400">
+                    แสดง {visible.length} จาก {filtered.length} รายการ
+                </p>
+                <button
+                    onClick={handleExportExcel}
+                    disabled={exporting || filtered.length === 0}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                    {exporting ? <Spinner size="xs" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+                    {exporting ? "กำลัง Export..." : "Export Excel"}
+                </button>
+            </div>
 
             {/* Sales List */}
             <div className="space-y-2">
