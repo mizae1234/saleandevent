@@ -595,7 +595,7 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
                                             <button
                                                 onClick={() => handleDeleteAttachment(att.id)}
                                                 disabled={isPending}
-                                                className="absolute top-1.5 right-1.5 bg-black/50 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all"
+                                                className="absolute top-1.5 right-1.5 bg-black/50 hover:bg-red-600 text-white rounded-full p-1 transition-all"
                                             >
                                                 <X className="h-3 w-3" />
                                             </button>
@@ -619,7 +619,7 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
                                     <button
                                         onClick={() => handleDeleteAttachment(att.id)}
                                         disabled={isPending}
-                                        className="text-red-400 hover:text-red-500 p-1 rounded opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                                        className="text-red-400 hover:text-red-500 p-1 rounded transition-all flex-shrink-0"
                                     >
                                         <Trash2 className="h-3.5 w-3.5" />
                                     </button>
