@@ -103,6 +103,7 @@ export default function CreateChannelForm({ staffList, customerList }: Props) {
 
     const canProceed = () => {
         if (step === 1) return name.trim() && location.trim();
+        if (step === totalSteps) return !!initialQuantity && Number(initialQuantity) > 0;
         return true;
     };
 
@@ -339,7 +340,7 @@ export default function CreateChannelForm({ staffList, customerList }: Props) {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">จำนวนสินค้าที่ต้องการ (ชิ้น)</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">จำนวนสินค้าที่ต้องการ (ชิ้น) <span className="text-red-500">*</span></label>
                         <input
                             type="number"
                             onFocus={(e) => e.target.select()}
@@ -414,7 +415,7 @@ export default function CreateChannelForm({ staffList, customerList }: Props) {
                     <button
                         type="button"
                         onClick={handleSubmit}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !initialQuantity || Number(initialQuantity) <= 0}
                         className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm font-medium"
                     >
                         {isSubmitting ? 'กำลังสร้าง...' : 'สร้าง Sales Channel'}
