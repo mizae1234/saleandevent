@@ -41,7 +41,7 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
     const { toastError } = useToast();
     const [receivedQtys, setReceivedQtys] = useState<Record<string, number>>(() => {
         const map: Record<string, number> = {};
-        allocations.forEach(a => { map[a.barcode] = a.packedQuantity; });
+        allocations.forEach(a => { map[a.barcode] = (map[a.barcode] || 0) + a.packedQuantity; });
         return map;
     });
 
