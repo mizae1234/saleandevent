@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Calendar, RefreshCw, FileBarChart, Trophy, Store, Package, Boxes } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Calendar, RefreshCw, FileBarChart, Trophy, Store, Package, Boxes, Search, ChevronDown } from "lucide-react";
 import { SpinnerFullPage, EmptyState } from "@/components/shared";
 import { TopProductsReport } from "@/components/reports/TopProductsReport";
 import { ChannelRevenueReport } from "@/components/reports/ChannelRevenueReport";
@@ -30,6 +30,74 @@ function getDefaultRange() {
 
 function getMonthName(date: Date) {
     return date.toLocaleDateString("th-TH", { month: "long", year: "numeric" });
+}
+
+function ChannelSelect({ value, onChange, options = [] }: { value: string, onChange: (v: string) => void, options: any[] }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [search, setSearch] = useState("");
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const selectedOpt = value === "all" ? null : options.find(o => o.id === value);
+    const filtered = options.filter(o => 
+        o.name.toLowerCase().includes(search.toLowerCase()) || 
+        o.code.toLowerCase().includes(search.toLowerCase())
+    );
+
+    return (
+        <div className="relative" ref={ref}>
+            <button 
+                onClick={() => { setIsOpen(!isOpen); setSearch(""); }}
+                className="flex items-center justify-between w-[220px] h-9 px-3 text-sm text-left bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400"
+            >
+                <span className="truncate">{selectedOpt ? `${selectedOpt.name} (${selectedOpt.code})` : "ทุกสาขา / Event (ทั้งหมด)"}</span>
+                <ChevronDown className="h-4 w-4 text-slate-400 ml-2 flex-shrink-0" />
+            </button>
+            {isOpen && (
+                <div className="absolute z-50 w-[280px] mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                    <div className="p-2 border-b border-slate-100 flex items-center gap-2">
+                        <Search className="h-4 w-4 text-slate-400" />
+                        <input 
+                            type="text"
+                            className="w-full text-sm outline-none bg-transparent"
+                            placeholder="ค้นหาสาขารหัสหรือชื่อ..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            autoFocus
+                        />
+                    </div>
+                    <ul className="max-h-60 overflow-y-auto p-1">
+                        <li 
+                            className={`px-3 py-2 text-sm rounded-lg cursor-pointer ${value === "all" ? "bg-teal-50 text-teal-700 font-medium" : "hover:bg-slate-50"}`}
+                            onClick={() => { onChange("all"); setIsOpen(false); }}
+                        >
+                            ทุกสาขา / Event (ทั้งหมด)
+                        </li>
+                        {filtered.map(c => (
+                            <li 
+                                key={c.id}
+                                className={`px-3 py-2 text-sm rounded-lg cursor-pointer ${value === c.id ? "bg-teal-50 text-teal-700 font-medium" : "hover:bg-slate-50"}`}
+                                onClick={() => { onChange(c.id); setIsOpen(false); }}
+                            >
+                                <div className="font-medium text-slate-800">{c.name}</div>
+                                <div className="text-[10px] text-slate-400">{c.code} · {c.type === "EVENT" ? "Event" : "Branch"}</div>
+                            </li>
+                        ))}
+                        {filtered.length === 0 && (
+                            <li className="px-3 py-4 text-sm text-center text-slate-400">ไม่พบสาขาที่ค้นหา</li>
+                        )}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
 }
 
 export function ReportsClient() {
@@ -125,18 +193,11 @@ export function ReportsClient() {
                     {/* Channel Filter */}
                     <div className="flex items-center gap-2">
                         <Store className="h-4 w-4 text-slate-400" />
-                        <select
-                            value={channelId}
-                            onChange={(e) => setChannelId(e.target.value)}
-                            className="h-9 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 min-w-[150px] max-w-[200px]"
-                        >
-                            <option value="all">ทุกสาขา / Event (ทั้งหมด)</option>
-                            {data?.availableChannels?.map((c: any) => (
-                                <option key={c.id} value={c.id}>
-                                    {c.name} ({c.code})
-                                </option>
-                            ))}
-                        </select>
+                        <ChannelSelect 
+                            value={channelId} 
+                            onChange={setChannelId} 
+                            options={data?.availableChannels || []} 
+                        />
                     </div>
 
                     <div className="h-8 w-px bg-slate-200 hidden md:block" />
