@@ -1,0 +1,184 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+
+export async function GET(request: NextRequest) {
+    const { searchParams } = new URL(request.url);
+    const fromStr = searchParams.get("from");
+    const toStr = searchParams.get("to");
+
+    // Default: this month
+    const now = new Date();
+    const dateFrom = fromStr
+        ? new Date(`${fromStr}T00:00:00+07:00`)
+        : new Date(now.getFullYear(), now.getMonth(), 1);
+    const dateTo = toStr
+        ? new Date(`${toStr}T23:59:59+07:00`)
+        : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    const [
+        topProductsRaw,
+        channelRevenueRaw,
+        channelQuantityRaw,
+        channelStockRaw,
+    ] = await Promise.all([
+        // 1. Top products by revenue (exclude inactive channels)
+        db.$queryRaw`
+            SELECT si.barcode, p.name, p.code, p.size, p.color,
+                   SUM(si.quantity) as qty_sold,
+                   SUM(si.total_amount) as revenue,
+                   COUNT(DISTINCT s.id) as bill_count
+            FROM sale_items si
+            JOIN sales s ON s.id = si.sale_id
+            JOIN sales_channels sc ON sc.id = s.channel_id AND sc.is_active = true
+            JOIN products p ON p.barcode = si.barcode
+            WHERE s.sold_at >= ${dateFrom} AND s.sold_at <= ${dateTo} AND s.status = 'active'
+            GROUP BY si.barcode, p.name, p.code, p.size, p.color
+            ORDER BY revenue DESC
+            LIMIT 50
+        ` as Promise<Array<{ barcode: string; name: string; code: string | null; size: string | null; color: string | null; qty_sold: any; revenue: any; bill_count: any }>>,
+
+        // 2. Channel revenue (exclude inactive channels)
+        db.$queryRaw`
+            SELECT sc.id, sc.name, sc.code, sc.type, sc.location, sc.sales_target,
+                   COALESCE(SUM(s.total_amount), 0) as total_sales,
+                   COUNT(s.id) as bill_count
+            FROM sales_channels sc
+            LEFT JOIN sales s ON s.channel_id = sc.id 
+                AND s.sold_at >= ${dateFrom} AND s.sold_at <= ${dateTo} 
+                AND s.status = 'active'
+            WHERE sc.is_active = true
+                AND sc.status NOT IN ('draft', 'submitted')
+            GROUP BY sc.id, sc.name, sc.code, sc.type, sc.location, sc.sales_target
+            ORDER BY total_sales DESC
+        ` as Promise<Array<{ id: string; name: string; code: string; type: string; location: string; sales_target: any; total_sales: any; bill_count: any }>>,
+
+        // 3. Channel quantity sold (exclude inactive channels)
+        db.$queryRaw`
+            SELECT sc.id, sc.name, sc.code, sc.type,
+                   COALESCE(SUM(si.quantity), 0) as total_qty,
+                   COUNT(DISTINCT s.id) as bill_count
+            FROM sales_channels sc
+            LEFT JOIN sales s ON s.channel_id = sc.id 
+                AND s.sold_at >= ${dateFrom} AND s.sold_at <= ${dateTo} 
+                AND s.status = 'active'
+            LEFT JOIN sale_items si ON si.sale_id = s.id
+            WHERE sc.is_active = true
+                AND sc.status NOT IN ('draft', 'submitted')
+            GROUP BY sc.id, sc.name, sc.code, sc.type
+            ORDER BY total_qty DESC
+        ` as Promise<Array<{ id: string; name: string; code: string; type: string; total_qty: any; bill_count: any }>>,
+
+        // 4. Channel stock — real-time (all non-draft channels, regardless of isActive)
+        db.salesChannel.findMany({
+            where: {
+                status: { notIn: ['draft', 'submitted'] },
+            },
+            select: {
+                id: true,
+                name: true,
+                code: true,
+                type: true,
+                status: true,
+                isActive: true,
+                stock: {
+                    select: {
+                        barcode: true,
+                        quantity: true,
+                        soldQuantity: true,
+                        returnedQuantity: true,
+                        product: {
+                            select: {
+                                name: true,
+                                code: true,
+                                size: true,
+                                color: true,
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        }),
+    ]);
+
+    // Format top products
+    const topProducts = topProductsRaw.map((p) => ({
+        barcode: p.barcode,
+        name: p.name,
+        code: p.code,
+        size: p.size,
+        color: p.color,
+        qtySold: Number(p.qty_sold),
+        revenue: Number(p.revenue),
+        billCount: Number(p.bill_count),
+    }));
+
+    // Format channel revenue
+    const channelRevenue = channelRevenueRaw.map((c) => ({
+        id: c.id,
+        name: c.name,
+        code: c.code,
+        type: c.type,
+        location: c.location,
+        salesTarget: Number(c.sales_target) || 0,
+        totalSales: Number(c.total_sales),
+        billCount: Number(c.bill_count),
+    }));
+
+    // Format channel quantity
+    const channelQuantity = channelQuantityRaw.map((c) => ({
+        id: c.id,
+        name: c.name,
+        code: c.code,
+        type: c.type,
+        totalQty: Number(c.total_qty),
+        billCount: Number(c.bill_count),
+    }));
+
+    // Format channel stock
+    const channelStock = channelStockRaw.map((c) => {
+        const totalSent = c.stock.reduce((s, i) => s + i.quantity, 0);
+        const totalSold = c.stock.reduce((s, i) => s + i.soldQuantity, 0);
+        const totalReturned = c.stock.reduce((s, i) => s + i.returnedQuantity, 0);
+        const totalRemaining = totalSent - totalSold - totalReturned;
+
+        return {
+            id: c.id,
+            name: c.name,
+            code: c.code,
+            type: c.type,
+            status: c.status,
+            isActive: c.isActive,
+            totalSent,
+            totalSold,
+            totalReturned,
+            totalRemaining,
+            soldPercent: totalSent > 0 ? Math.round((totalSold / totalSent) * 100) : 0,
+            items: c.stock
+                .filter((i) => i.quantity > 0)
+                .map((i) => ({
+                    barcode: i.barcode,
+                    name: i.product.name,
+                    code: i.product.code,
+                    size: i.product.size,
+                    color: i.product.color,
+                    sent: i.quantity,
+                    sold: i.soldQuantity,
+                    returned: i.returnedQuantity,
+                    remaining: i.quantity - i.soldQuantity - i.returnedQuantity,
+                }))
+                .sort((a, b) => b.sold - a.sold),
+        };
+    });
+
+    return NextResponse.json({
+        topProducts,
+        channelRevenue,
+        channelQuantity,
+        channelStock,
+        dateRange: {
+            from: dateFrom.toISOString(),
+            to: dateTo.toISOString(),
+        },
+    });
+}
