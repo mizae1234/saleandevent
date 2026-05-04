@@ -9,7 +9,7 @@ import {
     CartesianGrid,
     Tooltip,
 } from "recharts";
-import { Package, Hash } from "lucide-react";
+import { Package, Hash, Download } from "lucide-react";
 
 interface Channel {
     id: string;
@@ -52,6 +52,29 @@ export function ChannelQuantityReport({ data }: Props) {
         ...c,
         label: c.code,
     }));
+
+    const handleExport = async () => {
+        try {
+            const XLSX = await import("xlsx");
+            const rows = data.map((c, i) => ({
+                "ลำดับ": i + 1,
+                "ชื่อสาขา/Event": c.name,
+                "รหัส": c.code,
+                "ประเภท": c.type === 'EVENT' ? 'Event' : 'Branch',
+                "จำนวนชิ้น": c.totalQty,
+                "จำนวนบิล": c.billCount,
+                "เฉลี่ยชิ้น/บิล": c.billCount > 0 ? Number((c.totalQty / c.billCount).toFixed(1)) : 0
+            }));
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "จำนวนขายสาขา");
+            const dateStr = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `channel_quantity_${dateStr}.xlsx`);
+        } catch (err) {
+            console.error("Export failed", err);
+            alert("เกิดข้อผิดพลาดในการส่งออกไฟล์");
+        }
+    };
 
     return (
         <div className="space-y-4">
@@ -97,8 +120,15 @@ export function ChannelQuantityReport({ data }: Props) {
 
             {/* Table */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="px-4 sm:px-6 py-3 border-b border-slate-100 bg-slate-50/50">
+                <div className="px-4 sm:px-6 py-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                     <h3 className="text-sm font-bold text-slate-700">รายละเอียดจำนวนขายแต่ละสาขา</h3>
+                    <button
+                        onClick={handleExport}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
+                    >
+                        <Download className="h-3.5 w-3.5" />
+                        ส่งออก Excel
+                    </button>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">

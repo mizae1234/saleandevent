@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const fromStr = searchParams.get("from");
     const toStr = searchParams.get("to");
+    const channelId = searchParams.get("channelId") || "all";
 
     // Default: this month
     const now = new Date();
@@ -15,12 +17,24 @@ export async function GET(request: NextRequest) {
         ? new Date(`${toStr}T23:59:59+07:00`)
         : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
+    const channelFilter = channelId !== "all"
+        ? Prisma.sql`AND s.channel_id = ${channelId}::uuid`
+        : Prisma.empty;
+
     const [
+        availableChannels,
         topProductsRaw,
         channelRevenueRaw,
         channelQuantityRaw,
         channelStockRaw,
     ] = await Promise.all([
+        // 0. List of all channels for dropdown
+        db.salesChannel.findMany({
+            where: { isActive: true, status: { notIn: ['draft', 'submitted'] } },
+            select: { id: true, name: true, code: true, type: true },
+            orderBy: { createdAt: 'desc' }
+        }),
+
         // 1. Top products by revenue (exclude inactive channels)
         db.$queryRaw`
             SELECT si.barcode, p.name, p.code, p.size, p.color,
@@ -32,6 +46,7 @@ export async function GET(request: NextRequest) {
             JOIN sales_channels sc ON sc.id = s.channel_id AND sc.is_active = true
             JOIN products p ON p.barcode = si.barcode
             WHERE s.sold_at >= ${dateFrom} AND s.sold_at <= ${dateTo} AND s.status = 'active'
+            ${channelFilter}
             GROUP BY si.barcode, p.name, p.code, p.size, p.color
             ORDER BY revenue DESC
             LIMIT 50
@@ -48,6 +63,7 @@ export async function GET(request: NextRequest) {
                 AND s.status = 'active'
             WHERE sc.is_active = true
                 AND sc.status NOT IN ('draft', 'submitted')
+                ${channelId !== "all" ? Prisma.sql`AND sc.id = ${channelId}::uuid` : Prisma.empty}
             GROUP BY sc.id, sc.name, sc.code, sc.type, sc.location, sc.sales_target
             ORDER BY total_sales DESC
         ` as Promise<Array<{ id: string; name: string; code: string; type: string; location: string; sales_target: any; total_sales: any; bill_count: any }>>,
@@ -64,6 +80,7 @@ export async function GET(request: NextRequest) {
             LEFT JOIN sale_items si ON si.sale_id = s.id
             WHERE sc.is_active = true
                 AND sc.status NOT IN ('draft', 'submitted')
+                ${channelId !== "all" ? Prisma.sql`AND sc.id = ${channelId}::uuid` : Prisma.empty}
             GROUP BY sc.id, sc.name, sc.code, sc.type
             ORDER BY total_qty DESC
         ` as Promise<Array<{ id: string; name: string; code: string; type: string; total_qty: any; bill_count: any }>>,
@@ -72,6 +89,7 @@ export async function GET(request: NextRequest) {
         db.salesChannel.findMany({
             where: {
                 status: { notIn: ['draft', 'submitted'] },
+                ...(channelId !== "all" ? { id: channelId } : {})
             },
             select: {
                 id: true,
@@ -172,6 +190,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
+        availableChannels,
         topProducts,
         channelRevenue,
         channelQuantity,

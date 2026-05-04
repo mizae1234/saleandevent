@@ -9,7 +9,7 @@ import {
     CartesianGrid,
     Tooltip,
 } from "recharts";
-import { Trophy, TrendingUp, Hash } from "lucide-react";
+import { Trophy, TrendingUp, Hash, Download } from "lucide-react";
 
 interface Product {
     barcode: string;
@@ -53,6 +53,31 @@ export function TopProductsReport({ data }: Props) {
         ...p,
         label: p.code || p.barcode.slice(0, 8),
     }));
+
+    const handleExport = async () => {
+        try {
+            const XLSX = await import("xlsx");
+            const rows = data.map((p, i) => ({
+                "ลำดับ": i + 1,
+                "บาร์โค้ด": p.barcode,
+                "ชื่อสินค้า": p.name,
+                "รหัส": p.code || "-",
+                "ไซส์": p.size || "-",
+                "สี": p.color || "-",
+                "จำนวนชิ้น": p.qtySold,
+                "ยอดเงิน (บาท)": p.revenue,
+                "จำนวนบิล": p.billCount
+            }));
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "สินค้าขายดี");
+            const dateStr = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `top_products_${dateStr}.xlsx`);
+        } catch (err) {
+            console.error("Export failed", err);
+            alert("เกิดข้อผิดพลาดในการส่งออกไฟล์");
+        }
+    };
 
     return (
         <div className="space-y-4">
@@ -105,8 +130,15 @@ export function TopProductsReport({ data }: Props) {
 
             {/* Table */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="px-4 sm:px-6 py-3 border-b border-slate-100 bg-slate-50/50">
+                <div className="px-4 sm:px-6 py-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                     <h3 className="text-sm font-bold text-slate-700">รายละเอียดสินค้าขายดี</h3>
+                    <button
+                        onClick={handleExport}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
+                    >
+                        <Download className="h-3.5 w-3.5" />
+                        ส่งออก Excel
+                    </button>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">

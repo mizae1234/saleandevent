@@ -37,15 +37,16 @@ export function ReportsClient() {
     const [from, setFrom] = useState(def.from);
     const [to, setTo] = useState(def.to);
     const [quickRange, setQuickRange] = useState<QuickRange>("thisMonth");
+    const [channelId, setChannelId] = useState("all");
     const [activeTab, setActiveTab] = useState<TabKey>("products");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchData = useCallback(async (f: string, t: string) => {
+    const fetchData = useCallback(async (f: string, t: string, cId: string) => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/reports?from=${f}&to=${t}`);
+            const res = await fetch(`/api/reports?from=${f}&to=${t}&channelId=${cId}`);
             if (!res.ok) throw new Error("Failed to fetch");
             const json = await res.json();
             setData(json);
@@ -57,8 +58,8 @@ export function ReportsClient() {
     }, []);
 
     useEffect(() => {
-        fetchData(from, to);
-    }, [from, to, fetchData]);
+        fetchData(from, to, channelId);
+    }, [from, to, channelId, fetchData]);
 
     const handleQuick = (range: QuickRange) => {
         const now = new Date();
@@ -108,7 +109,7 @@ export function ReportsClient() {
                     </p>
                 </div>
                 <button
-                    onClick={() => fetchData(from, to)}
+                    onClick={() => fetchData(from, to, channelId)}
                     disabled={loading}
                     className="self-start md:self-auto inline-flex items-center gap-2 px-3 py-2 text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
                 >
@@ -119,42 +120,64 @@ export function ReportsClient() {
 
             {/* Date Range + Tabs */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
-                {/* Date Range */}
-                {activeTab !== "stock" && (
-                    <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex rounded-xl border border-slate-200 overflow-hidden">
-                            {quickButtons.map((btn) => (
-                                <button
-                                    key={btn.key}
-                                    onClick={() => handleQuick(btn.key)}
-                                    className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-colors ${quickRange === btn.key
-                                        ? "bg-teal-600 text-white"
-                                        : "bg-white text-slate-600 hover:bg-slate-50"
-                                        }`}
-                                >
-                                    {btn.label}
-                                </button>
+                {/* Filters */}
+                <div className="flex flex-wrap items-center gap-3">
+                    {/* Channel Filter */}
+                    <div className="flex items-center gap-2">
+                        <Store className="h-4 w-4 text-slate-400" />
+                        <select
+                            value={channelId}
+                            onChange={(e) => setChannelId(e.target.value)}
+                            className="h-9 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 min-w-[150px] max-w-[200px]"
+                        >
+                            <option value="all">ทุกสาขา / Event (ทั้งหมด)</option>
+                            {data?.availableChannels?.map((c: any) => (
+                                <option key={c.id} value={c.id}>
+                                    {c.name} ({c.code})
+                                </option>
                             ))}
-                        </div>
-                        <div className="h-8 w-px bg-slate-200 hidden md:block" />
-                        <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-slate-400" />
-                            <input
-                                type="date"
-                                value={from}
-                                onChange={(e) => { setFrom(e.target.value); setQuickRange("custom"); }}
-                                className="h-9 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400"
-                            />
-                            <span className="text-slate-400 text-sm">ถึง</span>
-                            <input
-                                type="date"
-                                value={to}
-                                onChange={(e) => { setTo(e.target.value); setQuickRange("custom"); }}
-                                className="h-9 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400"
-                            />
-                        </div>
+                        </select>
                     </div>
-                )}
+
+                    <div className="h-8 w-px bg-slate-200 hidden md:block" />
+
+                    {/* Date Range */}
+                    {activeTab !== "stock" && (
+                        <>
+                            <div className="flex rounded-xl border border-slate-200 overflow-hidden">
+                                {quickButtons.map((btn) => (
+                                    <button
+                                        key={btn.key}
+                                        onClick={() => handleQuick(btn.key)}
+                                        className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-colors ${quickRange === btn.key
+                                            ? "bg-teal-600 text-white"
+                                            : "bg-white text-slate-600 hover:bg-slate-50"
+                                            }`}
+                                    >
+                                        {btn.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="h-8 w-px bg-slate-200 hidden md:block" />
+                            <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-slate-400" />
+                                <input
+                                    type="date"
+                                    value={from}
+                                    onChange={(e) => { setFrom(e.target.value); setQuickRange("custom"); }}
+                                    className="h-9 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400"
+                                />
+                                <span className="text-slate-400 text-sm">ถึง</span>
+                                <input
+                                    type="date"
+                                    value={to}
+                                    onChange={(e) => { setTo(e.target.value); setQuickRange("custom"); }}
+                                    className="h-9 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400"
+                                />
+                            </div>
+                        </>
+                    )}
+                </div>
 
                 {activeTab === "stock" && (
                     <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg">

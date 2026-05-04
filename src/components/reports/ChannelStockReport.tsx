@@ -11,7 +11,7 @@ import {
     Tooltip,
     Legend,
 } from "recharts";
-import { Package, Truck, ShoppingCart, ChevronDown, ChevronRight, EyeOff } from "lucide-react";
+import { Package, Truck, ShoppingCart, ChevronDown, ChevronRight, EyeOff, Download } from "lucide-react";
 import { getChannelStatus } from "@/config/status";
 
 interface StockItem {
@@ -81,6 +81,38 @@ export function ChannelStockReport({ data }: Props) {
             label: c.code,
         }));
 
+    const handleExport = async () => {
+        try {
+            const XLSX = await import("xlsx");
+            const rows: any[] = [];
+            data.filter(c => c.totalSent > 0).forEach((c, i) => {
+                c.items.forEach((item) => {
+                    rows.push({
+                        "ลำดับสาขา": i + 1,
+                        "ชื่อสาขา/Event": c.name,
+                        "บาร์โค้ด": item.barcode,
+                        "ชื่อสินค้า": item.name,
+                        "รหัส": item.code || "-",
+                        "ไซส์": item.size || "-",
+                        "สี": item.color || "-",
+                        "ส่งไป": item.sent,
+                        "ขายแล้ว": item.sold,
+                        "คืนแล้ว": item.returned,
+                        "คงเหลือ": item.remaining,
+                    });
+                });
+            });
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "สินค้าคงเหลือ");
+            const dateStr = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `channel_stock_${dateStr}.xlsx`);
+        } catch (err) {
+            console.error("Export failed", err);
+            alert("เกิดข้อผิดพลาดในการส่งออกไฟล์");
+        }
+    };
+
     return (
         <div className="space-y-4">
             {/* Summary Cards */}
@@ -138,8 +170,17 @@ export function ChannelStockReport({ data }: Props) {
             {/* Expandable Table */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="px-4 sm:px-6 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-slate-700">รายละเอียดสต็อกแต่ละสาขา</h3>
-                    <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">REAL-TIME</span>
+                    <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-slate-700">รายละเอียดสต็อกแต่ละสาขา</h3>
+                        <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">REAL-TIME</span>
+                    </div>
+                    <button
+                        onClick={handleExport}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
+                    >
+                        <Download className="h-3.5 w-3.5" />
+                        ส่งออก Excel
+                    </button>
                 </div>
                 <div className="divide-y divide-slate-50">
                     {data.filter((c) => c.totalSent > 0).map((channel) => {
