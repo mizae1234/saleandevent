@@ -77,6 +77,7 @@ export const MENU_SECTIONS: MenuSection[] = [
         title: "Finance (บัญชี)",
         items: [
             { title: "Owner Dashboard", href: "/dashboard/owner", icon: LayoutDashboard },
+            { title: "รายงานสรุป", href: "/reports", icon: PieChart },
             { title: "จัดการลูกค้า", href: "/finance/customers", icon: Contact },
             { title: "ใบแจ้งหนี้ (Invoice)", href: "/finance/invoices", icon: FileText },
         ],
