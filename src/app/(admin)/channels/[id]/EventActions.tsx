@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { closeChannelStock, createReturnShipment, confirmReturnReceived, closeChannelManual, submitChannel, approveChannel } from '@/actions/channel';
+import { closeChannelStock, createReturnShipment, confirmReturnReceived, closeChannelManual, submitChannel, approveChannel, toggleChannelActive } from '@/actions/channel';
 import { createStockRequest, submitStockRequest } from '@/actions/stock-request';
-import { Package, Truck, RotateCcw, CheckCircle2, Plus, Send, ArrowRight } from 'lucide-react';
+import { Package, Truck, RotateCcw, CheckCircle2, Plus, Send, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 
 interface Props {
@@ -13,6 +13,7 @@ interface Props {
         type: string;
         status: string;
         name: string;
+        isActive: boolean;
     };
 }
 
@@ -21,6 +22,7 @@ export default function EventActions({ channel }: Props) {
     const [loading, setLoading] = useState<string | null>(null);
     const [topUpQty, setTopUpQty] = useState('');
     const [showTopUp, setShowTopUp] = useState(false);
+    const [showToggleConfirm, setShowToggleConfirm] = useState(false);
     const { toastError } = useToast();
 
     const handleAction = async (actionName: string, action: () => Promise<void>) => {
@@ -161,6 +163,65 @@ export default function EventActions({ channel }: Props) {
                 >
                     <CheckCircle2 className="h-4 w-4" /> ปิดงาน
                 </button>
+            )}
+
+            {/* Divider */}
+            <div className="border-t border-slate-100 my-1" />
+
+            {/* Toggle Active / Inactive */}
+            {!showToggleConfirm ? (
+                <button
+                    onClick={() => setShowToggleConfirm(true)}
+                    className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
+                        channel.isActive
+                            ? 'border-red-200 text-red-600 hover:bg-red-50'
+                            : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'
+                    }`}
+                >
+                    {channel.isActive ? (
+                        <><EyeOff className="h-4 w-4" /> ปิดใช้งานช่องทางนี้</>
+                    ) : (
+                        <><Eye className="h-4 w-4" /> เปิดใช้งานช่องทางนี้</>
+                    )}
+                </button>
+            ) : (
+                <div className={`rounded-lg p-3 space-y-2 ${
+                    channel.isActive ? 'bg-red-50 border border-red-200' : 'bg-emerald-50 border border-emerald-200'
+                }`}>
+                    <p className={`text-xs font-medium ${
+                        channel.isActive ? 'text-red-700' : 'text-emerald-700'
+                    }`}>
+                        {channel.isActive
+                            ? 'ยืนยันปิดใช้งาน? ยอดขายจะไม่ถูกนำไปคำนวณใน Dashboard และไม่สามารถขายผ่าน POS ได้'
+                            : 'ยืนยันเปิดใช้งาน? ยอดขายจะกลับมาคำนวณใน Dashboard และขายผ่าน POS ได้ตามปกติ'
+                        }
+                    </p>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => handleAction('toggle-active', async () => {
+                                await toggleChannelActive(channel.id);
+                                setShowToggleConfirm(false);
+                            })}
+                            disabled={loading === 'toggle-active'}
+                            className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors ${
+                                channel.isActive
+                                    ? 'bg-red-600 text-white hover:bg-red-700'
+                                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                            }`}
+                        >
+                            {loading === 'toggle-active'
+                                ? 'กำลังดำเนินการ...'
+                                : channel.isActive ? 'ยืนยันปิด' : 'ยืนยันเปิด'
+                            }
+                        </button>
+                        <button
+                            onClick={() => setShowToggleConfirm(false)}
+                            className="px-3 py-2 text-sm text-slate-500 hover:text-slate-700"
+                        >
+                            ยกเลิก
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );

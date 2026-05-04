@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { fmt } from "@/lib/utils";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { MapPin, Calendar, ArrowRight, ShoppingCart, Store, Package, TrendingUp } from "lucide-react";
+import { MapPin, Calendar, ArrowRight, ShoppingCart, Store, Package, TrendingUp, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { PageHeader, EmptyState } from "@/components/shared";
 import { POSFilters } from "./POSFilters";
@@ -68,8 +68,8 @@ export default async function POSSelectPage({ searchParams }: { searchParams: Pr
 
     const events = await getActiveEvents(searchParams);
 
-    const totalAllSales = events.reduce((s, e) => s + e.totalSales, 0);
-    const totalAllSold = events.reduce((s, e) => s + e.totalSold, 0);
+    const totalAllSales = events.filter(e => e.isActive !== false).reduce((s, e) => s + e.totalSales, 0);
+    const totalAllSold = events.filter(e => e.isActive !== false).reduce((s, e) => s + e.totalSold, 0);
     
     const listTitle = status === 'all' ? 'Event / สาขา ทั้งหมด' 
                     : status === 'active' ? 'Event / สาขา ที่กำลังขาย'
@@ -154,8 +154,13 @@ export default async function POSSelectPage({ searchParams }: { searchParams: Pr
                             return (
                                 <Link
                                     key={event.id}
-                                    href={`/pc/pos/channel/${event.id}`}
-                                    className="block p-4 sm:p-5 hover:bg-emerald-50/30 transition-colors group"
+                                    href={event.isActive !== false ? `/pc/pos/channel/${event.id}` : '#'}
+                                    className={`block p-4 sm:p-5 transition-colors group ${
+                                        event.isActive === false
+                                            ? 'opacity-50 cursor-not-allowed bg-slate-50'
+                                            : 'hover:bg-emerald-50/30'
+                                    }`}
+                                    onClick={event.isActive === false ? (e: any) => e.preventDefault() : undefined}
                                 >
                                     <div className="flex items-center gap-3 sm:gap-4">
                                         {/* Icon */}
@@ -195,6 +200,14 @@ export default async function POSSelectPage({ searchParams }: { searchParams: Pr
 
                                         <ArrowRight className="h-5 w-5 text-slate-300 group-hover:text-emerald-500 transition-colors flex-shrink-0" />
                                     </div>
+
+                                    {/* Inactive Badge */}
+                                    {event.isActive === false && (
+                                        <div className="sm:ml-16 mt-2 flex items-center gap-1.5 text-xs text-red-500 font-medium">
+                                            <EyeOff className="h-3.5 w-3.5" />
+                                            ช่องทางนี้ถูกปิดใช้งาน — ไม่สามารถขายได้
+                                        </div>
+                                    )}
 
                                     {/* Progress bar */}
                                     <div className="mt-3 sm:ml-16">

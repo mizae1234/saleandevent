@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { ArrowLeft, Calendar, MapPin, Package, Clock, Pencil, Receipt, Truck, Hash, Target } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Package, Clock, Pencil, Receipt, Truck, Hash, Target, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import EventActions from "./EventActions";
@@ -115,6 +115,17 @@ export default async function ChannelDetailPage({ params }: { params: Promise<{ 
                 </div>
             </div>
 
+            {/* Inactive Banner */}
+            {!channel.isActive && (
+                <div className="mb-6 flex items-center gap-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
+                    <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                    <div>
+                        <p className="text-sm font-semibold text-red-700">ช่องทางนี้ถูกปิดใช้งาน</p>
+                        <p className="text-xs text-red-500">ยอดขายจะไม่ถูกนำไปคำนวณใน Dashboard และไม่สามารถขายผ่าน POS ได้</p>
+                    </div>
+                </div>
+            )}
+
             {/* Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                 {channel.type === 'EVENT' && channel.startDate && (
@@ -208,6 +219,7 @@ export default async function ChannelDetailPage({ params }: { params: Promise<{ 
                         type: channel.type,
                         status: channel.status,
                         name: channel.name,
+                        isActive: channel.isActive,
                     }} />
 
                     {/* Invoice Download */}

@@ -26,6 +26,7 @@ model SalesChannel {
   phone                 String?         @db.VarChar(50)
   customerId            String?         @map("customer_id") @db.Uuid
   version               Int             @default(1)
+  isActive              Boolean         @default(true) @map("is_active")
   
   // Audit fields
   createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -51,6 +52,7 @@ model SalesChannel {
   @@index([startDate])
   @@index([responsiblePersonId])
   @@index([customerId])
+  @@index([isActive])
   @@map("sales_channels")
 }
 

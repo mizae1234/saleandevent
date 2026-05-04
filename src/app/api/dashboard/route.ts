@@ -21,9 +21,9 @@ export async function GET() {
         // Low stock (warehouse qty <= 5 and > 0)
         db.warehouseStock.count({ where: { quantity: { gt: 0, lte: 5 } } }),
 
-        // Today's sales
+        // Today's sales (exclude inactive channels)
         db.sale.findMany({
-            where: { soldAt: { gte: todayStart, lte: todayEnd }, status: 'active' },
+            where: { soldAt: { gte: todayStart, lte: todayEnd }, status: 'active', channel: { isActive: true } },
             select: { totalAmount: true },
         }),
 
@@ -32,11 +32,11 @@ export async function GET() {
             where: { status: { in: ['submitted', 'approved', 'allocated', 'packed', 'shipped'] } },
         }),
 
-        // Recent 8 sales
+        // Recent 8 sales (exclude inactive channels)
         db.sale.findMany({
             orderBy: { soldAt: 'desc' },
             take: 8,
-            where: { status: 'active' },
+            where: { status: 'active', channel: { isActive: true } },
             select: {
                 id: true,
                 billCode: true,
@@ -47,9 +47,9 @@ export async function GET() {
             },
         }),
 
-        // Active channels (events/branches currently active)
+        // Active channels (events/branches currently active, exclude inactive)
         db.salesChannel.findMany({
-            where: { status: { in: ['active', 'approved'] } },
+            where: { status: { in: ['active', 'approved'] }, isActive: true },
             select: { id: true, name: true, type: true, location: true, status: true },
             orderBy: { createdAt: 'desc' },
             take: 5,

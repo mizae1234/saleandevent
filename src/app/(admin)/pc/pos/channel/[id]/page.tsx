@@ -33,7 +33,7 @@ export default async function POSEventPage({ params }: { params: Promise<{ id: s
     const { id } = await params;
     const event = await getEventWithStock(id);
 
-    if (!event || event.status !== 'active') {
+    if (!event || event.status !== 'active' || !event.isActive) {
         notFound();
     }
 

@@ -10,3 +10,4 @@ export { getChannelCompensationSummary, saveStaffCompensation, updateEmployeeCom
 export { submitForPaymentApproval, approvePayment } from './payment';
 export { updateStaffDailyRate, toggleWagePaid, toggleCommissionPaid, markAllWagePaid, markAllCommissionPaid, submitPayroll } from './payroll';
 export { addStaffToChannel, removeStaffFromChannel } from './staff';
+export { toggleChannelActive } from './toggle-active';

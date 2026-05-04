@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { fmt } from "@/lib/utils";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { Calendar, MapPin, Plus, Store, CalendarDays, Users, ArrowRight, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, MapPin, Plus, Store, CalendarDays, Users, ArrowRight, TrendingUp, ChevronLeft, ChevronRight, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { EmptyState, PageHeader } from "@/components/shared";
 import { getChannelStatus } from "@/config/status";
@@ -76,7 +76,11 @@ async function getEvents(searchParams: Promise<{ [key: string]: string | string[
     const salesAggs = channelIds.length > 0
         ? await db.sale.groupBy({
             by: ['channelId'],
-            where: { channelId: { in: channelIds }, status: 'active' },
+            where: {
+                channelId: { in: channelIds },
+                status: 'active',
+                channel: { isActive: true },
+            },
             _sum: { totalAmount: true },
         })
         : [];
@@ -95,7 +99,9 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
     // Summary stats
     const totalChannels = totalCount;
     const activeChannels = events.filter(e => ['active', 'selling', 'approved'].includes(e.status)).length;
-    const totalSales = events.reduce((sum, e) => sum + (salesMap.get(e.id) || 0), 0);
+    const totalSales = events
+        .filter(e => e.isActive !== false)
+        .reduce((sum, e) => sum + (salesMap.get(e.id) || 0), 0);
 
     // Build pagination URL helper
     const buildPageUrl = (page: number) => {
@@ -250,6 +256,14 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
                                     <span className={`flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold ${status.bg} ${status.text} border ${status.border}`}>
                                         {status.label}
                                     </span>
+
+                                    {/* Inactive Badge */}
+                                    {!event.isActive && (
+                                        <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-600 border border-red-100">
+                                            <EyeOff className="h-3 w-3" />
+                                            ปิดใช้งาน
+                                        </span>
+                                    )}
 
                                     {/* Arrow */}
                                     <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-teal-500 transition-colors flex-shrink-0" />

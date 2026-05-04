@@ -22,6 +22,7 @@ interface Event {
     location: string;
     status: string;
     startDate: Date;
+    isActive: boolean;
     sales: Sale[];
 }
 
@@ -48,9 +49,13 @@ export function SalesEventListClient({ events }: Props) {
         });
     }, [events, search, statusFilter]);
 
-    // Summary stats
-    const totalSales = events.reduce((s, e) => s + e.sales.reduce((a, sale) => a + parseFloat(sale.totalAmount.toString()), 0), 0);
-    const totalBills = events.reduce((s, e) => s + e.sales.length, 0);
+    // Summary stats — exclude inactive channels
+    const totalSales = events
+        .filter(e => e.isActive !== false)
+        .reduce((s, e) => s + e.sales.reduce((a, sale) => a + parseFloat(sale.totalAmount.toString()), 0), 0);
+    const totalBills = events
+        .filter(e => e.isActive !== false)
+        .reduce((s, e) => s + e.sales.length, 0);
     const activeCount = events.filter(e => ['active', 'selling'].includes(e.status)).length;
 
     return (
@@ -214,6 +219,13 @@ export function SalesEventListClient({ events }: Props) {
                                     <span className={`flex-shrink-0 hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold ${status.bg} ${status.text} border ${status.border}`}>
                                         {status.label}
                                     </span>
+
+                                    {/* Inactive Badge */}
+                                    {!event.isActive && (
+                                        <span className="flex-shrink-0 hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-50 text-red-600 border border-red-100">
+                                            ปิดใช้งาน
+                                        </span>
+                                    )}
 
                                     <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-teal-500 transition-colors flex-shrink-0" />
                                 </Link>

@@ -51,8 +51,13 @@ export async function createSale(data: CreateSaleInput) {
             if (data.channelId) {
                 const channel = await tx.salesChannel.findUnique({
                     where: { id: data.channelId },
-                    select: { code: true }
+                    select: { code: true, isActive: true }
                 });
+
+                // Block sale if channel is inactive
+                if (channel && !channel.isActive) {
+                    throw new Error('ช่องทางนี้ถูกปิดใช้งาน ไม่สามารถบันทึกการขายได้');
+                }
 
                 if (channel?.code) {
                     const existingSalesCount = await tx.sale.count({

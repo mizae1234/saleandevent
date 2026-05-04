@@ -26,24 +26,25 @@ export async function GET(request: Request) {
         topProductsRaw,
         deadStockRaw,
     ] = await Promise.all([
-        // Current period sales
+        // Current period sales (exclude inactive channels)
         db.sale.findMany({
-            where: { soldAt: { gte: dateFrom, lte: dateTo }, status: 'active' },
+            where: { soldAt: { gte: dateFrom, lte: dateTo }, status: 'active', channel: { isActive: true } },
             select: { id: true, totalAmount: true, discount: true, channelId: true, soldAt: true },
         }),
-        // Previous period sales
+        // Previous period sales (exclude inactive channels)
         db.sale.findMany({
-            where: { soldAt: { gte: prevFrom, lte: prevTo }, status: 'active' },
+            where: { soldAt: { gte: prevFrom, lte: prevTo }, status: 'active', channel: { isActive: true } },
             select: { totalAmount: true },
         }),
-        // Current period sale items (for qty, product insight, COGS-like)
+        // Current period sale items (for qty, product insight, COGS-like) — exclude inactive channels
         db.saleItem.findMany({
-            where: { sale: { soldAt: { gte: dateFrom, lte: dateTo }, status: 'active' } },
+            where: { sale: { soldAt: { gte: dateFrom, lte: dateTo }, status: 'active', channel: { isActive: true } } },
             select: { barcode: true, quantity: true, unitPrice: true, totalAmount: true },
         }),
-        // All channels with sales data
+        // All channels with sales data (exclude inactive)
         db.salesChannel.findMany({
             where: {
+                isActive: true,
                 sales: { some: { soldAt: { gte: dateFrom, lte: dateTo }, status: 'active' } },
             },
             select: {
@@ -58,30 +59,32 @@ export async function GET(request: Request) {
                 },
             },
         }),
-        // Daily sales for chart
+        // Daily sales for chart (exclude inactive channels)
         db.$queryRaw`
-            SELECT DATE(sold_at AT TIME ZONE 'Asia/Bangkok') as date, 
-                   SUM(total_amount) as total,
+            SELECT DATE(s.sold_at AT TIME ZONE 'Asia/Bangkok') as date, 
+                   SUM(s.total_amount) as total,
                    COUNT(*) as count
-            FROM sales 
-            WHERE sold_at >= ${dateFrom} AND sold_at <= ${dateTo} AND status = 'active'
-            GROUP BY DATE(sold_at AT TIME ZONE 'Asia/Bangkok')
+            FROM sales s
+            JOIN sales_channels sc ON sc.id = s.channel_id AND sc.is_active = true
+            WHERE s.sold_at >= ${dateFrom} AND s.sold_at <= ${dateTo} AND s.status = 'active'
+            GROUP BY DATE(s.sold_at AT TIME ZONE 'Asia/Bangkok')
             ORDER BY date ASC
         ` as Promise<Array<{ date: Date; total: any; count: any }>>,
-        // Top products
+        // Top products (exclude inactive channels)
         db.$queryRaw`
             SELECT si.barcode, p.name, p.code, p.size, p.color,
                    SUM(si.quantity) as qty_sold,
                    SUM(si.total_amount) as revenue
             FROM sale_items si
             JOIN sales s ON s.id = si.sale_id
+            JOIN sales_channels sc ON sc.id = s.channel_id AND sc.is_active = true
             JOIN products p ON p.barcode = si.barcode
             WHERE s.sold_at >= ${dateFrom} AND s.sold_at <= ${dateTo} AND s.status = 'active'
             GROUP BY si.barcode, p.name, p.code, p.size, p.color
             ORDER BY revenue DESC
             LIMIT 10
         ` as Promise<Array<{ barcode: string; name: string; code: string | null; size: string | null; color: string | null; qty_sold: any; revenue: any }>>,
-        // Dead stock: high warehouse qty, low/no sales
+        // Dead stock: high warehouse qty, low/no sales (exclude inactive channels)
         db.$queryRaw`
             SELECT ws.barcode, p.name, p.code, p.size, p.color, ws.quantity as stock_qty,
                    COALESCE(sold.qty, 0) as sold_qty
@@ -91,6 +94,7 @@ export async function GET(request: Request) {
                 SELECT si.barcode, SUM(si.quantity) as qty
                 FROM sale_items si
                 JOIN sales s ON s.id = si.sale_id
+                JOIN sales_channels sc ON sc.id = s.channel_id AND sc.is_active = true
                 WHERE s.sold_at >= ${dateFrom} AND s.sold_at <= ${dateTo} AND s.status = 'active'
                 GROUP BY si.barcode
             ) sold ON sold.barcode = ws.barcode
