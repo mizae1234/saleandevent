@@ -81,6 +81,31 @@ export function ChannelStockReport({ data }: Props) {
             label: c.code,
         }));
 
+    const itemMap = new Map<string, any>();
+    data.filter(c => c.totalSent > 0).forEach(c => {
+        c.items.forEach(item => {
+            if (!itemMap.has(item.barcode)) {
+                itemMap.set(item.barcode, {
+                    barcode: item.barcode,
+                    name: item.name,
+                    code: item.code,
+                    size: item.size,
+                    color: item.color,
+                    sent: 0,
+                    sold: 0,
+                    returned: 0,
+                    remaining: 0
+                });
+            }
+            const agg = itemMap.get(item.barcode);
+            agg.sent += item.sent;
+            agg.sold += item.sold;
+            agg.returned += item.returned;
+            agg.remaining += item.remaining;
+        });
+    });
+    const aggregatedItems = Array.from(itemMap.values()).sort((a, b) => b.remaining - a.remaining);
+
     const handleExport = async () => {
         try {
             const XLSX = await import("xlsx");
@@ -271,6 +296,47 @@ export function ChannelStockReport({ data }: Props) {
                             </div>
                         );
                     })}
+                </div>
+            </div>
+
+            {/* Aggregated Items Table */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="px-4 sm:px-6 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-slate-700">สรุปสินค้าคงเหลือรายตัว (รวมสาขาที่เลือก)</h3>
+                </div>
+                <div className="overflow-x-auto max-h-96">
+                    <table className="w-full text-sm">
+                        <thead className="sticky top-0 bg-slate-50 z-10 shadow-sm">
+                            <tr className="border-b border-slate-100 text-xs text-slate-500">
+                                <th className="text-left py-2.5 px-4 font-medium bg-slate-50">#</th>
+                                <th className="text-left py-2.5 px-4 font-medium bg-slate-50">สินค้า</th>
+                                <th className="text-right py-2.5 px-4 font-medium bg-slate-50">ส่งไป</th>
+                                <th className="text-right py-2.5 px-4 font-medium bg-slate-50">ขายแล้ว</th>
+                                <th className="text-right py-2.5 px-4 font-medium bg-slate-50">คงเหลือ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {aggregatedItems.map((item, i) => (
+                                <tr key={item.barcode} className="border-b border-slate-50 hover:bg-slate-50/50">
+                                    <td className="py-2.5 px-4 text-slate-400">{i + 1}</td>
+                                    <td className="py-2.5 px-4">
+                                        <p className="font-medium text-slate-900">{item.name}</p>
+                                        <p className="text-[10px] text-slate-400">
+                                            {item.code || item.barcode}{item.size && ` · ${item.size}`}{item.color && ` · ${item.color}`}
+                                        </p>
+                                    </td>
+                                    <td className="py-2.5 px-4 text-right text-slate-500">{fmt(item.sent)}</td>
+                                    <td className="py-2.5 px-4 text-right text-emerald-600 font-medium">{fmt(item.sold)}</td>
+                                    <td className="py-2.5 px-4 text-right font-bold text-amber-600">{fmt(item.remaining)}</td>
+                                </tr>
+                            ))}
+                            {aggregatedItems.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="py-8 text-center text-slate-400">ไม่มีข้อมูลสินค้า</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
