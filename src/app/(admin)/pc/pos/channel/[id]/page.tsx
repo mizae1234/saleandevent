@@ -73,10 +73,12 @@ export default async function POSEventPage({ params }: { params: Promise<{ id: s
                             <MapPin className="h-4 w-4" />
                             {event.location}
                         </span>
-                        <span className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
-                            {format(new Date(event.startDate!), "d MMM")} - {format(new Date(event.endDate!), "d MMM")}
-                        </span>
+                        {event.startDate && event.endDate && (
+                            <span className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4" />
+                                {format(new Date(event.startDate), "d MMM")} - {format(new Date(event.endDate), "d MMM")}
+                            </span>
+                        )}
                     </div>
                 </div>
             </div>
