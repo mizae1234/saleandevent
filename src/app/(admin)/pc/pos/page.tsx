@@ -151,16 +151,20 @@ export default async function POSSelectPage({ searchParams }: { searchParams: Pr
                         {events.map((event) => {
                             const soldPct = event.totalStock > 0 ? Math.round((event.totalSold / event.totalStock) * 100) : 0;
 
+                            const Wrapper = event.isActive !== false ? Link : 'div';
+                            const wrapperProps = event.isActive !== false
+                                ? { href: `/pc/pos/channel/${event.id}` }
+                                : {};
+
                             return (
-                                <Link
+                                <Wrapper
                                     key={event.id}
-                                    href={event.isActive !== false ? `/pc/pos/channel/${event.id}` : '#'}
+                                    {...wrapperProps as any}
                                     className={`block p-4 sm:p-5 transition-colors group ${
                                         event.isActive === false
                                             ? 'opacity-50 cursor-not-allowed bg-slate-50'
                                             : 'hover:bg-emerald-50/30'
                                     }`}
-                                    onClick={event.isActive === false ? (e: any) => e.preventDefault() : undefined}
                                 >
                                     <div className="flex items-center gap-3 sm:gap-4">
                                         {/* Icon */}
@@ -229,7 +233,7 @@ export default async function POSSelectPage({ searchParams }: { searchParams: Pr
                                             <span className="text-sm font-bold text-emerald-600">฿{fmt(event.totalSales)}</span>
                                         </div>
                                     </div>
-                                </Link>
+                                </Wrapper>
                             );
                         })}
                     </div>
