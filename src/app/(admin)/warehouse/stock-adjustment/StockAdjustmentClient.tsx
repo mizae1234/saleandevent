@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, Package, MapPin, Store, ArrowRight, History, Minus, Plus, Save, X, ChevronDown, ChevronUp, Undo2, AlertTriangle } from "lucide-react";
+import { Search, Package, MapPin, Store, ArrowRight, History, Minus, Plus, Save, X, ChevronDown, ChevronUp, Undo2, AlertTriangle, Calendar } from "lucide-react";
 import { PageHeader, Spinner, EmptyState, ConfirmDialog } from "@/components/shared";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -20,6 +20,8 @@ interface Channel {
     type: string;
     status: string;
     location: string;
+    startDate: string | null;
+    endDate: string | null;
     stockCount: number;
 }
 
@@ -248,6 +250,13 @@ export function StockAdjustmentClient({ channels }: Props) {
                                         <MapPin className="h-3 w-3" />
                                         {ch.location}
                                     </div>
+                                    {ch.type === "EVENT" && ch.startDate && (
+                                        <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-400">
+                                            <Calendar className="h-3 w-3" />
+                                            {format(new Date(ch.startDate), "d MMM yy", { locale: th })}
+                                            {ch.endDate && ` - ${format(new Date(ch.endDate), "d MMM yy", { locale: th })}`}
+                                        </div>
+                                    )}
                                     <div className="mt-3 flex items-center justify-between">
                                         <div className="flex items-center gap-1.5 text-xs text-slate-500">
                                             <Package className="h-3.5 w-3.5" />
@@ -299,7 +308,22 @@ export function StockAdjustmentClient({ channels }: Props) {
                             </div>
                             <div>
                                 <h2 className="font-bold text-slate-800">{selectedChannel.name}</h2>
-                                <p className="text-xs text-slate-400">{selectedChannel.code} · {selectedChannel.location}</p>
+                                <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                                    <span>{selectedChannel.code}</span>
+                                    <span>·</span>
+                                    <MapPin className="h-3 w-3" />
+                                    <span>{selectedChannel.location}</span>
+                                    {selectedChannel.type === "EVENT" && selectedChannel.startDate && (
+                                        <>
+                                            <span>·</span>
+                                            <Calendar className="h-3 w-3" />
+                                            <span>
+                                                {format(new Date(selectedChannel.startDate), "d MMM yy", { locale: th })}
+                                                {selectedChannel.endDate && ` - ${format(new Date(selectedChannel.endDate), "d MMM yy", { locale: th })}`}
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                             <div className="ml-auto text-right">
                                 <p className="text-2xl font-bold text-teal-700">{stock.length}</p>

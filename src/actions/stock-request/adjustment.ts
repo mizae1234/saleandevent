@@ -144,6 +144,8 @@ export async function getChannelsWithStock() {
             type: true,
             status: true,
             location: true,
+            startDate: true,
+            endDate: true,
             _count: {
                 select: { stock: true },
             },
@@ -158,6 +160,8 @@ export async function getChannelsWithStock() {
         type: c.type,
         status: c.status,
         location: c.location,
+        startDate: c.startDate ? c.startDate.toISOString() : null,
+        endDate: c.endDate ? c.endDate.toISOString() : null,
         stockCount: c._count.stock,
     }));
 }
