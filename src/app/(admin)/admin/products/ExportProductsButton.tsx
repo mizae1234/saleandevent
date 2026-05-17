@@ -41,7 +41,6 @@ export function ExportProductsButton() {
                 "ชื่อสินค้า": p.name,
                 "ไซส์": p.size,
                 "สี": p.color,
-                "หมวดหมู่": p.category,
                 "ราคาขาย": p.price,
                 "สต็อกคลัง": p.stock,
             }));
@@ -56,7 +55,6 @@ export function ExportProductsButton() {
                 { wch: 30 },  // ชื่อสินค้า
                 { wch: 8 },   // ไซส์
                 { wch: 12 },  // สี
-                { wch: 15 },  // หมวดหมู่
                 { wch: 12 },  // ราคาขาย
                 { wch: 10 },  // สต็อกคลัง
             ];
