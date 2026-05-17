@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
     const fromStr = searchParams.get("from");
     const toStr = searchParams.get("to");
     const channelId = searchParams.get("channelId") || "all";
+    const channelType = searchParams.get("channelType") || "all"; // "all" | "EVENT" | "BRANCH"
 
     // Default: this month
     const now = new Date();
@@ -21,6 +22,10 @@ export async function GET(request: NextRequest) {
         ? Prisma.sql`AND s.channel_id = ${channelId}::uuid`
         : Prisma.empty;
 
+    const typeFilter = channelType !== "all"
+        ? Prisma.sql`AND sc.type = ${channelType}`
+        : Prisma.empty;
+
     const [
         availableChannels,
         topProductsRaw,
@@ -30,7 +35,11 @@ export async function GET(request: NextRequest) {
     ] = await Promise.all([
         // 0. List of all channels for dropdown
         db.salesChannel.findMany({
-            where: { isActive: true, status: { notIn: ['draft', 'submitted'] } },
+            where: {
+                isActive: true,
+                status: { notIn: ['draft', 'submitted'] },
+                ...(channelType !== 'all' ? { type: channelType } : {}),
+            },
             select: { id: true, name: true, code: true, type: true },
             orderBy: { createdAt: 'desc' }
         }),
@@ -47,6 +56,7 @@ export async function GET(request: NextRequest) {
             JOIN products p ON p.barcode = si.barcode
             WHERE s.sold_at >= ${dateFrom} AND s.sold_at <= ${dateTo} AND s.status = 'active'
             ${channelFilter}
+            ${typeFilter}
             GROUP BY si.barcode, p.name, p.code, p.size, p.color
             ORDER BY revenue DESC
             LIMIT 50
@@ -64,6 +74,7 @@ export async function GET(request: NextRequest) {
             WHERE sc.is_active = true
                 AND sc.status NOT IN ('draft', 'submitted')
                 ${channelId !== "all" ? Prisma.sql`AND sc.id = ${channelId}::uuid` : Prisma.empty}
+                ${typeFilter}
             GROUP BY sc.id, sc.name, sc.code, sc.type, sc.location, sc.sales_target
             ORDER BY total_sales DESC
         ` as Promise<Array<{ id: string; name: string; code: string; type: string; location: string; sales_target: any; total_sales: any; bill_count: any }>>,
@@ -81,6 +92,7 @@ export async function GET(request: NextRequest) {
             WHERE sc.is_active = true
                 AND sc.status NOT IN ('draft', 'submitted')
                 ${channelId !== "all" ? Prisma.sql`AND sc.id = ${channelId}::uuid` : Prisma.empty}
+                ${typeFilter}
             GROUP BY sc.id, sc.name, sc.code, sc.type
             ORDER BY total_qty DESC
         ` as Promise<Array<{ id: string; name: string; code: string; type: string; total_qty: any; bill_count: any }>>,
@@ -89,7 +101,8 @@ export async function GET(request: NextRequest) {
         db.salesChannel.findMany({
             where: {
                 status: { notIn: ['draft', 'submitted'] },
-                ...(channelId !== "all" ? { id: channelId } : {})
+                ...(channelId !== "all" ? { id: channelId } : {}),
+                ...(channelType !== 'all' ? { type: channelType } : {}),
             },
             select: {
                 id: true,

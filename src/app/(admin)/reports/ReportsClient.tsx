@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Calendar, RefreshCw, FileBarChart, Trophy, Store, Package, Boxes, Search, ChevronDown } from "lucide-react";
+import { Calendar, RefreshCw, FileBarChart, Trophy, Store, Package, Boxes, Search, ChevronDown, Filter } from "lucide-react";
 import { SpinnerFullPage, EmptyState } from "@/components/shared";
 import { TopProductsReport } from "@/components/reports/TopProductsReport";
 import { ChannelRevenueReport } from "@/components/reports/ChannelRevenueReport";
@@ -10,6 +10,7 @@ import { ChannelStockReport } from "@/components/reports/ChannelStockReport";
 
 type TabKey = "products" | "revenue" | "quantity" | "stock";
 type QuickRange = "thisMonth" | "lastMonth" | "last7" | "last30" | "custom";
+type ChannelType = "all" | "EVENT" | "BRANCH";
 
 const TABS: { key: TabKey; label: string; icon: typeof Trophy }[] = [
     { key: "products", label: "สินค้าขายดี", icon: Trophy },
@@ -106,15 +107,16 @@ export function ReportsClient() {
     const [to, setTo] = useState(def.to);
     const [quickRange, setQuickRange] = useState<QuickRange>("thisMonth");
     const [channelId, setChannelId] = useState("all");
+    const [channelType, setChannelType] = useState<ChannelType>("all");
     const [activeTab, setActiveTab] = useState<TabKey>("products");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchData = useCallback(async (f: string, t: string, cId: string) => {
+    const fetchData = useCallback(async (f: string, t: string, cId: string, cType: string) => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/reports?from=${f}&to=${t}&channelId=${cId}`);
+            const res = await fetch(`/api/reports?from=${f}&to=${t}&channelId=${cId}&channelType=${cType}`);
             if (!res.ok) throw new Error("Failed to fetch");
             const json = await res.json();
             setData(json);
@@ -126,8 +128,8 @@ export function ReportsClient() {
     }, []);
 
     useEffect(() => {
-        fetchData(from, to, channelId);
-    }, [from, to, channelId, fetchData]);
+        fetchData(from, to, channelId, channelType);
+    }, [from, to, channelId, channelType, fetchData]);
 
     const handleQuick = (range: QuickRange) => {
         const now = new Date();
@@ -177,7 +179,7 @@ export function ReportsClient() {
                     </p>
                 </div>
                 <button
-                    onClick={() => fetchData(from, to, channelId)}
+                    onClick={() => fetchData(from, to, channelId, channelType)}
                     disabled={loading}
                     className="self-start md:self-auto inline-flex items-center gap-2 px-3 py-2 text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
                 >
@@ -198,6 +200,32 @@ export function ReportsClient() {
                             onChange={setChannelId} 
                             options={data?.availableChannels || []} 
                         />
+                    </div>
+
+                    <div className="h-8 w-px bg-slate-200 hidden md:block" />
+
+                    {/* Channel Type Filter */}
+                    <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-slate-400" />
+                        <div className="flex rounded-xl border border-slate-200 overflow-hidden">
+                            {([
+                                { key: "all" as ChannelType, label: "ทั้งหมด" },
+                                { key: "EVENT" as ChannelType, label: "Event" },
+                                { key: "BRANCH" as ChannelType, label: "สาขา" },
+                            ]).map(opt => (
+                                <button
+                                    key={opt.key}
+                                    onClick={() => { setChannelType(opt.key); setChannelId("all"); }}
+                                    className={`px-3 py-2 text-xs sm:text-sm font-medium transition-colors ${
+                                        channelType === opt.key
+                                            ? "bg-teal-600 text-white"
+                                            : "bg-white text-slate-600 hover:bg-slate-50"
+                                    }`}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     <div className="h-8 w-px bg-slate-200 hidden md:block" />

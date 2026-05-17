@@ -27,6 +27,10 @@ async function getChannelDetails(id: string) {
                 customer: { select: { id: true, code: true, name: true } },
                 stockRequests: {
                     include: {
+                        items: {
+                            include: { product: { select: { name: true, code: true, size: true, color: true } } },
+                            orderBy: { createdAt: 'asc' },
+                        },
                         allocations: { select: { packedQuantity: true } },
                         shipment: { select: { provider: true, trackingNumber: true } },
                         receiving: { select: { receivedTotalQty: true } },
@@ -192,6 +196,11 @@ export default async function ChannelDetailPage({ params }: { params: Promise<{ 
                             allocatedTotal: req.allocations.reduce((s, a) => s + a.packedQuantity, 0),
                             receivedTotal: req.receiving ? req.receiving.receivedTotalQty.toLocaleString() : null,
                             shipment: req.shipment ? { provider: req.shipment.provider, trackingNumber: req.shipment.trackingNumber } : null,
+                            items: req.items.map(item => ({
+                                barcode: item.barcode,
+                                quantity: item.quantity,
+                                product: item.product,
+                            })),
                         }))}
                     />
 

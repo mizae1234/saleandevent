@@ -6,3 +6,4 @@ export { approveStockRequest, rejectStockRequest } from './approval';
 export { uploadAllocation, updateSingleAllocation, confirmPacking, createShipment, getProductMasterForTemplate } from './warehouse';
 export { confirmReceiving } from './receiving';
 export { getStockRequestsByChannel, getStockRequest, getPendingStockRequests, getApprovedStockRequests, getPackedStockRequests, getShippedStockRequests } from './queries';
+export { adjustChannelStock, getChannelsWithStock, getChannelStockForAdjustment, getAdjustmentHistory } from './adjustment';

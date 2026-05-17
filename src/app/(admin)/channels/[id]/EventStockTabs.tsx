@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Package, ClipboardList, Truck, ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react";
+import { Package, ClipboardList, Truck, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileSpreadsheet } from "lucide-react";
 import { EmptyState, Spinner } from "@/components/shared";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
@@ -34,6 +34,7 @@ interface StockRequest {
     allocatedTotal: number;
     receivedTotal: string | null;
     shipment: { provider: string | null; trackingNumber: string | null } | null;
+    items?: { barcode: string; quantity: number; product: { name: string; code: string | null; size: string | null; color: string | null } }[];
 }
 
 interface GroupedRow {
@@ -68,6 +69,7 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode 
     const [activeTab, setActiveTab] = useState<'requests' | 'stock'>(stock.length > 0 ? 'stock' : 'requests');
     const [stockPage, setStockPage] = useState(1);
     const [exporting, setExporting] = useState(false);
+    const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
     const { toastError, toastSuccess } = useToast();
 
     const handleExport = async () => {
@@ -334,6 +336,8 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode 
                     ) : (
                         stockRequests.map(req => {
                             const reqStatus = requestStatusConfig[req.status] || { label: req.status, color: 'bg-slate-100 text-slate-600' };
+                            const isExpanded = expandedRequestId === req.id;
+                            const hasItems = req.items && req.items.length > 0;
                             return (
                                 <div key={req.id} className="p-4">
                                     <div className="flex items-center justify-between mb-2">
@@ -371,6 +375,45 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode 
                                     )}
                                     {req.notes && (
                                         <p className="mt-2 text-xs text-slate-500 italic">📝 {req.notes}</p>
+                                    )}
+                                    {/* Expand/Collapse Items */}
+                                    {hasItems && (
+                                        <div className="mt-2">
+                                            <button
+                                                onClick={() => setExpandedRequestId(isExpanded ? null : req.id)}
+                                                className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800 transition-colors font-medium"
+                                            >
+                                                <Package className="h-3 w-3" />
+                                                ดูรายละเอียดสินค้า ({req.items!.length} รายการ)
+                                                {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                            </button>
+                                            {isExpanded && (
+                                                <div className="mt-2 rounded-lg border border-slate-100 overflow-hidden">
+                                                    <table className="w-full text-xs">
+                                                        <thead className="bg-slate-50">
+                                                            <tr>
+                                                                <th className="text-left p-2 font-medium text-slate-500">รหัส</th>
+                                                                <th className="text-left p-2 font-medium text-slate-500">ชื่อ</th>
+                                                                <th className="text-center p-2 font-medium text-slate-500">สี</th>
+                                                                <th className="text-center p-2 font-medium text-slate-500">ไซส์</th>
+                                                                <th className="text-right p-2 font-medium text-slate-500">จำนวน</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-50">
+                                                            {req.items!.map((item, idx) => (
+                                                                <tr key={idx} className="hover:bg-slate-50/50">
+                                                                    <td className="p-2 font-mono text-teal-700">{item.product.code || item.barcode}</td>
+                                                                    <td className="p-2 text-slate-700">{item.product.name}</td>
+                                                                    <td className="p-2 text-center text-slate-500">{item.product.color || '-'}</td>
+                                                                    <td className="p-2 text-center text-slate-500">{item.product.size || '-'}</td>
+                                                                    <td className="p-2 text-right font-semibold text-slate-800">{item.quantity}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             );
