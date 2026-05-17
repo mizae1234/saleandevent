@@ -206,6 +206,7 @@ export default async function StaffPayrollDetailPage({
                 daysWorked={daysWorked}
                 dailyRate={dailyRate}
                 totalWage={totalWage}
+                commission={commission}
             />
         </div>
     );
