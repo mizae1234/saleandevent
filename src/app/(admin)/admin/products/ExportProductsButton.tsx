@@ -39,6 +39,7 @@ export function ExportProductsButton() {
                 "บาร์โค้ด": p.barcode,
                 "รหัสสินค้า": p.code,
                 "ชื่อสินค้า": p.name,
+                "ประเภทสินค้า": p.producttype,
                 "ไซส์": p.size,
                 "สี": p.color,
                 "ราคาขาย": p.price,
@@ -53,6 +54,7 @@ export function ExportProductsButton() {
                 { wch: 18 },  // บาร์โค้ด
                 { wch: 12 },  // รหัสสินค้า
                 { wch: 30 },  // ชื่อสินค้า
+                { wch: 15 },  // ประเภทสินค้า
                 { wch: 8 },   // ไซส์
                 { wch: 12 },  // สี
                 { wch: 12 },  // ราคาขาย
