@@ -41,6 +41,9 @@ type Props = {
         name: string;
         code: string;
         location: string;
+        stock: number;
+        sold: number;
+        remaining: number;
     };
     sales: Sale[];
     backHref?: string;
@@ -198,6 +201,21 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                 <div className="bg-white border border-slate-200 rounded-xl p-4 text-center">
                     <p className="text-xs text-emerald-600 mb-1">ยอดขายรวม</p>
                     <p className="text-2xl font-bold text-emerald-700">฿{totalActive.toLocaleString()}</p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-100 rounded-xl p-4 text-center shadow-sm">
+                    <p className="text-xs text-blue-600 mb-1 font-medium">สต๊อก</p>
+                    <p className="text-lg sm:text-xl font-bold text-blue-700">{event.stock.toLocaleString()} <span className="text-xs sm:text-sm font-normal text-blue-600/80">ชิ้น</span></p>
+                </div>
+                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-100 rounded-xl p-4 text-center shadow-sm">
+                    <p className="text-xs text-emerald-600 mb-1 font-medium">สินค้าขาย</p>
+                    <p className="text-lg sm:text-xl font-bold text-emerald-700">{event.sold.toLocaleString()} <span className="text-xs sm:text-sm font-normal text-emerald-600/80">ชิ้น</span></p>
+                </div>
+                <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 border border-amber-100 rounded-xl p-4 text-center shadow-sm">
+                    <p className="text-xs text-amber-600 mb-1 font-medium">สต๊อกคงเหลือ</p>
+                    <p className="text-lg sm:text-xl font-bold text-amber-700">{event.remaining.toLocaleString()} <span className="text-xs sm:text-sm font-normal text-amber-600/80">ชิ้น</span></p>
                 </div>
             </div>
 

@@ -10,6 +10,13 @@ async function getEventWithSales(channelId: string) {
     const event = await db.salesChannel.findUnique({
         where: { id: channelId },
         include: {
+            stock: {
+                select: {
+                    quantity: true,
+                    soldQuantity: true,
+                    returnedQuantity: true,
+                }
+            },
             sales: {
                 include: {
                     items: {
@@ -40,13 +47,21 @@ export default async function EventSalesPage({ params }: Props) {
         notFound();
     }
 
+    const totalSent = event.stock.reduce((s, i) => s + i.quantity, 0);
+    const totalSold = event.stock.reduce((s, i) => s + i.soldQuantity, 0);
+    const totalReturned = event.stock.reduce((s, i) => s + i.returnedQuantity, 0);
+    const totalRemaining = totalSent - totalSold - totalReturned;
+
     return (
         <EventSalesClient
             event={{
                 id: event.id,
                 name: event.name,
                 code: event.code,
-                location: event.location || ''
+                location: event.location || '',
+                stock: totalSent,
+                sold: totalSold,
+                remaining: totalRemaining
             }}
             sales={event.sales as any}
         />
