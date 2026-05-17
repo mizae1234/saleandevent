@@ -13,7 +13,7 @@ export default async function PCRefillPage() {
             orderBy: { createdAt: "desc" },
         }),
         db.salesChannel.findMany({
-            where: { status: { in: ["active", "approved"] } },
+            where: { status: { in: ["active", "approved"] }, isActive: true },
             select: { id: true, name: true, code: true, location: true },
             orderBy: { name: "asc" },
         }),

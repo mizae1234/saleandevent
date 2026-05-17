@@ -3,7 +3,7 @@ import NewRefillClient from "./NewRefillClient";
 
 export default async function NewRefillPage() {
     const channels = await db.salesChannel.findMany({
-        where: { status: 'active' },
+        where: { status: 'active', isActive: true },
         orderBy: { name: 'asc' },
     });
 
