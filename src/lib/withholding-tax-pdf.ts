@@ -397,19 +397,65 @@ export async function generateWithholdingTaxPdf(data: WithholdingTaxData) {
       <div class="tax">${hasCommission && data.commissionTax > 0 ? formatMoney(data.commissionTax) : ''}</div>
     </div>
 
-    <!-- Row 3-6: empty categories -->
+    <!-- Row 3: ค่าแห่งลิขสิทธิ์ -->
     <div class="income-row inactive">
       <div class="desc"><strong>3.</strong> ค่าแห่งลิขสิทธิ์ ฯลฯ ตามมาตรา 40(3)</div>
       <div class="date"></div><div class="amount"></div><div class="tax"></div>
     </div>
-    <div class="income-row inactive">
-      <div class="desc"><strong>4.</strong> (ก) ค่าดอกเบี้ย ฯลฯ ตามมาตรา 40(4)(ก)</div>
+
+    <!-- Row 4: ดอกเบี้ย / เงินปันผล -->
+    <div class="income-row inactive" style="border-bottom:none;">
+      <div class="desc">
+        <strong>4.</strong> (ก) ค่าดอกเบี้ย ฯลฯ ตามมาตรา 40(4)(ก)
+      </div>
+      <div class="date"></div><div class="amount"></div><div class="tax"></div>
+    </div>
+    <div class="income-row inactive" style="border-bottom:none;">
+      <div class="desc" style="padding-left:24px;">
+        (ข) เงินปันผล เงินส่วนแบ่งกำไร ฯลฯ ตาม ม.40(4)(ข)
+      </div>
+      <div class="date"></div><div class="amount"></div><div class="tax"></div>
+    </div>
+    <div class="income-row inactive" style="border-bottom:none;">
+      <div class="desc" style="padding-left:36px; font-size:11px; color:#555; line-height:1.4;">
+        (1) กรณีผู้ได้รับเงินปันผลได้รับเครดิตภาษี โดยจ่ายจาก<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;กำไรสุทธิของกิจการที่ต้องเสียภาษีเงินได้นิติบุคคลในอัตราดังนี้<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;(1.1) อัตราร้อยละ 30 ของกำไรสุทธิ<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;(1.2) อัตราร้อยละ 25 ของกำไรสุทธิ<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;(1.3) อัตราร้อยละ 20 ของกำไรสุทธิ<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;(1.4) อัตราอื่นๆ (ระบุ) ...... ของกำไรสุทธิ
+      </div>
       <div class="date"></div><div class="amount"></div><div class="tax"></div>
     </div>
     <div class="income-row inactive">
-      <div class="desc"><strong>5.</strong> การจ่ายเงินได้ที่ต้องหักภาษี ณ ที่จ่ายตามคำสั่งกรมสรรพากร ม.3 เตรส</div>
+      <div class="desc" style="padding-left:36px; font-size:11px; color:#555; line-height:1.4;">
+        (2) กรณีผู้ได้รับเงินปันผลไม่ได้รับเครดิตภาษี เนื่องจากจ่าย<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;(2.1) กำไรสุทธิของกิจการที่ได้รับยกเว้นภาษี<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;(2.2) เงินปันผลหรือเงินส่วนแบ่งของกำไรที่ได้รับยกเว้น<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ไม่ต้องนำมารวมคำนวณเป็นรายได้เพื่อเสียภาษีเงินได้บุคคล<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;(2.3) กำไรสุทธิส่วนที่ได้หักผลขาดทุนสุทธิยกมาไม่เกิน 5 ปี<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ก่อนรอบระยะเวลาบัญชีปัจจุบัน<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;(2.4) กำไรที่รับรู้ทางบัญชีโดยวิธีส่วนได้เสีย (equity method)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;(2.5) อื่นๆ (ระบุ)
+      </div>
       <div class="date"></div><div class="amount"></div><div class="tax"></div>
     </div>
+
+    <!-- Row 5: ม.3 เตรส -->
+    <div class="income-row inactive">
+      <div class="desc" style="line-height:1.4;">
+        <strong>5.</strong> การจ่ายเงินได้ที่ต้องหักภาษี ณ ที่จ่ายตามคำสั่งกรมสรรพากรที่ออกตาม<br>
+        &nbsp;&nbsp;&nbsp;มาตรา 3 เตรส (ระบุ)<br>
+        <span style="font-size:11px; color:#555;">
+        &nbsp;&nbsp;&nbsp;(เช่น รางวัล ส่วนลดหรือประโยชน์ใดๆ เนื่องจากการส่งเสริมการขาย<br>
+        &nbsp;&nbsp;&nbsp;รางวัลในการประกวด การแข่งขัน การชิงโชค ค่าแสดงของนักแสดง<br>
+        &nbsp;&nbsp;&nbsp;สาธารณะ ค่าขนส่ง ค่าบริการ ค่าเบี้ยประกันวินาศภัย ฯลฯ)
+        </span>
+      </div>
+      <div class="date"></div><div class="amount"></div><div class="tax"></div>
+    </div>
+
+    <!-- Row 6: อื่นๆ -->
     <div class="income-row inactive">
       <div class="desc"><strong>6.</strong> อื่นๆ (ระบุ)</div>
       <div class="date"></div><div class="amount"></div><div class="tax"></div>
