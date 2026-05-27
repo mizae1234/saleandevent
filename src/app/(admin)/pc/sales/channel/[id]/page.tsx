@@ -26,7 +26,8 @@ async function getEventWithSales(channelId: string) {
                                     name: true,
                                     code: true,
                                     size: true,
-                                    color: true
+                                    color: true,
+                                    price: true
                                 }
                             }
                         }

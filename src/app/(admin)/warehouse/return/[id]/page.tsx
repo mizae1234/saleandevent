@@ -5,6 +5,7 @@ import { ArrowLeft, Package, MapPin, Calendar, AlertTriangle } from "lucide-reac
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ConfirmReturnClient } from "./ConfirmReturnClient";
+import { ExportReturnExcel } from "./ExportReturnExcel";
 
 const SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
 
@@ -200,11 +201,25 @@ export default async function WarehouseReturnDetailPage({ params }: Props) {
 
             {/* Items Table - Grouped like Receiving page */}
             <div className="rounded-xl bg-white shadow-sm overflow-hidden">
-                <div className="p-4 border-b bg-indigo-50">
+                <div className="p-4 border-b bg-indigo-50 flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-indigo-800 flex items-center gap-2">
                         <Package className="h-4 w-4" />
                         รายการสินค้าที่ส่งคืน
                     </h3>
+                    <ExportReturnExcel
+                        rows={groupedRows.map(r => ({
+                            no: r.no,
+                            producttype: r.producttype,
+                            code: r.code,
+                            color: r.color,
+                            sizes: Object.fromEntries(Object.entries(r.sizes).map(([k, v]) => [k, v.qty])),
+                            total: r.total,
+                        }))}
+                        sizeTotals={sizeTotals}
+                        totalReturn={totalReturn}
+                        eventCode={event.code}
+                        eventName={event.name}
+                    />
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">

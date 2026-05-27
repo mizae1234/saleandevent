@@ -44,6 +44,8 @@ export async function createStaff(formData: FormData) {
         const commissionAmountStr = formData.get('commissionAmount') as string | null;
         const selectedMenus = formData.getAll('allowedMenus') as string[];
         const allowedMenus = selectedMenus.length > 0 ? selectedMenus : Prisma.JsonNull;
+        const taxId = formData.get('taxId') as string | null;
+        const address = formData.get('address') as string | null;
 
         if (!name) {
             return { error: 'กรุณากรอกชื่อ-สกุล' };
@@ -64,6 +66,8 @@ export async function createStaff(formData: FormData) {
                 dailyRate: dailyRateStr ? parseFloat(dailyRateStr) : null,
                 commissionAmount: commissionAmountStr ? parseFloat(commissionAmountStr) : null,
                 allowedMenus,
+                taxId: taxId || null,
+                address: address || null,
             }
         });
     } catch (error) {
@@ -92,6 +96,8 @@ export async function updateStaff(id: string, formData: FormData) {
         const commissionAmountStr = formData.get('commissionAmount') as string | null;
         const selectedMenus = formData.getAll('allowedMenus') as string[];
         const allowedMenus = selectedMenus.length > 0 ? selectedMenus : Prisma.JsonNull;
+        const taxId = formData.get('taxId') as string | null;
+        const address = formData.get('address') as string | null;
 
         if (!name) {
             return { error: 'กรุณากรอกชื่อ-สกุล' };
@@ -112,6 +118,8 @@ export async function updateStaff(id: string, formData: FormData) {
                 dailyRate: dailyRateStr ? parseFloat(dailyRateStr) : null,
                 commissionAmount: commissionAmountStr ? parseFloat(commissionAmountStr) : null,
                 allowedMenus,
+                taxId: taxId || null,
+                address: address || null,
             }
         });
     } catch (error) {

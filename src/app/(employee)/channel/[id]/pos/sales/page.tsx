@@ -25,7 +25,7 @@ export default async function EmployeeSalesPage({ params }: { params: Promise<{ 
                     items: {
                         include: {
                             product: {
-                                select: { name: true, code: true, size: true, color: true }
+                                select: { name: true, code: true, size: true, color: true, price: true }
                             }
                         }
                     }

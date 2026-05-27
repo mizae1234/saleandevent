@@ -8,6 +8,7 @@ export interface WithholdingTaxData {
     staffName: string;
     staffCode: string;
     staffTaxId?: string;       // เลขประจำตัวผู้เสียภาษีของพนักงาน
+    staffAddress?: string;     // ที่อยู่ของพนักงาน
     channelName: string;
     channelCode: string;
     daysWorked: number;
@@ -351,11 +352,15 @@ export async function generateWithholdingTaxPdf(data: WithholdingTaxData) {
           <span class="val">${data.staffName}</span>
         </div>
         <div class="info-row">
-          <span class="key">รหัสพนักงาน</span>
-          <span>${data.staffCode}</span>
+          <span class="key">ที่อยู่</span>
+          <span>${data.staffAddress || '—'}</span>
         </div>
       </div>
       <div>
+        <div class="info-row">
+          <span class="key">รหัสพนักงาน</span>
+          <span>${data.staffCode}</span>
+        </div>
         ${data.staffTaxId ? `
         <div class="info-row">
           <span class="key">เลขประจำตัวผู้เสียภาษี</span>

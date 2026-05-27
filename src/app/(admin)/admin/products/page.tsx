@@ -22,7 +22,6 @@ async function getProductList(searchParams: Promise<{ [key: string]: string | st
 
     if (q) {
         where.OR = [
-            { barcode: { contains: q, mode: 'insensitive' } },
             { code: { contains: q, mode: 'insensitive' } },
             { name: { contains: q, mode: 'insensitive' } },
         ];

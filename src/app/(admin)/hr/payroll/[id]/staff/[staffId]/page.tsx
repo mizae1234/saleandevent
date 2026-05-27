@@ -25,6 +25,7 @@ export default async function StaffPayrollDetailPage({
                 id: true, code: true, name: true, phone: true,
                 bankName: true, bankAccountNo: true,
                 dailyRate: true, commissionAmount: true, paymentType: true,
+                taxId: true, address: true,
             },
         }),
         db.channelStaff.findFirst({
@@ -201,6 +202,8 @@ export default async function StaffPayrollDetailPage({
             <WithholdingTaxButton
                 staffName={staffRecord.name}
                 staffCode={staffRecord.code || staffId.slice(0, 8)}
+                staffTaxId={staffRecord.taxId || undefined}
+                staffAddress={staffRecord.address || undefined}
                 channelName={channel.name}
                 channelCode={channel.code || channelId.slice(0, 8)}
                 daysWorked={daysWorked}

@@ -33,6 +33,8 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
         dailyRate: staff.dailyRate ? Number(staff.dailyRate) : null,
         commissionAmount: staff.commissionAmount ? Number(staff.commissionAmount) : null,
         allowedMenus: staff.allowedMenus as string[] | null,
+        taxId: staff.taxId,
+        address: staff.address,
     };
 
     return (

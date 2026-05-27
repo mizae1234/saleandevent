@@ -22,6 +22,7 @@ type SaleItem = {
         code: string | null;
         size: string | null;
         color: string | null;
+        price: number | null;
     };
 };
 
@@ -328,6 +329,26 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                                             {sale.items.length} รายการ
                                         </span>
 
+                                        {(() => {
+                                            const itemDiscounts = sale.items.reduce((sum, item) => {
+                                                const original = Number(item.product.price) || 0;
+                                                const actual = Number(item.unitPrice) || 0;
+                                                if (item.isFreebie) return sum + original * item.quantity;
+                                                if (original > actual) return sum + (original - actual) * item.quantity;
+                                                return sum;
+                                            }, 0);
+                                            const billDiscount = Number(sale.discount) || 0;
+                                            const totalReduction = itemDiscounts + billDiscount;
+                                            if (totalReduction > 0) {
+                                                return (
+                                                    <span className="text-[11px] text-red-500 mr-1 font-medium">
+                                                        -฿{totalReduction.toLocaleString()}
+                                                    </span>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
+
                                         <span className={`text-sm font-bold mr-2 ${isCancelled ? 'text-red-500 line-through' : 'text-emerald-700'}`}>
                                             ฿{Number(sale.totalAmount).toLocaleString()}
                                         </span>
@@ -358,6 +379,9 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                                                                 {item.product.code && <span>{item.product.code}</span>}
                                                                 {item.product.size && <span>• ไซส์: {item.product.size}</span>}
                                                                 {item.product.color && <span>• สี: {item.product.color}</span>}
+                                                                {item.product.price && Number(item.product.price) > Number(item.unitPrice) && !item.isFreebie && (
+                                                                    <span className="text-red-500 font-medium">• ลดชิ้นละ ฿{(Number(item.product.price) - Number(item.unitPrice)).toLocaleString()} (จาก ฿{Number(item.product.price).toLocaleString()})</span>
+                                                                )}
                                                             </div>
                                                         </div>
                                                         <span className="text-slate-600 mt-0.5">
@@ -365,12 +389,41 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                                                         </span>
                                                     </div>
                                                 ))}
-                                                {Number(sale.discount) > 0 && (
-                                                    <div className="flex items-center justify-between text-sm py-1 text-red-500">
-                                                        <span>ส่วนลด</span>
-                                                        <span>-฿{Number(sale.discount).toLocaleString()}</span>
-                                                    </div>
-                                                )}
+                                                {(() => {
+                                                    const itemDiscounts = sale.items.reduce((sum, item) => {
+                                                        const original = Number(item.product.price) || 0;
+                                                        const actual = Number(item.unitPrice) || 0;
+                                                        if (item.isFreebie) return sum + original * item.quantity;
+                                                        if (original > actual) return sum + (original - actual) * item.quantity;
+                                                        return sum;
+                                                    }, 0);
+                                                    const billDiscount = Number(sale.discount) || 0;
+                                                    const totalReduction = itemDiscounts + billDiscount;
+
+                                                    if (totalReduction > 0) {
+                                                        return (
+                                                            <div className="pt-2 border-t border-slate-100 space-y-1 text-xs">
+                                                                {itemDiscounts > 0 && (
+                                                                    <div className="flex justify-between text-slate-500">
+                                                                        <span>ส่วนลดสินค้า / แถม</span>
+                                                                        <span>-฿{itemDiscounts.toLocaleString()}</span>
+                                                                    </div>
+                                                                )}
+                                                                {billDiscount > 0 && (
+                                                                    <div className="flex justify-between text-slate-500">
+                                                                        <span>ส่วนลดท้ายบิล</span>
+                                                                        <span>-฿{billDiscount.toLocaleString()}</span>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex justify-between font-semibold text-red-500 border-t border-dashed border-slate-200 pt-1 mt-1">
+                                                                    <span>รวมปรับลดราคา</span>
+                                                                    <span>-฿{totalReduction.toLocaleString()}</span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                             </div>
 
                                             {/* Cancel Button / Confirmation */}

@@ -8,6 +8,8 @@ import { generateWithholdingTaxPdf, type WithholdingTaxData } from '@/lib/withho
 interface Props {
     staffName: string;
     staffCode: string;
+    staffTaxId?: string;
+    staffAddress?: string;
     channelName: string;
     channelCode: string;
     daysWorked: number;
@@ -20,7 +22,7 @@ const TAX_THRESHOLD_DAYS = 10;
 const TAX_RATE = 0.03;
 
 export function WithholdingTaxButton({
-    staffName, staffCode, channelName, channelCode,
+    staffName, staffCode, staffTaxId, staffAddress, channelName, channelCode,
     daysWorked, dailyRate, totalWage, commission,
 }: Props) {
     const [loading, setLoading] = useState(false);
@@ -38,6 +40,8 @@ export function WithholdingTaxButton({
             const data: WithholdingTaxData = {
                 staffName,
                 staffCode,
+                staffTaxId,
+                staffAddress,
                 channelName,
                 channelCode,
                 daysWorked,

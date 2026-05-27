@@ -444,6 +444,8 @@ model Staff {
   status           String         @default("active") @db.VarChar(20)
   salaryAccess     String?        @map("salary_access") @db.VarChar(20) // none, daily, monthly, all
   allowedMenus     Json?          @map("allowed_menus") // Override role-based menus if set
+  taxId            String?        @map("tax_id") @db.VarChar(30)
+  address          String?        @db.Text
   
   // Audit fields
   createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)

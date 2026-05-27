@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { useActionState } from "react";
-import { FormInput, FormSelect, Spinner } from "@/components/shared";
+import { FormInput, FormTextarea, FormSelect, Spinner } from "@/components/shared";
 
 interface StaffData {
     id?: string;
@@ -20,6 +20,8 @@ interface StaffData {
     paymentType: string;
     dailyRate?: number | null;
     commissionAmount?: number | null;
+    taxId?: string | null;
+    address?: string | null;
 }
 
 interface StaffFormProps {
@@ -127,6 +129,25 @@ export function StaffForm({ initialData, action, isEdit = false, salaryAccess }:
                         name="dateOfBirth"
                         defaultValue={dateOfBirthValue}
                     />
+
+                    {/* เลขประจำตัวผู้เสียภาษี */}
+                    <FormInput
+                        label="เลขประจำตัวผู้เสียภาษี"
+                        name="taxId"
+                        defaultValue={initialData?.taxId || ''}
+                        placeholder="เลขผู้เสียภาษี 13 หลัก"
+                    />
+
+                    {/* ที่อยู่ */}
+                    <div className="md:col-span-2">
+                        <FormTextarea
+                            label="ที่อยู่ตามทะเบียนบ้าน / บัตรประชาชน"
+                            name="address"
+                            defaultValue={initialData?.address || ''}
+                            placeholder="ระบุที่อยู่ของพนักงานสำหรับการออกเอกสารหัก ณ ที่จ่าย"
+                            rows={3}
+                        />
+                    </div>
                 </div>
             </div>
 
