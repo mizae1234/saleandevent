@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const toStr = searchParams.get("to");
     const channelId = searchParams.get("channelId") || "all";
     const channelType = searchParams.get("channelType") || "all"; // "all" | "EVENT" | "BRANCH"
+    const tab = searchParams.get("tab"); // "products" | "revenue" | "quantity" | "stock" | "totalStock" or null
 
     // Default: this month
     const now = new Date();
@@ -26,27 +27,27 @@ export async function GET(request: NextRequest) {
         ? Prisma.sql`AND sc.type = ${channelType}`
         : Prisma.empty;
 
-    const [
-        availableChannels,
-        topProductsRaw,
-        channelRevenueRaw,
-        channelQuantityRaw,
-        channelStockRaw,
-        totalStockRaw,
-    ] = await Promise.all([
-        // 0. List of all channels for dropdown
-        db.salesChannel.findMany({
-            where: {
-                isActive: true,
-                status: { notIn: ['draft', 'submitted'] },
-                ...(channelType !== 'all' ? { type: channelType } : {}),
-            },
-            select: { id: true, name: true, code: true, type: true },
-            orderBy: { createdAt: 'desc' }
-        }),
+    // 0. List of all channels for dropdown (always needed)
+    const availableChannelsPromise = db.salesChannel.findMany({
+        where: {
+            isActive: true,
+            status: { notIn: ['draft', 'submitted'] },
+            ...(channelType !== 'all' ? { type: channelType } : {}),
+        },
+        select: { id: true, name: true, code: true, type: true },
+        orderBy: { createdAt: 'desc' }
+    });
 
+    // Lazy load queries based on active tab parameter
+    let topProductsPromise = Promise.resolve<any[]>([]);
+    let channelRevenuePromise = Promise.resolve<any[]>([]);
+    let channelQuantityPromise = Promise.resolve<any[]>([]);
+    let channelStockPromise = Promise.resolve<any[]>([]);
+    let totalStockPromise = Promise.resolve<any[]>([]);
+
+    if (!tab || tab === "products") {
         // 1. Top products by revenue (exclude inactive channels)
-        db.$queryRaw`
+        topProductsPromise = db.$queryRaw`
             SELECT si.barcode, p.name, p.code, p.size, p.color,
                    SUM(si.quantity) as qty_sold,
                    SUM(si.total_amount) as revenue,
@@ -61,10 +62,12 @@ export async function GET(request: NextRequest) {
             GROUP BY si.barcode, p.name, p.code, p.size, p.color
             ORDER BY revenue DESC
             LIMIT 50
-        ` as Promise<Array<{ barcode: string; name: string; code: string | null; size: string | null; color: string | null; qty_sold: any; revenue: any; bill_count: any }>>,
+        ` as Promise<any[]>;
+    }
 
+    if (!tab || tab === "revenue") {
         // 2. Channel revenue (exclude inactive channels)
-        db.$queryRaw`
+        channelRevenuePromise = db.$queryRaw`
             SELECT sc.id, sc.name, sc.code, sc.type, sc.location, sc.sales_target,
                    COALESCE(SUM(s.total_amount), 0) as total_sales,
                    COUNT(s.id) as bill_count
@@ -78,10 +81,12 @@ export async function GET(request: NextRequest) {
                 ${typeFilter}
             GROUP BY sc.id, sc.name, sc.code, sc.type, sc.location, sc.sales_target
             ORDER BY total_sales DESC
-        ` as Promise<Array<{ id: string; name: string; code: string; type: string; location: string; sales_target: any; total_sales: any; bill_count: any }>>,
+        ` as Promise<any[]>;
+    }
 
+    if (!tab || tab === "quantity") {
         // 3. Channel quantity sold (exclude inactive channels)
-        db.$queryRaw`
+        channelQuantityPromise = db.$queryRaw`
             SELECT sc.id, sc.name, sc.code, sc.type,
                    COALESCE(SUM(si.quantity), 0) as total_qty,
                    COUNT(DISTINCT s.id) as bill_count
@@ -96,10 +101,13 @@ export async function GET(request: NextRequest) {
                 ${typeFilter}
             GROUP BY sc.id, sc.name, sc.code, sc.type
             ORDER BY total_qty DESC
-        ` as Promise<Array<{ id: string; name: string; code: string; type: string; total_qty: any; bill_count: any }>>,
+        ` as Promise<any[]>;
+    }
 
+    if (!tab || tab === "stock") {
         // 4. Channel stock — real-time (all non-draft channels, regardless of isActive)
-        db.salesChannel.findMany({
+        // Optimization: Filter stock to only retrieve items with quantity > 0 directly from DB
+        channelStockPromise = db.salesChannel.findMany({
             where: {
                 status: { notIn: ['draft', 'submitted'] },
                 ...(channelId !== "all" ? { id: channelId } : {}),
@@ -113,6 +121,9 @@ export async function GET(request: NextRequest) {
                 status: true,
                 isActive: true,
                 stock: {
+                    where: {
+                        quantity: { gt: 0 }
+                    },
                     select: {
                         barcode: true,
                         quantity: true,
@@ -130,10 +141,12 @@ export async function GET(request: NextRequest) {
                 },
             },
             orderBy: { createdAt: 'desc' },
-        }),
+        }) as any;
+    }
 
+    if (!tab || tab === "totalStock") {
         // 5. Total stock summary — warehouse + all channel stock remaining
-        db.$queryRaw`
+        totalStockPromise = db.$queryRaw`
             SELECT
                 p.code,
                 p.name,
@@ -156,7 +169,23 @@ export async function GET(request: NextRequest) {
             WHERE p.status = 'active'
                 AND (COALESCE(ws.quantity, 0) + COALESCE(cs_agg.channel_remaining, 0)) > 0
             ORDER BY p.code ASC, p.name ASC, p.color ASC, p.size ASC
-        ` as Promise<Array<{ code: string | null; name: string; color: string | null; size: string | null; warehouse_qty: any; channel_qty: any; total_qty: any }>>,
+        ` as Promise<any[]>;
+    }
+
+    const [
+        availableChannels,
+        topProductsRaw,
+        channelRevenueRaw,
+        channelQuantityRaw,
+        channelStockRaw,
+        totalStockRaw,
+    ] = await Promise.all([
+        availableChannelsPromise,
+        topProductsPromise,
+        channelRevenuePromise,
+        channelQuantityPromise,
+        channelStockPromise,
+        totalStockPromise,
     ]);
 
     // Format top products
@@ -194,10 +223,10 @@ export async function GET(request: NextRequest) {
     }));
 
     // Format channel stock
-    const channelStock = channelStockRaw.map((c) => {
-        const totalSent = c.stock.reduce((s, i) => s + i.quantity, 0);
-        const totalSold = c.stock.reduce((s, i) => s + i.soldQuantity, 0);
-        const totalReturned = c.stock.reduce((s, i) => s + i.returnedQuantity, 0);
+    const channelStock = channelStockRaw.map((c: any) => {
+        const totalSent = c.stock ? c.stock.reduce((s: number, i: any) => s + i.quantity, 0) : 0;
+        const totalSold = c.stock ? c.stock.reduce((s: number, i: any) => s + i.soldQuantity, 0) : 0;
+        const totalReturned = c.stock ? c.stock.reduce((s: number, i: any) => s + i.returnedQuantity, 0) : 0;
         const totalRemaining = totalSent - totalSold - totalReturned;
 
         return {
@@ -212,9 +241,9 @@ export async function GET(request: NextRequest) {
             totalReturned,
             totalRemaining,
             soldPercent: totalSent > 0 ? Math.round((totalSold / totalSent) * 100) : 0,
-            items: c.stock
-                .filter((i) => i.quantity > 0)
-                .map((i) => ({
+            items: (c.stock || [])
+                .filter((i: any) => i.quantity > 0)
+                .map((i: any) => ({
                     barcode: i.barcode,
                     name: i.product.name,
                     code: i.product.code,
@@ -225,7 +254,7 @@ export async function GET(request: NextRequest) {
                     returned: i.returnedQuantity,
                     remaining: i.quantity - i.soldQuantity - i.returnedQuantity,
                 }))
-                .sort((a, b) => b.sold - a.sold),
+                .sort((a: any, b: any) => b.sold - a.sold),
         };
     });
 

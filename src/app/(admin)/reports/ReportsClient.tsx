@@ -115,10 +115,10 @@ export function ReportsClient() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchData = useCallback(async (f: string, t: string, cId: string, cType: string) => {
+    const fetchData = useCallback(async (f: string, t: string, cId: string, cType: string, tab: string) => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/reports?from=${f}&to=${t}&channelId=${cId}&channelType=${cType}`);
+            const res = await fetch(`/api/reports?from=${f}&to=${t}&channelId=${cId}&channelType=${cType}&tab=${tab}`);
             if (!res.ok) throw new Error("Failed to fetch");
             const json = await res.json();
             setData(json);
@@ -130,8 +130,8 @@ export function ReportsClient() {
     }, []);
 
     useEffect(() => {
-        fetchData(from, to, channelId, channelType);
-    }, [from, to, channelId, channelType, fetchData]);
+        fetchData(from, to, channelId, channelType, activeTab);
+    }, [from, to, channelId, channelType, activeTab, fetchData]);
 
     const handleQuick = (range: QuickRange) => {
         const now = new Date();
@@ -181,7 +181,7 @@ export function ReportsClient() {
                     </p>
                 </div>
                 <button
-                    onClick={() => fetchData(from, to, channelId, channelType)}
+                    onClick={() => fetchData(from, to, channelId, channelType, activeTab)}
                     disabled={loading}
                     className="self-start md:self-auto inline-flex items-center gap-2 px-3 py-2 text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
                 >

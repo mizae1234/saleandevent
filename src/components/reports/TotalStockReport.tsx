@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Package, Warehouse, Store, Search, Download, ChevronDown, ChevronRight, Hash } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Package, Warehouse, Store, Search, Download, Hash } from "lucide-react";
 
 interface TotalStockItem {
     code: string | null;
@@ -11,15 +11,6 @@ interface TotalStockItem {
     warehouseQty: number;
     channelQty: number;
     totalQty: number;
-}
-
-interface TotalStockGroup {
-    code: string;
-    name: string;
-    items: TotalStockItem[];
-    totalWarehouse: number;
-    totalChannel: number;
-    totalAll: number;
 }
 
 interface Props {
@@ -32,47 +23,30 @@ function fmt(n: number) {
 
 export function TotalStockReport({ data }: Props) {
     const [search, setSearch] = useState("");
-    const [expandedCode, setExpandedCode] = useState<string | null>(null);
+    const [displayLimit, setDisplayLimit] = useState(50);
 
-    // Group by product code+name
-    const groups = useMemo(() => {
-        const map = new Map<string, TotalStockGroup>();
-        data.forEach((item) => {
-            const key = item.code || item.name;
-            if (!map.has(key)) {
-                map.set(key, {
-                    code: item.code || "-",
-                    name: item.name,
-                    items: [],
-                    totalWarehouse: 0,
-                    totalChannel: 0,
-                    totalAll: 0,
-                });
-            }
-            const group = map.get(key)!;
-            group.items.push(item);
-            group.totalWarehouse += item.warehouseQty;
-            group.totalChannel += item.channelQty;
-            group.totalAll += item.totalQty;
-        });
-        return Array.from(map.values()).sort((a, b) => a.code.localeCompare(b.code));
-    }, [data]);
+    // Reset display limit when searching to keep interaction fast
+    useEffect(() => {
+        setDisplayLimit(50);
+    }, [search]);
 
-    // Filter
-    const filtered = useMemo(() => {
-        if (!search) return groups;
+    // Filter flat data directly
+    const filteredItems = useMemo(() => {
+        if (!search) return data;
         const q = search.toLowerCase();
-        return groups.filter(
-            (g) =>
-                g.code.toLowerCase().includes(q) ||
-                g.name.toLowerCase().includes(q) ||
-                g.items.some(
-                    (i) =>
-                        (i.color || "").toLowerCase().includes(q) ||
-                        (i.size || "").toLowerCase().includes(q)
-                )
+        return data.filter(
+            (item) =>
+                (item.code || "").toLowerCase().includes(q) ||
+                item.name.toLowerCase().includes(q) ||
+                (item.color || "").toLowerCase().includes(q) ||
+                (item.size || "").toLowerCase().includes(q)
         );
-    }, [groups, search]);
+    }, [data, search]);
+
+    // Slice for lazy rendering in the browser DOM
+    const displayedItems = useMemo(() => {
+        return filteredItems.slice(0, displayLimit);
+    }, [filteredItems, displayLimit]);
 
     const totalWarehouse = data.reduce((s, i) => s + i.warehouseQty, 0);
     const totalChannel = data.reduce((s, i) => s + i.channelQty, 0);
@@ -89,8 +63,6 @@ export function TotalStockReport({ data }: Props) {
                     "ชื่อสินค้า": item.name,
                     "สี": item.color || "-",
                     "ไซส์": item.size || "-",
-                    "คลังสินค้า": item.warehouseQty,
-                    "สาขา/Event": item.channelQty,
                     "คงเหลือรวม": item.totalQty,
                 });
             });
@@ -135,7 +107,7 @@ export function TotalStockReport({ data }: Props) {
                     <div className="flex items-center gap-2">
                         <h3 className="text-sm font-bold text-slate-700">สรุปสินค้าคงเหลือรวม</h3>
                         <span className="text-[10px] text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full font-medium">REAL-TIME</span>
-                        <span className="text-[10px] text-slate-400 font-medium">{filtered.length} กลุ่ม · {data.length} รายการ</span>
+                        <span className="text-[10px] text-slate-400 font-medium">แสดง {displayedItems.length} จาก {filteredItems.length} รายการ</span>
                     </div>
                     <div className="flex items-center gap-2 w-full sm:w-auto">
                         <div className="relative flex-1 sm:flex-none">
@@ -158,81 +130,58 @@ export function TotalStockReport({ data }: Props) {
                     </div>
                 </div>
 
-                <div className="divide-y divide-slate-50">
-                    {filtered.map((group) => {
-                        const isExpanded = expandedCode === group.code;
-                        return (
-                            <div key={group.code}>
-                                {/* Group Header Row */}
-                                <button
-                                    onClick={() => setExpandedCode(isExpanded ? null : group.code)}
-                                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50/50 transition-colors text-left"
-                                >
-                                    {isExpanded
-                                        ? <ChevronDown className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                                        : <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                                    }
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-mono text-xs bg-teal-50 text-teal-700 px-2 py-0.5 rounded-md font-medium">{group.code}</span>
-                                            <span className="font-medium text-sm text-slate-900 truncate">{group.name}</span>
-                                            <span className="text-[10px] text-slate-400">{group.items.length} ตัวเลือก</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-4 text-xs flex-shrink-0">
-                                        <div className="text-right hidden sm:block">
-                                            <span className="text-indigo-400">คลัง</span>{" "}
-                                            <span className="font-semibold text-indigo-700">{fmt(group.totalWarehouse)}</span>
-                                        </div>
-                                        <div className="text-right hidden sm:block">
-                                            <span className="text-teal-400">สาขา</span>{" "}
-                                            <span className="font-semibold text-teal-700">{fmt(group.totalChannel)}</span>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-violet-400">รวม</span>{" "}
-                                            <span className="font-bold text-violet-700">{fmt(group.totalAll)}</span>
-                                        </div>
-                                    </div>
-                                </button>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-slate-100 text-xs text-slate-500 bg-slate-50/50">
+                                <th className="text-left py-2.5 px-4 font-medium w-12">#</th>
+                                <th className="text-left py-2.5 px-4 font-medium">รหัส</th>
+                                <th className="text-left py-2.5 px-4 font-medium">ชื่อสินค้า</th>
+                                <th className="text-left py-2.5 px-4 font-medium">สี</th>
+                                <th className="text-left py-2.5 px-4 font-medium">ไซส์</th>
+                                <th className="text-right py-2.5 px-4 font-medium">คงเหลือรวม</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                            {displayedItems.map((item, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                                    <td className="py-2.5 px-4 text-slate-400 font-mono text-xs">{idx + 1}</td>
+                                    <td className="py-2.5 px-4 font-mono text-xs text-slate-600 font-medium">{item.code || "-"}</td>
+                                    <td className="py-2.5 px-4 text-slate-800 font-medium">{item.name}</td>
+                                    <td className="py-2.5 px-4 text-slate-600">{item.color || "-"}</td>
+                                    <td className="py-2.5 px-4 text-slate-600">{item.size || "-"}</td>
+                                    <td className="py-2.5 px-4 text-right font-bold text-violet-600 font-mono">{fmt(item.totalQty)}</td>
+                                </tr>
+                            ))}
 
-                                {/* Expanded Items */}
-                                {isExpanded && group.items.length > 0 && (
-                                    <div className="bg-slate-50/50 border-t border-slate-100 px-4 py-2">
-                                        <table className="w-full text-xs">
-                                            <thead>
-                                                <tr className="text-slate-400">
-                                                    <th className="text-left py-1.5 font-medium">สี</th>
-                                                    <th className="text-left py-1.5 font-medium">ไซส์</th>
-                                                    <th className="text-right py-1.5 font-medium">คลังสินค้า</th>
-                                                    <th className="text-right py-1.5 font-medium">สาขา/Event</th>
-                                                    <th className="text-right py-1.5 font-medium">คงเหลือรวม</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {group.items.map((item, idx) => (
-                                                    <tr key={idx} className="border-t border-slate-100/50">
-                                                        <td className="py-1.5 text-slate-700">{item.color || "-"}</td>
-                                                        <td className="py-1.5 text-slate-700">{item.size || "-"}</td>
-                                                        <td className="py-1.5 text-right text-indigo-600 font-medium">{fmt(item.warehouseQty)}</td>
-                                                        <td className="py-1.5 text-right text-teal-600 font-medium">{fmt(item.channelQty)}</td>
-                                                        <td className="py-1.5 text-right font-bold text-violet-600">{fmt(item.totalQty)}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-
-                    {filtered.length === 0 && (
-                        <div className="py-12 text-center text-slate-400">
-                            <Hash className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-                            <p className="text-sm">ไม่พบข้อมูลสินค้าที่ค้นหา</p>
-                        </div>
-                    )}
+                            {filteredItems.length === 0 && (
+                                <tr>
+                                    <td colSpan={6} className="py-12 text-center text-slate-400">
+                                        <div className="flex flex-col items-center justify-center">
+                                            <Hash className="h-8 w-8 text-slate-300 mb-2" />
+                                            <p className="text-sm">ไม่พบข้อมูลสินค้าที่ค้นหา</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
+
+                {/* Load More Button */}
+                {filteredItems.length > displayLimit && (
+                    <div className="flex flex-col items-center justify-center py-4 border-t border-slate-100 bg-slate-50/30">
+                        <button
+                            onClick={() => setDisplayLimit((prev) => prev + 50)}
+                            className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 text-xs font-semibold text-slate-600 shadow-sm transition-all active:scale-[0.98]"
+                        >
+                            แสดงเพิ่มเติม (+50 รายการ)
+                        </button>
+                        <p className="text-[10px] text-slate-400 mt-1.5">
+                            แสดงอยู่ {displayedItems.length} จากทั้งหมด {filteredItems.length} รายการ
+                        </p>
+                    </div>
+                )}
             </div>
         </div>
     );
