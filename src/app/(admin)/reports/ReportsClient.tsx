@@ -7,8 +7,9 @@ import { TopProductsReport } from "@/components/reports/TopProductsReport";
 import { ChannelRevenueReport } from "@/components/reports/ChannelRevenueReport";
 import { ChannelQuantityReport } from "@/components/reports/ChannelQuantityReport";
 import { ChannelStockReport } from "@/components/reports/ChannelStockReport";
+import { TotalStockReport } from "@/components/reports/TotalStockReport";
 
-type TabKey = "products" | "revenue" | "quantity" | "stock";
+type TabKey = "products" | "revenue" | "quantity" | "stock" | "totalStock";
 type QuickRange = "thisMonth" | "lastMonth" | "last7" | "last30" | "custom";
 type ChannelType = "all" | "EVENT" | "BRANCH";
 
@@ -17,6 +18,7 @@ const TABS: { key: TabKey; label: string; icon: typeof Trophy }[] = [
     { key: "revenue", label: "ยอดขายสาขา", icon: Store },
     { key: "quantity", label: "จำนวนขาย", icon: Package },
     { key: "stock", label: "สินค้าคงเหลือ", icon: Boxes },
+    { key: "totalStock", label: "คงเหลือรวม", icon: Package },
 ];
 
 function getDefaultRange() {
@@ -231,7 +233,7 @@ export function ReportsClient() {
                     <div className="h-8 w-px bg-slate-200 hidden md:block" />
 
                     {/* Date Range */}
-                    {activeTab !== "stock" && (
+                    {activeTab !== "stock" && activeTab !== "totalStock" && (
                         <>
                             <div className="flex rounded-xl border border-slate-200 overflow-hidden">
                                 {quickButtons.map((btn) => (
@@ -275,6 +277,13 @@ export function ReportsClient() {
                     </div>
                 )}
 
+                {activeTab === "totalStock" && (
+                    <div className="flex items-center gap-2 text-xs text-violet-600 bg-violet-50 px-3 py-2 rounded-lg">
+                        <Package className="h-4 w-4" />
+                        ข้อมูลสต็อกคงเหลือรวมเป็นแบบ Real-time — ไม่ใช้ตัวกรองวันที่
+                    </div>
+                )}
+
                 {/* Tab Navigation */}
                 <div className="flex gap-1 overflow-x-auto pb-1">
                     {TABS.map((tab) => {
@@ -306,6 +315,7 @@ export function ReportsClient() {
                     {activeTab === "revenue" && <ChannelRevenueReport data={data.channelRevenue} />}
                     {activeTab === "quantity" && <ChannelQuantityReport data={data.channelQuantity} />}
                     {activeTab === "stock" && <ChannelStockReport data={data.channelStock} />}
+                    {activeTab === "totalStock" && <TotalStockReport data={data.totalStockSummary} />}
                 </>
             )}
 

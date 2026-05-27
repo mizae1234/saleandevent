@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
         channelRevenueRaw,
         channelQuantityRaw,
         channelStockRaw,
+        totalStockRaw,
     ] = await Promise.all([
         // 0. List of all channels for dropdown
         db.salesChannel.findMany({
@@ -130,6 +131,32 @@ export async function GET(request: NextRequest) {
             },
             orderBy: { createdAt: 'desc' },
         }),
+
+        // 5. Total stock summary — warehouse + all channel stock remaining
+        db.$queryRaw`
+            SELECT
+                p.code,
+                p.name,
+                p.color,
+                p.size,
+                COALESCE(ws.quantity, 0) as warehouse_qty,
+                COALESCE(cs_agg.channel_remaining, 0) as channel_qty,
+                COALESCE(ws.quantity, 0) + COALESCE(cs_agg.channel_remaining, 0) as total_qty
+            FROM products p
+            LEFT JOIN warehouse_stock ws ON ws.barcode = p.barcode
+            LEFT JOIN (
+                SELECT
+                    cs.barcode,
+                    SUM(cs.quantity - cs.sold_quantity - cs.returned_quantity) as channel_remaining
+                FROM channel_stock cs
+                JOIN sales_channels sc ON sc.id = cs.channel_id
+                WHERE sc.status NOT IN ('draft', 'submitted')
+                GROUP BY cs.barcode
+            ) cs_agg ON cs_agg.barcode = p.barcode
+            WHERE p.status = 'active'
+                AND (COALESCE(ws.quantity, 0) + COALESCE(cs_agg.channel_remaining, 0)) > 0
+            ORDER BY p.code ASC, p.name ASC, p.color ASC, p.size ASC
+        ` as Promise<Array<{ code: string | null; name: string; color: string | null; size: string | null; warehouse_qty: any; channel_qty: any; total_qty: any }>>,
     ]);
 
     // Format top products
@@ -202,12 +229,24 @@ export async function GET(request: NextRequest) {
         };
     });
 
+    // Format total stock summary
+    const totalStockSummary = totalStockRaw.map((p) => ({
+        code: p.code,
+        name: p.name,
+        color: p.color,
+        size: p.size,
+        warehouseQty: Number(p.warehouse_qty),
+        channelQty: Number(p.channel_qty),
+        totalQty: Number(p.total_qty),
+    }));
+
     return NextResponse.json({
         availableChannels,
         topProducts,
         channelRevenue,
         channelQuantity,
         channelStock,
+        totalStockSummary,
         dateRange: {
             from: dateFrom.toISOString(),
             to: dateTo.toISOString(),
