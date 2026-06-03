@@ -85,6 +85,30 @@ export function StockAdjustmentClient({ channels }: Props) {
     const [stockSearch, setStockSearch] = useState("");
     const { toastSuccess, toastError, toastWarning } = useToast();
 
+    // Calculate totals of changed items
+    const totalOriginalQty = useMemo(() => {
+        return Array.from(adjustments.values()).reduce((sum, a) => sum + a.currentQty, 0);
+    }, [adjustments]);
+
+    const totalNewQty = useMemo(() => {
+        return Array.from(adjustments.values()).reduce((sum, a) => sum + a.newQty, 0);
+    }, [adjustments]);
+
+    const totalDiff = totalNewQty - totalOriginalQty;
+
+    // Calculate totals for all stock in table
+    const totalSentQty = useMemo(() => {
+        return filteredStock.reduce((sum, item) => sum + item.quantity, 0);
+    }, [filteredStock]);
+
+    const totalSoldQty = useMemo(() => {
+        return filteredStock.reduce((sum, item) => sum + item.soldQuantity, 0);
+    }, [filteredStock]);
+
+    const totalCurrentAdjustedQty = useMemo(() => {
+        return filteredStock.reduce((sum, item) => sum + getCurrentQty(item), 0);
+    }, [filteredStock, adjustments]);
+
     // Filter channels
     const filteredChannels = useMemo(() => {
         if (!search) return channels;
@@ -429,17 +453,17 @@ export function StockAdjustmentClient({ channels }: Props) {
                                     รายการที่เปลี่ยนแปลง ({changedCount} รายการ)
                                 </span>
                             </div>
-                            <div className="space-y-1.5">
+                            <div className="space-y-1.5 mb-3">
                                 {Array.from(adjustments.values()).map(adj => {
                                     const diff = adj.newQty - adj.currentQty;
                                     return (
                                         <div key={adj.barcode} className="flex items-center gap-2 text-xs">
                                             <span className="font-mono text-slate-500 w-16 shrink-0">{adj.code}</span>
-                                            <span className="text-slate-500">{adj.color} {adj.size}</span>
+                                            <span className="text-slate-500 truncate max-w-[150px]">{adj.productName} ({adj.color} {adj.size})</span>
                                             <span className="text-slate-400 mx-1">:</span>
-                                            <span className="text-slate-500">{adj.currentQty}</span>
+                                            <span className="text-slate-500 font-mono">{adj.currentQty}</span>
                                             <span className="text-slate-400">→</span>
-                                            <span className={`font-bold ${diff > 0 ? "text-emerald-700" : "text-red-600"}`}>
+                                            <span className={`font-bold font-mono ${diff > 0 ? "text-emerald-700" : "text-red-600"}`}>
                                                 {adj.newQty} ({diff > 0 ? "+" : ""}{diff})
                                             </span>
                                             <span className="text-slate-300 mx-1">|</span>
@@ -447,7 +471,7 @@ export function StockAdjustmentClient({ channels }: Props) {
                                                 type="text"
                                                 value={adj.reason}
                                                 onChange={e => updateReason(adj.barcode, e.target.value)}
-                                                placeholder="เหตุผล..."
+                                                placeholder="ระบุเหตุผล..."
                                                 className={`flex-1 px-2 py-0.5 rounded border text-xs ${
                                                     !adj.reason.trim()
                                                         ? "border-red-300 bg-red-50"
@@ -467,6 +491,23 @@ export function StockAdjustmentClient({ channels }: Props) {
                                         </div>
                                     );
                                 })}
+                            </div>
+                            
+                            {/* Total summary row */}
+                            <div className="pt-2 border-t border-amber-200/60 flex flex-wrap items-center justify-between text-xs font-semibold text-amber-900 gap-2">
+                                <span>ยอดรวมส่วนต่างปรับปรุง (Total):</span>
+                                <div className="flex items-center gap-3">
+                                    <span>เดิมรวม: <span className="font-mono font-bold">{totalOriginalQty}</span> ชิ้น</span>
+                                    <span className="text-amber-300">|</span>
+                                    <span>ใหม่รวม: <span className="font-mono font-bold text-teal-800">{totalNewQty}</span> ชิ้น</span>
+                                    <span className="text-amber-300">|</span>
+                                    <span>
+                                        ส่วนต่างสุทธิ:{" "}
+                                        <span className={`font-mono font-bold ${totalDiff > 0 ? "text-emerald-700" : totalDiff < 0 ? "text-red-600" : "text-slate-600"}`}>
+                                            {totalDiff > 0 ? "+" : ""}{totalDiff} ชิ้น
+                                        </span>
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -571,6 +612,29 @@ export function StockAdjustmentClient({ channels }: Props) {
                                             );
                                         })}
                                     </tbody>
+                                    <tfoot className="bg-slate-50 border-t border-slate-200 font-bold text-slate-800 text-xs">
+                                        <tr>
+                                            <td colSpan={5} className="p-3 text-center">รวมทั้งหมด (Total)</td>
+                                            <td className="p-3 text-center">
+                                                <span className={`${changedCount > 0 ? "text-slate-400 line-through font-normal" : "font-semibold"}`}>
+                                                    {totalSentQty}
+                                                </span>
+                                                {changedCount > 0 && (
+                                                    <span className="ml-1.5 font-bold text-teal-700">
+                                                        {totalCurrentAdjustedQty}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="p-3 text-center text-blue-600 font-mono">{totalSoldQty}</td>
+                                            <td className="p-3 text-center">
+                                                {changedCount > 0 && (
+                                                    <span className={`font-semibold ${totalDiff > 0 ? "text-emerald-600" : totalDiff < 0 ? "text-red-500" : "text-slate-500"}`}>
+                                                        ปรับปรุง: {totalDiff > 0 ? "+" : ""}{totalDiff} ชิ้น
+                                                    </span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
                         </div>
