@@ -189,6 +189,77 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
         XLSX.writeFile(wb, `payroll_${channel.code}_${new Date().toISOString().slice(0, 10)}.xlsx`);
     };
 
+    const handleExportKcash = () => {
+        const headers = [
+            'รหัสผู้รับเงิน / Vendor ID',
+            'เลือกธนาคาร / Select Bank Code',
+            'รหัสสาขาธนาคาร / Branch No.',
+            'เลขที่บัญชี / Account Number',
+            'ชื่อผู้รับเงิน / Vendor Name',
+            'จำนวนเงิน / Amount',
+            'เลขที่อ้างอิงรายการ / Bene Ref',
+            'อีเมล / Advice Email',
+            'หมายเลขโทรศัพท์มือถือ / SMS Tel. No',
+            'รายละเอียดรายการ / Payment Detail'
+        ];
+
+        const getBankCode = (bankName: string) => {
+            const name = (bankName || "").trim();
+            if (name.includes("กสิกร")) return "002";
+            if (name.includes("กรุงเทพ")) return "004";
+            if (name.includes("กรุงไทย")) return "006";
+            if (name.includes("ไทยพาณิชย์") || name.toLowerCase().includes("scb")) return "014";
+            if (name.includes("กรุงศรี")) return "025";
+            if (name.includes("ทหารไทย") || name.includes("ธนชาต") || name.toLowerCase().includes("ttb")) return "011";
+            if (name.includes("ออมสิน")) return "030";
+            if (name.includes("ธ.ก.ส.") || name.includes("ธกส")) return "034";
+            return "";
+        };
+
+        const sheetData = localRows.map(row => {
+            const bankCode = getBankCode(row.bankName);
+            const cleanAccountNo = (row.bankAccountNo || "").replace(/[^0-9]/g, "");
+            const amount = row.dailyRate * row.daysWorked + row.totalCommission + row.expenseAmount;
+
+            return [
+                { t: 's', v: row.staffCode || "" },
+                { t: 's', v: bankCode },
+                { t: 's', v: "" }, // Branch No
+                { t: 's', v: cleanAccountNo },
+                { t: 's', v: row.name },
+                { t: 'n', v: amount },
+                { t: 's', v: channel.code }, // Bene Ref
+                { t: 's', v: "" }, // Advice Email
+                { t: 's', v: row.phone && row.phone !== '-' ? row.phone.replace(/[^0-9]/g, "") : "" }, // SMS Tel. No
+                { t: 's', v: "" } // Payment Detail
+            ];
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet([
+            headers.map(h => ({ t: 's', v: h })),
+            ...sheetData
+        ]);
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'KCASH');
+
+        // Set column widths
+        ws['!cols'] = [
+            { wch: 15 }, // Vendor ID
+            { wch: 15 }, // Bank Code
+            { wch: 12 }, // Branch No
+            { wch: 18 }, // Account Number
+            { wch: 25 }, // Vendor Name
+            { wch: 12 }, // Amount
+            { wch: 15 }, // Bene Ref
+            { wch: 20 }, // Advice Email
+            { wch: 15 }, // SMS Tel. No
+            { wch: 20 }  // Payment Detail
+        ];
+
+        XLSX.writeFile(wb, `kcash_${channel.code}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -266,6 +337,12 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                             className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
                         >
                             <Download className="h-3 w-3" /> Export Excel
+                        </button>
+                        <button
+                            onClick={handleExportKcash}
+                            className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-colors"
+                        >
+                            <Download className="h-3 w-3" /> Export KCASH
                         </button>
                         <button
                             onClick={() => handleMarkAllWage(!allWagePaid)}

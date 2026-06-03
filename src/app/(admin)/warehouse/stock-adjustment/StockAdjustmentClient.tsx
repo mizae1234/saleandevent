@@ -85,29 +85,7 @@ export function StockAdjustmentClient({ channels }: Props) {
     const [stockSearch, setStockSearch] = useState("");
     const { toastSuccess, toastError, toastWarning } = useToast();
 
-    // Calculate totals of changed items
-    const totalOriginalQty = useMemo(() => {
-        return Array.from(adjustments.values()).reduce((sum, a) => sum + a.currentQty, 0);
-    }, [adjustments]);
 
-    const totalNewQty = useMemo(() => {
-        return Array.from(adjustments.values()).reduce((sum, a) => sum + a.newQty, 0);
-    }, [adjustments]);
-
-    const totalDiff = totalNewQty - totalOriginalQty;
-
-    // Calculate totals for all stock in table
-    const totalSentQty = useMemo(() => {
-        return filteredStock.reduce((sum, item) => sum + item.quantity, 0);
-    }, [filteredStock]);
-
-    const totalSoldQty = useMemo(() => {
-        return filteredStock.reduce((sum, item) => sum + item.soldQuantity, 0);
-    }, [filteredStock]);
-
-    const totalCurrentAdjustedQty = useMemo(() => {
-        return filteredStock.reduce((sum, item) => sum + getCurrentQty(item), 0);
-    }, [filteredStock, adjustments]);
 
     // Filter channels
     const filteredChannels = useMemo(() => {
@@ -222,6 +200,30 @@ export function StockAdjustmentClient({ channels }: Props) {
         const adj = adjustments.get(item.barcode);
         return adj ? adj.newQty : item.quantity;
     };
+
+    // Calculate totals of changed items
+    const totalOriginalQty = useMemo(() => {
+        return Array.from(adjustments.values()).reduce((sum, a) => sum + a.currentQty, 0);
+    }, [adjustments]);
+
+    const totalNewQty = useMemo(() => {
+        return Array.from(adjustments.values()).reduce((sum, a) => sum + a.newQty, 0);
+    }, [adjustments]);
+
+    const totalDiff = totalNewQty - totalOriginalQty;
+
+    // Calculate totals for all stock in table
+    const totalSentQty = useMemo(() => {
+        return filteredStock.reduce((sum, item) => sum + item.quantity, 0);
+    }, [filteredStock]);
+
+    const totalSoldQty = useMemo(() => {
+        return filteredStock.reduce((sum, item) => sum + item.soldQuantity, 0);
+    }, [filteredStock]);
+
+    const totalCurrentAdjustedQty = useMemo(() => {
+        return filteredStock.reduce((sum, item) => sum + getCurrentQty(item), 0);
+    }, [filteredStock, adjustments]);
 
     const changedCount = adjustments.size;
 

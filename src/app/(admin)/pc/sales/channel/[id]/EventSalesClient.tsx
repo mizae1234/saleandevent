@@ -90,8 +90,8 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
     const visible = filtered.slice(0, visibleCount);
     const hasMore = visibleCount < filtered.length;
 
-    const totalActive = sales.filter(s => s.status === 'active').reduce((sum, s) => sum + Number(s.totalAmount), 0);
-    const totalCount = sales.filter(s => s.status === 'active').length;
+    const activeCount = useMemo(() => filtered.filter(s => s.status === 'active').length, [filtered]);
+    const activeAmount = useMemo(() => filtered.filter(s => s.status === 'active').reduce((sum, s) => sum + Number(s.totalAmount), 0), [filtered]);
 
     const toggleExpand = (id: string) => {
         setExpandedId(prev => prev === id ? null : id);
@@ -196,12 +196,16 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
             {/* Summary */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white border border-slate-200 rounded-xl p-4 text-center">
-                    <p className="text-xs text-slate-500 mb-1">จำนวนบิล</p>
-                    <p className="text-2xl font-bold text-slate-900">{totalCount}</p>
+                    <p className="text-xs text-slate-500 mb-1">
+                        จำนวนบิล{(startDate || endDate || search || statusFilter !== 'all') ? ' (กรองแล้ว)' : ''}
+                    </p>
+                    <p className="text-2xl font-bold text-slate-900">{activeCount}</p>
                 </div>
                 <div className="bg-white border border-slate-200 rounded-xl p-4 text-center">
-                    <p className="text-xs text-emerald-600 mb-1">ยอดขายรวม</p>
-                    <p className="text-2xl font-bold text-emerald-700">฿{totalActive.toLocaleString()}</p>
+                    <p className="text-xs text-emerald-600 mb-1">
+                        ยอดขายรวม{(startDate || endDate || search || statusFilter !== 'all') ? ' (กรองแล้ว)' : ''}
+                    </p>
+                    <p className="text-2xl font-bold text-emerald-700">฿{activeAmount.toLocaleString()}</p>
                 </div>
             </div>
 
