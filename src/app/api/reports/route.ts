@@ -61,7 +61,6 @@ export async function GET(request: NextRequest) {
             ${typeFilter}
             GROUP BY si.barcode, p.name, p.code, p.size, p.color
             ORDER BY revenue DESC
-            LIMIT 50
         ` as Promise<any[]>;
     }
 

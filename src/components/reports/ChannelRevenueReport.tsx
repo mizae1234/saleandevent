@@ -147,42 +147,50 @@ export function ChannelRevenueReport({ data }: Props) {
                     </button>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-xs border-collapse border border-slate-200">
                         <thead>
-                            <tr className="border-b border-slate-100 text-xs text-slate-500">
-                                <th className="text-left py-2.5 px-4 font-medium">#</th>
-                                <th className="text-left py-2.5 px-4 font-medium">สาขา / Event</th>
-                                <th className="text-right py-2.5 px-4 font-medium">ยอดขาย</th>
-                                <th className="text-right py-2.5 px-4 font-medium">บิล</th>
-                                <th className="text-right py-2.5 px-4 font-medium hidden sm:table-cell">เป้าหมาย</th>
-                                <th className="text-right py-2.5 px-4 font-medium hidden sm:table-cell">%</th>
+                            <tr className="bg-slate-50/70 text-slate-700 font-semibold">
+                                <th className="border border-slate-200 py-2.5 px-3 text-center w-12 bg-slate-50">ลำดับ</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-left bg-slate-50">ชื่อสาขา / Event</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-left bg-slate-50">รหัส</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-center w-24 bg-slate-50">ประเภท</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-left bg-slate-50">สถานที่</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-right bg-slate-50">ยอดขาย</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-right bg-slate-50">จำนวนบิล</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-right bg-slate-50">เป้าหมาย</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-right bg-slate-50">% ถึงเป้า</th>
                             </tr>
                         </thead>
                         <tbody>
                             {data.map((c, i) => {
                                 const pct = c.salesTarget > 0 ? Math.round((c.totalSales / c.salesTarget) * 100) : null;
                                 return (
-                                    <tr key={c.id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                                        <td className="py-2.5 px-4 text-slate-400">{i + 1}</td>
-                                        <td className="py-2.5 px-4">
-                                            <p className="font-medium text-slate-900 truncate max-w-[180px]">{c.name}</p>
-                                            <p className="text-[10px] text-slate-400">
-                                                {c.code} · {c.type === 'EVENT' ? '🎪' : '🏪'} {c.location}
-                                            </p>
+                                    <tr key={c.id} className="hover:bg-slate-50/50 transition-colors text-slate-800">
+                                        <td className="border border-slate-200 py-2 px-3 text-center text-slate-500 font-mono">{i + 1}</td>
+                                        <td className="border border-slate-200 py-2 px-3 font-medium text-slate-900">{c.name}</td>
+                                        <td className="border border-slate-200 py-2 px-3 font-mono text-slate-600">{c.code}</td>
+                                        <td className="border border-slate-200 py-2 px-3 text-center">
+                                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                                c.type === 'EVENT' ? 'bg-indigo-50 text-indigo-700' : 'bg-teal-50 text-teal-700'
+                                            }`}>
+                                                {c.type === 'EVENT' ? 'Event 🎪' : 'Branch 🏪'}
+                                            </span>
                                         </td>
-                                        <td className="py-2.5 px-4 text-right font-bold text-emerald-600">฿{fmt(c.totalSales)}</td>
-                                        <td className="py-2.5 px-4 text-right text-slate-600">{c.billCount}</td>
-                                        <td className="py-2.5 px-4 text-right text-slate-500 hidden sm:table-cell">
-                                            {c.salesTarget > 0 ? `฿${fmt(c.salesTarget)}` : '—'}
+                                        <td className="border border-slate-200 py-2 px-3 text-slate-600">{c.location || "—"}</td>
+                                        <td className="border border-slate-200 py-2 px-3 text-right font-bold text-slate-800 font-mono">{fmt(c.totalSales)}</td>
+                                        <td className="border border-slate-200 py-2 px-3 text-right text-slate-600 font-mono">{c.billCount}</td>
+                                        <td className="border border-slate-200 py-2 px-3 text-right text-slate-500 font-mono">
+                                            {c.salesTarget > 0 ? fmt(c.salesTarget) : '—'}
                                         </td>
-                                        <td className="py-2.5 px-4 text-right hidden sm:table-cell">
+                                        <td className="border border-slate-200 py-2 px-3 text-right font-mono">
                                             {pct !== null ? (
-                                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${pct >= 100
-                                                    ? 'bg-emerald-100 text-emerald-700'
-                                                    : pct >= 70
-                                                        ? 'bg-amber-100 text-amber-700'
-                                                        : 'bg-red-100 text-red-600'
-                                                    }`}>
+                                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                                    pct >= 100
+                                                        ? 'bg-emerald-50 text-emerald-700'
+                                                        : pct >= 70
+                                                            ? 'bg-amber-50 text-amber-700'
+                                                            : 'bg-red-50 text-red-600'
+                                                }`}>
                                                     {pct}%
                                                 </span>
                                             ) : '—'}
@@ -192,14 +200,14 @@ export function ChannelRevenueReport({ data }: Props) {
                             })}
                         </tbody>
                         <tfoot>
-                            <tr className="bg-slate-50 font-bold text-sm">
-                                <td colSpan={2} className="py-3 px-4 text-slate-700">รวมทั้งหมด</td>
-                                <td className="py-3 px-4 text-right text-emerald-700">฿{fmt(totalSales)}</td>
-                                <td className="py-3 px-4 text-right text-slate-700">{totalBills}</td>
-                                <td className="py-3 px-4 text-right text-slate-500 hidden sm:table-cell">
-                                    {totalTarget > 0 ? `฿${fmt(totalTarget)}` : '—'}
+                            <tr className="bg-slate-50 font-bold text-slate-900">
+                                <td colSpan={5} className="border border-slate-200 py-2.5 px-3 text-slate-700 text-center font-medium">รวมทั้งหมด</td>
+                                <td className="border border-slate-200 py-2.5 px-3 text-right text-slate-900 font-mono">{fmt(totalSales)}</td>
+                                <td className="border border-slate-200 py-2.5 px-3 text-right text-slate-700 font-mono">{totalBills}</td>
+                                <td className="border border-slate-200 py-2.5 px-3 text-right text-slate-500 font-mono">
+                                    {totalTarget > 0 ? fmt(totalTarget) : '—'}
                                 </td>
-                                <td className="py-3 px-4 text-right hidden sm:table-cell">
+                                <td className="border border-slate-200 py-2.5 px-3 text-right font-mono">
                                     {totalTarget > 0 ? `${Math.round((totalSales / totalTarget) * 100)}%` : '—'}
                                 </td>
                             </tr>

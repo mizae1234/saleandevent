@@ -265,28 +265,33 @@ export function ChannelStockReport({ data }: Props) {
 
                                 {/* Expanded Items */}
                                 {isExpanded && channel.items.length > 0 && (
-                                    <div className="bg-slate-50/50 border-t border-slate-100 px-4 py-2">
-                                        <table className="w-full text-xs">
+                                    <div className="bg-slate-50/50 border-t border-slate-100 p-3 overflow-x-auto">
+                                        <table className="w-full text-xs border-collapse border border-slate-200 bg-white">
                                             <thead>
-                                                <tr className="text-slate-400">
-                                                    <th className="text-left py-1.5 font-medium">สินค้า</th>
-                                                    <th className="text-right py-1.5 font-medium">ส่งไป</th>
-                                                    <th className="text-right py-1.5 font-medium">ขาย</th>
-                                                    <th className="text-right py-1.5 font-medium">เหลือ</th>
+                                                <tr className="bg-slate-50/70 text-slate-700 font-semibold">
+                                                    <th className="border border-slate-200 py-1.5 px-2 text-left bg-slate-50">บาร์โค้ด</th>
+                                                    <th className="border border-slate-200 py-1.5 px-2 text-left bg-slate-50">ชื่อสินค้า</th>
+                                                    <th className="border border-slate-200 py-1.5 px-2 text-left bg-slate-50">รหัส</th>
+                                                    <th className="border border-slate-200 py-1.5 px-2 text-center w-12 bg-slate-50">ไซส์</th>
+                                                    <th className="border border-slate-200 py-1.5 px-2 text-center w-16 bg-slate-50">สี</th>
+                                                    <th className="border border-slate-200 py-1.5 px-2 text-right w-16 bg-slate-50">ส่งไป</th>
+                                                    <th className="border border-slate-200 py-1.5 px-2 text-right w-16 bg-slate-50">ขาย</th>
+                                                    <th className="border border-slate-200 py-1.5 px-2 text-right w-16 bg-slate-50">คืน</th>
+                                                    <th className="border border-slate-200 py-1.5 px-2 text-right w-16 bg-slate-50">เหลือ</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {channel.items.map((item) => (
-                                                    <tr key={item.barcode} className="border-t border-slate-100/50">
-                                                        <td className="py-1.5">
-                                                            <span className="text-slate-700">{item.name}</span>
-                                                            <span className="text-[9px] text-slate-400 ml-1">
-                                                                {item.size && item.size}{item.color && ` · ${item.color}`}
-                                                            </span>
-                                                        </td>
-                                                        <td className="py-1.5 text-right text-slate-500">{item.sent}</td>
-                                                        <td className="py-1.5 text-right text-emerald-600 font-medium">{item.sold}</td>
-                                                        <td className="py-1.5 text-right font-bold text-amber-600">{item.remaining}</td>
+                                                    <tr key={item.barcode} className="hover:bg-slate-50/30 transition-colors text-slate-800">
+                                                        <td className="border border-slate-200 py-1.5 px-2 font-mono text-slate-500">{item.barcode}</td>
+                                                        <td className="border border-slate-200 py-1.5 px-2 font-medium text-slate-900">{item.name}</td>
+                                                        <td className="border border-slate-200 py-1.5 px-2 font-mono text-slate-600">{item.code || "-"}</td>
+                                                        <td className="border border-slate-200 py-1.5 px-2 text-center text-slate-600">{item.size || "-"}</td>
+                                                        <td className="border border-slate-200 py-1.5 px-2 text-center text-slate-600">{item.color || "-"}</td>
+                                                        <td className="border border-slate-200 py-1.5 px-2 text-right text-slate-600 font-mono">{fmt(item.sent)}</td>
+                                                        <td className="border border-slate-200 py-1.5 px-2 text-right text-emerald-600 font-semibold font-mono">{fmt(item.sold)}</td>
+                                                        <td className="border border-slate-200 py-1.5 px-2 text-right text-purple-600 font-mono">{fmt(item.returned)}</td>
+                                                        <td className="border border-slate-200 py-1.5 px-2 text-right font-bold text-amber-700 font-mono">{fmt(item.remaining)}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>
@@ -305,34 +310,39 @@ export function ChannelStockReport({ data }: Props) {
                     <h3 className="text-sm font-bold text-slate-700">สรุปสินค้าคงเหลือรายตัว (รวมสาขาที่เลือก)</h3>
                 </div>
                 <div className="overflow-x-auto max-h-96">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-xs border-collapse border border-slate-200">
                         <thead className="sticky top-0 bg-slate-50 z-10 shadow-sm">
-                            <tr className="border-b border-slate-100 text-xs text-slate-500">
-                                <th className="text-left py-2.5 px-4 font-medium bg-slate-50">#</th>
-                                <th className="text-left py-2.5 px-4 font-medium bg-slate-50">สินค้า</th>
-                                <th className="text-right py-2.5 px-4 font-medium bg-slate-50">ส่งไป</th>
-                                <th className="text-right py-2.5 px-4 font-medium bg-slate-50">ขายแล้ว</th>
-                                <th className="text-right py-2.5 px-4 font-medium bg-slate-50">คงเหลือ</th>
+                            <tr className="bg-slate-50/70 text-slate-700 font-semibold">
+                                <th className="border border-slate-200 py-2.5 px-3 text-center w-12 bg-slate-50">ลำดับ</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-left bg-slate-50">บาร์โค้ด</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-left bg-slate-50">ชื่อสินค้า</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-left bg-slate-50">รหัส</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-center w-16 bg-slate-50">ไซส์</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-center w-20 bg-slate-50">สี</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-right bg-slate-50">ส่งไป</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-right bg-slate-50">ขายแล้ว</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-right bg-slate-50">คืนแล้ว</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-right bg-slate-50 font-bold">คงเหลือ</th>
                             </tr>
                         </thead>
                         <tbody>
                             {aggregatedItems.map((item, i) => (
-                                <tr key={item.barcode} className="border-b border-slate-50 hover:bg-slate-50/50">
-                                    <td className="py-2.5 px-4 text-slate-400">{i + 1}</td>
-                                    <td className="py-2.5 px-4">
-                                        <p className="font-medium text-slate-900">{item.name}</p>
-                                        <p className="text-[10px] text-slate-400">
-                                            {item.code || item.barcode}{item.size && ` · ${item.size}`}{item.color && ` · ${item.color}`}
-                                        </p>
-                                    </td>
-                                    <td className="py-2.5 px-4 text-right text-slate-500">{fmt(item.sent)}</td>
-                                    <td className="py-2.5 px-4 text-right text-emerald-600 font-medium">{fmt(item.sold)}</td>
-                                    <td className="py-2.5 px-4 text-right font-bold text-amber-600">{fmt(item.remaining)}</td>
+                                <tr key={item.barcode} className="hover:bg-slate-50/50 transition-colors text-slate-800">
+                                    <td className="border border-slate-200 py-2 px-3 text-center text-slate-500 font-mono">{i + 1}</td>
+                                    <td className="border border-slate-200 py-2 px-3 font-mono text-slate-600">{item.barcode}</td>
+                                    <td className="border border-slate-200 py-2 px-3 font-medium text-slate-900">{item.name}</td>
+                                    <td className="border border-slate-200 py-2 px-3 font-mono text-slate-600">{item.code || "-"}</td>
+                                    <td className="border border-slate-200 py-2 px-3 text-center text-slate-600">{item.size || "-"}</td>
+                                    <td className="border border-slate-200 py-2 px-3 text-center text-slate-600">{item.color || "-"}</td>
+                                    <td className="border border-slate-200 py-2 px-3 text-right text-slate-600 font-mono">{fmt(item.sent)}</td>
+                                    <td className="border border-slate-200 py-2 px-3 text-right text-emerald-600 font-semibold font-mono">{fmt(item.sold)}</td>
+                                    <td className="border border-slate-200 py-2 px-3 text-right text-purple-600 font-mono">{fmt(item.returned)}</td>
+                                    <td className="border border-slate-200 py-2 px-3 text-right font-bold text-amber-700 font-mono">{fmt(item.remaining)}</td>
                                 </tr>
                             ))}
                             {aggregatedItems.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="py-8 text-center text-slate-400">ไม่มีข้อมูลสินค้า</td>
+                                    <td colSpan={10} className="py-8 text-center text-slate-400 border border-slate-200">ไม่มีข้อมูลสินค้า</td>
                                 </tr>
                             )}
                         </tbody>

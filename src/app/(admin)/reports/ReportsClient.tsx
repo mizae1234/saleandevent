@@ -14,7 +14,7 @@ type QuickRange = "thisMonth" | "lastMonth" | "last7" | "last30" | "custom";
 type ChannelType = "all" | "EVENT" | "BRANCH";
 
 const TABS: { key: TabKey; label: string; icon: typeof Trophy }[] = [
-    { key: "products", label: "สินค้าขายดี", icon: Trophy },
+    { key: "products", label: "สินค้าที่ขายทั้งหมด", icon: Trophy },
     { key: "revenue", label: "ยอดขายสาขา", icon: Store },
     { key: "quantity", label: "จำนวนขาย", icon: Package },
     { key: "stock", label: "สินค้าคงเหลือ", icon: Boxes },

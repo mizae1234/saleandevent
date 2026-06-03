@@ -131,32 +131,32 @@ export function TotalStockReport({ data }: Props) {
                 </div>
 
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-xs border-collapse border border-slate-200">
                         <thead>
-                            <tr className="border-b border-slate-100 text-xs text-slate-500 bg-slate-50/50">
-                                <th className="text-left py-2.5 px-4 font-medium w-12">#</th>
-                                <th className="text-left py-2.5 px-4 font-medium">รหัส</th>
-                                <th className="text-left py-2.5 px-4 font-medium">ชื่อสินค้า</th>
-                                <th className="text-left py-2.5 px-4 font-medium">สี</th>
-                                <th className="text-left py-2.5 px-4 font-medium">ไซส์</th>
-                                <th className="text-right py-2.5 px-4 font-medium">คงเหลือรวม</th>
+                            <tr className="bg-slate-50/70 text-slate-700 font-semibold">
+                                <th className="border border-slate-200 py-2.5 px-3 text-center w-12 bg-slate-50">ลำดับ</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-left bg-slate-50">รหัส</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-left bg-slate-50">ชื่อสินค้า</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-center w-24 bg-slate-50">สี</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-center w-20 bg-slate-50">ไซส์</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-right bg-slate-50">คงเหลือรวม</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
+                        <tbody>
                             {displayedItems.map((item, idx) => (
-                                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                                    <td className="py-2.5 px-4 text-slate-400 font-mono text-xs">{idx + 1}</td>
-                                    <td className="py-2.5 px-4 font-mono text-xs text-slate-600 font-medium">{item.code || "-"}</td>
-                                    <td className="py-2.5 px-4 text-slate-800 font-medium">{item.name}</td>
-                                    <td className="py-2.5 px-4 text-slate-600">{item.color || "-"}</td>
-                                    <td className="py-2.5 px-4 text-slate-600">{item.size || "-"}</td>
-                                    <td className="py-2.5 px-4 text-right font-bold text-violet-600 font-mono">{fmt(item.totalQty)}</td>
+                                <tr key={idx} className="hover:bg-slate-50/50 transition-colors text-slate-800">
+                                    <td className="border border-slate-200 py-2 px-3 text-center text-slate-500 font-mono">{idx + 1}</td>
+                                    <td className="border border-slate-200 py-2 px-3 font-mono text-slate-600">{item.code || "-"}</td>
+                                    <td className="border border-slate-200 py-2 px-3 font-medium text-slate-900">{item.name}</td>
+                                    <td className="border border-slate-200 py-2 px-3 text-center text-slate-600">{item.color || "-"}</td>
+                                    <td className="border border-slate-200 py-2 px-3 text-center text-slate-600">{item.size || "-"}</td>
+                                    <td className="border border-slate-200 py-2 px-3 text-right font-bold text-violet-600 font-mono">{fmt(item.totalQty)}</td>
                                 </tr>
                             ))}
 
                             {filteredItems.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="py-12 text-center text-slate-400">
+                                    <td colSpan={6} className="py-12 text-center text-slate-400 border border-slate-200">
                                         <div className="flex flex-col items-center justify-center">
                                             <Hash className="h-8 w-8 text-slate-300 mb-2" />
                                             <p className="text-sm">ไม่พบข้อมูลสินค้าที่ค้นหา</p>
