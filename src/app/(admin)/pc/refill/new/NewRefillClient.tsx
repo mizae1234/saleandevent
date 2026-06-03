@@ -78,6 +78,50 @@ export default function NewRefillClient({
     const [showConfirm, setShowConfirm] = useState(false);
     const [isLoaded, setIsLoaded] = useState(false);
 
+    // Stock for the selected channel
+    const [channelStock, setChannelStock] = useState<Record<string, { sent: number; sold: number; returned: number; remaining: number }>>({});
+    const [loadingStock, setLoadingStock] = useState(false);
+
+    // Fetch channel stock when channelId changes
+    useEffect(() => {
+        if (!channelId) {
+            setChannelStock({});
+            return;
+        }
+
+        async function fetchChannelStock() {
+            setLoadingStock(true);
+            try {
+                const res = await fetch(`/api/channels/${channelId}`);
+                if (!res.ok) throw new Error("Failed to fetch channel stock");
+                const json = await res.json();
+                
+                const stockMap: Record<string, { sent: number; sold: number; returned: number; remaining: number }> = {};
+                if (json.stock && Array.isArray(json.stock)) {
+                    json.stock.forEach((item: any) => {
+                        const sent = item.quantity || 0;
+                        const sold = item.soldQuantity || 0;
+                        const returned = item.returnedQuantity || 0;
+                        const remaining = sent - sold - returned;
+                        stockMap[item.barcode] = {
+                            sent,
+                            sold,
+                            returned,
+                            remaining: Math.max(0, remaining)
+                        };
+                    });
+                }
+                setChannelStock(stockMap);
+            } catch (err) {
+                console.error("Failed to load channel stock:", err);
+            } finally {
+                setLoadingStock(false);
+            }
+        }
+
+        fetchChannelStock();
+    }, [channelId]);
+
     // โหลดข้อมูลจาก localStorage
     useEffect(() => {
         if (!isAdminEdit) {
@@ -292,6 +336,9 @@ export default function NewRefillClient({
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 md:gap-2 cursor-pointer">
                         {filteredProducts.map(item => {
                             const inCart = cart.find(c => c.barcode === item.barcode);
+                            const stockInfo = channelStock[item.barcode];
+                            const remaining = stockInfo ? stockInfo.remaining : 0;
+
                             return (
                                 <button
                                     key={item.barcode}
@@ -312,6 +359,22 @@ export default function NewRefillClient({
                                             </span>
                                         )}
                                     </div>
+                                    {channelId && (
+                                        <div className="mt-2 pt-1 border-t border-slate-100/60 flex items-center justify-between text-[10px]">
+                                            <span className="text-slate-400">สต็อกสาขา</span>
+                                            {loadingStock ? (
+                                                <span className="text-slate-300 animate-pulse font-medium">โหลด...</span>
+                                            ) : (
+                                                <span className={`font-semibold ${
+                                                    remaining <= 2 
+                                                        ? 'text-red-600 font-bold bg-red-50 px-1.5 py-0.5 rounded' 
+                                                        : 'text-slate-600'
+                                                }`}>
+                                                    {remaining} ชิ้น
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
                                 </button>
                             );
                         })}
@@ -359,53 +422,67 @@ export default function NewRefillClient({
                     </div>
                 ) : (
                     <div className="divide-y divide-slate-100">
-                        {cart.map(item => (
-                            <div key={item.barcode} className="bg-white p-2.5 relative group hover:bg-slate-50/50 transition-colors">
-                                <div className="flex items-center justify-between gap-2 mb-1.5 pr-6">
-                                    <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                                        <h4 className="font-semibold text-slate-800 text-xs truncate">{item.name}</h4>
-                                        <span className="text-[9px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded font-medium flex-shrink-0">{item.code || item.barcode}</span>
-                                    </div>
-                                    <button
-                                        onClick={() => removeFromCart(item.barcode)}
-                                        className="absolute top-2 right-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-colors"
-                                    >
-                                        <X className="h-3.5 w-3.5" />
-                                    </button>
-                                </div>
-                                
-                                {((item.size || item.color) && (
-                                    <p className="text-[10px] text-slate-500 truncate mb-1.5">
-                                        {item.size}{item.size && item.color && ' • '}{item.color}
-                                    </p>
-                                ))}
-                                
-                                <div className="flex items-center gap-2">
-                                    <div className="flex items-center bg-slate-100/50 rounded p-0.5 border border-slate-200/60">
+                        {cart.map(item => {
+                            const stockInfo = channelStock[item.barcode];
+                            const remaining = stockInfo ? stockInfo.remaining : 0;
+
+                            return (
+                                <div key={item.barcode} className="bg-white p-2.5 relative group hover:bg-slate-50/50 transition-colors">
+                                    <div className="flex items-center justify-between gap-2 mb-1.5 pr-6">
+                                        <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                                            <h4 className="font-semibold text-slate-800 text-xs truncate">{item.name}</h4>
+                                            <span className="text-[9px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded font-medium flex-shrink-0">{item.code || item.barcode}</span>
+                                        </div>
+                                        {channelId && (
+                                            <span className={`text-[10px] font-semibold flex-shrink-0 ${
+                                                remaining <= 2
+                                                    ? 'text-red-600 bg-red-50 px-1 rounded'
+                                                    : 'text-slate-500'
+                                            }`}>
+                                                มี {remaining} ชิ้น
+                                            </span>
+                                        )}
                                         <button
-                                            onClick={() => updateQuantity(item.barcode, -1)}
-                                            className="h-5 w-6 rounded-sm bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50 active:bg-slate-100 shadow-sm"
+                                            onClick={() => removeFromCart(item.barcode)}
+                                            className="absolute top-2 right-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-colors"
                                         >
-                                            <Minus className="h-2.5 w-2.5" />
-                                        </button>
-                                        <span className="w-7 text-center text-[11px] font-bold text-slate-800">{item.quantity}</span>
-                                        <button
-                                            onClick={() => updateQuantity(item.barcode, 1)}
-                                            className="h-5 w-6 rounded-sm bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50 active:bg-slate-100 shadow-sm"
-                                        >
-                                            <Plus className="h-2.5 w-2.5" />
+                                            <X className="h-3.5 w-3.5" />
                                         </button>
                                     </div>
-                                    <input
-                                        type="text"
-                                        placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)..."
-                                        value={item.notes || ''}
-                                        onChange={(e) => updateItemNotes(item.barcode, e.target.value)}
-                                        className="flex-1 min-w-0 text-[11px] px-2 py-1 bg-white border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-300 placeholder-slate-300"
-                                    />
+                                    
+                                    {((item.size || item.color) && (
+                                        <p className="text-[10px] text-slate-500 truncate mb-1.5">
+                                            {item.size}{item.size && item.color && ' • '}{item.color}
+                                        </p>
+                                    ))}
+                                    
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex items-center bg-slate-100/50 rounded p-0.5 border border-slate-200/60">
+                                            <button
+                                                onClick={() => updateQuantity(item.barcode, -1)}
+                                                className="h-5 w-6 rounded-sm bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50 active:bg-slate-100 shadow-sm"
+                                            >
+                                                <Minus className="h-2.5 w-2.5" />
+                                            </button>
+                                            <span className="w-7 text-center text-[11px] font-bold text-slate-800">{item.quantity}</span>
+                                            <button
+                                                onClick={() => updateQuantity(item.barcode, 1)}
+                                                className="h-5 w-6 rounded-sm bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50 active:bg-slate-100 shadow-sm"
+                                            >
+                                                <Plus className="h-2.5 w-2.5" />
+                                            </button>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)..."
+                                            value={item.notes || ''}
+                                            onChange={(e) => updateItemNotes(item.barcode, e.target.value)}
+                                            className="flex-1 min-w-0 text-[11px] px-2 py-1 bg-white border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-300 placeholder-slate-300"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>
