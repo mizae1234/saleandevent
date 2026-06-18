@@ -21,7 +21,7 @@ export default async function EmployeePOSPage({ params }: { params: Promise<{ id
     const channel = await db.salesChannel.findUnique({
         where: { id: channelId },
     });
-    if (!channel) notFound();
+    if (!channel || !channel.isActive) notFound();
 
     const FRONT_OFFICE_MODULES = [
         {

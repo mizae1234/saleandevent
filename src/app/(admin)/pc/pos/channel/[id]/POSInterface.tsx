@@ -248,7 +248,7 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
             const now = new Date();
             const soldAt = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds());
 
-            await createSale({
+            const res = await createSale({
                 channelId,
                 items: cart.map(item => ({
                     barcode: item.barcode,
@@ -263,6 +263,11 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
                 discount: billDiscount,
                 soldAt,
             });
+
+            if (res && 'error' in res && res.error) {
+                toastError(res.error);
+                return;
+            }
 
             // Clear and refresh
             setCart([]);

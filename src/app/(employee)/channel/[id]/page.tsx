@@ -29,7 +29,7 @@ export default async function ChannelWorkModePage({ params }: { params: Promise<
         channel = assignment.channel;
     }
 
-    if (!channel) notFound();
+    if (!channel || !channel.isActive) notFound();
 
     const WORK_MODES = [
         {

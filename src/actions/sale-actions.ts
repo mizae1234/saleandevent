@@ -139,7 +139,14 @@ export async function createSale(data: CreateSaleInput) {
         return { success: true, saleId: result.id };
     } catch (error: any) {
         console.error("Failed to create sale:", error);
-        throw new Error(`Failed to create sale: ${error.message || error}`);
+        try {
+            const fs = require('fs');
+            const logMsg = `[${new Date().toISOString()}] Input: ${JSON.stringify(data)}\nError: ${error.message || error}\nStack: ${error.stack}\n\n`;
+            fs.appendFileSync('/Users/kanittamac/web/saleandevent/error-pos.log', logMsg);
+        } catch (e) {
+            console.error("Failed to write to error-pos.log:", e);
+        }
+        return { success: false, error: error.message || "เกิดข้อผิดพลาดในการบันทึก" };
     }
 }
 
