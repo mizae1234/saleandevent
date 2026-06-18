@@ -16,7 +16,11 @@ async function getActiveEvents(searchParams: Promise<{ [key: string]: string | s
     const where: Prisma.SalesChannelWhereInput = {};
 
     if (status && status !== 'all') {
-        where.status = status;
+        if (status === 'active') {
+            where.status = { in: ['active', 'selling', 'pending_payment', 'payment_approved'] };
+        } else {
+            where.status = status;
+        }
     }
 
     if (q) {

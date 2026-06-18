@@ -78,7 +78,7 @@ export default function EventActions({ channel }: Props) {
             )}
 
             {/* Top-Up Request (active channels only) */}
-            {channel.status === 'active' && (
+            {['active', 'pending_payment', 'payment_approved'].includes(channel.status) && (
                 <div>
                     {!showTopUp ? (
                         <button
@@ -117,7 +117,7 @@ export default function EventActions({ channel }: Props) {
             )}
 
             {/* Close Stock (EVENT + active) */}
-            {channel.type === 'EVENT' && channel.status === 'active' && (
+            {channel.type === 'EVENT' && ['active', 'pending_payment', 'payment_approved'].includes(channel.status) && (
                 <button
                     onClick={() => router.push(`/pc/close/${channel.id}`)}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm font-medium"

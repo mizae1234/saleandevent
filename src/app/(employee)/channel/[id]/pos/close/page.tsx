@@ -39,7 +39,7 @@ export default async function EmployeeClosePage({ params }: { params: Promise<{ 
 
     if (!event) notFound();
 
-    if (event.status !== 'active') {
+    if (!['active', 'pending_payment', 'payment_approved'].includes(event.status)) {
         return (
             <div className="space-y-4">
                 <div className="flex items-center gap-3">

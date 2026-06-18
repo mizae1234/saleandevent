@@ -41,7 +41,15 @@ export function CloseListClient({ events }: { events: EventData[] }) {
 
     const filteredEvents = useMemo(() => {
         return events.filter(e => {
-            if (statusFilter !== 'all' && e.status !== statusFilter) return false;
+            if (statusFilter === 'active') {
+                if (!['active', 'selling', 'pending_payment', 'payment_approved'].includes(e.status)) return false;
+            } else if (statusFilter === 'closed') {
+                if (!['closed', 'completed'].includes(e.status)) return false;
+            } else if (statusFilter === 'returned') {
+                if (!['returned', 'pending_return', 'returning'].includes(e.status)) return false;
+            } else if (statusFilter !== 'all' && e.status !== statusFilter) {
+                return false;
+            }
             if (search) {
                 const s = search.toLowerCase();
                 return e.name.toLowerCase().includes(s) || e.code.toLowerCase().includes(s) || e.location.toLowerCase().includes(s);

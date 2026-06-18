@@ -257,7 +257,7 @@ export async function cancelSale(saleId: string, reason: string) {
 export async function getActiveChannelsWithSales() {
     const channels = await db.salesChannel.findMany({
         where: {
-            status: { in: ['selling', 'approved', 'packing', 'shipped', 'received', 'active'] }
+            status: { in: ['selling', 'approved', 'packing', 'shipped', 'received', 'active', 'pending_payment', 'payment_approved'] }
         },
         include: {
             sales: {

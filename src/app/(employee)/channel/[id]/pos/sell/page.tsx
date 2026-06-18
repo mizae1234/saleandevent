@@ -31,7 +31,7 @@ export default async function EmployeePOSSellPage({ params }: { params: Promise<
         }
     });
 
-    if (!event || !['active', 'approved', 'payment_approved'].includes(event.status)) notFound();
+    if (!event || !['active', 'approved', 'payment_approved', 'pending_payment'].includes(event.status)) notFound();
 
     const stockItems = event.stock
         .filter(stock => stock.product.producttype === 'product')

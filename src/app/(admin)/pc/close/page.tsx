@@ -9,7 +9,7 @@ import { CloseListClient } from "./CloseListClient";
 async function getEventsForClose() {
     const events = await db.salesChannel.findMany({
         where: {
-            status: { in: ['active', 'selling', 'closed', 'returned', 'shipped', 'received', 'packing'] }
+            status: { in: ['active', 'selling', 'closed', 'returned', 'shipped', 'received', 'packing', 'pending_payment', 'payment_approved', 'pending_return', 'returning'] }
         },
         include: {
             stock: { select: { quantity: true, soldQuantity: true } },

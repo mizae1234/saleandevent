@@ -87,7 +87,7 @@ export default async function CloseEventPage({ params }: Props) {
         notFound();
     }
 
-    const isActive = event.status === 'active';
+    const isActive = ['active', 'pending_payment', 'payment_approved'].includes(event.status);
     const totalReceived = event.stockDetails.reduce((sum, s) => sum + s.receivedQuantity, 0);
     const totalSold = event.stockDetails.reduce((sum, s) => sum + s.soldQuantity, 0);
     const totalRemaining = event.stockDetails.reduce((sum, s) => sum + s.remainingQuantity, 0);

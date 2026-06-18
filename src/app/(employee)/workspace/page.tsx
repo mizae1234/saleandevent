@@ -21,7 +21,7 @@ async function getAssignedChannels(staffId: string) {
     });
 
     return assignments
-        .filter(a => a.channel.status === 'active' || a.channel.status === 'approved')
+        .filter(a => ['active', 'approved', 'pending_payment', 'payment_approved', 'received', 'shipped', 'packing', 'pending_return', 'returning', 'returned'].includes(a.channel.status))
         .map(a => a.channel);
 }
 

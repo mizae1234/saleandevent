@@ -14,7 +14,9 @@ export async function closeChannelStock(
 
     if (!channel) throw new Error('Channel not found');
     if (channel.type !== 'EVENT') throw new Error('Only EVENT channels can be closed');
-    if (channel.status !== 'active') throw new Error('Channel must be active to close');
+    if (!['active', 'pending_payment', 'payment_approved'].includes(channel.status)) {
+        throw new Error('Channel must be active or pending payment to close');
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await db.$transaction(async (tx: any) => {
