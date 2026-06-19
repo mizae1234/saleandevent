@@ -18,7 +18,12 @@ export default async function EditRequestPage({ params }: { params: Promise<{ id
     }
 
     const channels = await db.salesChannel.findMany({
-        where: { status: 'active' },
+        where: {
+            isActive: true,
+            status: {
+                notIn: ['closed', 'completed']
+            }
+        },
         orderBy: { name: 'asc' },
     });
 
