@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createStockRequest, submitStockRequest } from '@/actions/stock-request';
 import { ArrowLeft, Send, Package, ShoppingCart, Search, Plus, Minus, X, Info, ChevronDown } from 'lucide-react';
@@ -71,20 +71,13 @@ export default function NewRefillClient({
     // Dropdown states
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // Close dropdown on click outside
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsDropdownOpen(false);
-            }
-        }
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, []);
+
+    // Close dropdown helper
+    const closeDropdown = () => {
+        setIsDropdownOpen(false);
+        setSearchQuery('');
+    };
 
     // Filtered channels based on search query inside dropdown
     const filteredChannels = useMemo(() => {
@@ -421,7 +414,7 @@ export default function NewRefillClient({
                 </h2>
                 
                 {!hideChannelSelect && (
-                    <div className="relative" ref={dropdownRef}>
+                    <div className="relative">
                         <button
                             type="button"
                             onClick={() => {
@@ -441,56 +434,66 @@ export default function NewRefillClient({
                         </button>
 
                         {isDropdownOpen && (
-                            <div className="absolute left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-50 flex flex-col max-h-60 overflow-hidden">
-                                <div className="p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/50">
-                                    <Search className="h-4 w-4 text-slate-400 shrink-0" />
-                                    <input
-                                        type="text"
-                                        placeholder="ค้นหาสาขา หรือ รหัส..."
-                                        value={searchQuery}
-                                        onChange={e => setSearchQuery(e.target.value)}
-                                        className="w-full bg-transparent text-sm focus:outline-none placeholder-slate-400"
-                                        autoFocus
-                                    />
-                                    {searchQuery && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setSearchQuery('')}
-                                            className="text-slate-400 hover:text-slate-600 p-0.5 rounded"
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    )}
-                                </div>
-
-                                <div className="overflow-y-auto flex-1 py-1">
-                                    {filteredChannels.length === 0 ? (
-                                        <div className="px-3 py-3 text-xs text-center text-slate-400">
-                                            ไม่พบสาขา/งานอีเวนต์
-                                        </div>
-                                    ) : (
-                                        filteredChannels.map(ch => (
+                            <>
+                                {/* Invisible backdrop to close on outside tap/click */}
+                                <div
+                                    className="fixed inset-0"
+                                    style={{ zIndex: 40 }}
+                                    onClick={closeDropdown}
+                                    onTouchEnd={(e) => { e.preventDefault(); closeDropdown(); }}
+                                />
+                                <div className="absolute left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg flex flex-col max-h-60 overflow-hidden" style={{ zIndex: 50 }}>
+                                    <div className="p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/50">
+                                        <Search className="h-4 w-4 text-slate-400 shrink-0" />
+                                        <input
+                                            type="text"
+                                            placeholder="ค้นหาสาขา หรือ รหัส..."
+                                            value={searchQuery}
+                                            onChange={e => setSearchQuery(e.target.value)}
+                                            className="w-full bg-transparent text-sm focus:outline-none placeholder-slate-400"
+                                            autoFocus
+                                        />
+                                        {searchQuery && (
                                             <button
-                                                key={ch.id}
                                                 type="button"
-                                                onClick={() => {
-                                                    setChannelId(ch.id);
-                                                    setIsDropdownOpen(false);
-                                                    setSearchQuery('');
-                                                }}
-                                                className={`w-full text-left px-3 py-2 text-xs sm:text-sm hover:bg-indigo-50/80 transition-colors flex items-center justify-between ${
-                                                    channelId === ch.id ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-slate-700'
-                                                }`}
+                                                onClick={() => setSearchQuery('')}
+                                                className="text-slate-400 hover:text-slate-600 p-0.5 rounded"
                                             >
-                                                <span>{ch.name}</span>
-                                                <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded ml-2 shrink-0">
-                                                    {ch.code}
-                                                </span>
+                                                <X className="h-3 w-3" />
                                             </button>
-                                        ))
-                                    )}
+                                        )}
+                                    </div>
+
+                                    <div className="overflow-y-auto flex-1 py-1">
+                                        {filteredChannels.length === 0 ? (
+                                            <div className="px-3 py-3 text-xs text-center text-slate-400">
+                                                ไม่พบสาขา/งานอีเวนต์
+                                            </div>
+                                        ) : (
+                                            filteredChannels.map(ch => (
+                                                <button
+                                                    key={ch.id}
+                                                    type="button"
+                                                    onPointerDown={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        setChannelId(ch.id);
+                                                        closeDropdown();
+                                                    }}
+                                                    className={`w-full text-left px-3 py-2.5 text-xs sm:text-sm hover:bg-indigo-50/80 active:bg-indigo-100 transition-colors flex items-center justify-between ${
+                                                        channelId === ch.id ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-slate-700'
+                                                    }`}
+                                                >
+                                                    <span>{ch.name}</span>
+                                                    <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded ml-2 shrink-0">
+                                                        {ch.code}
+                                                    </span>
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
+                            </>
                         )}
                     </div>
                 )}
