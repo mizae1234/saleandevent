@@ -80,10 +80,11 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState('');
 
-    // Compensation editing (days + commission)
+    // Compensation editing (days + commission + dailyRate)
     const [editing, setEditing] = useState(false);
     const [daysInput, setDaysInput] = useState(String(wage.daysWorked));
     const [commissionInput, setCommissionInput] = useState(String(wage.commission));
+    const [dailyRateInput, setDailyRateInput] = useState(String(wage.dailyRate));
     const [saved, setSaved] = useState(false);
 
     // Lock editing when submitted
@@ -91,7 +92,8 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
 
     const currentDays = editing ? (parseInt(daysInput) || 0) : wage.daysWorked;
     const currentCommission = editing ? (parseFloat(commissionInput) || 0) : wage.commission;
-    const previewWage = (wage.dailyRate * currentDays) + currentCommission;
+    const currentDailyRate = editing ? (parseFloat(dailyRateInput) || 0) : wage.dailyRate;
+    const previewWage = (currentDailyRate * currentDays) + currentCommission;
 
     const totalExpenses = initialExpenses.reduce((sum, exp) => sum + exp.amount, 0);
     const grandTotal = wage.wageSummary + totalExpenses;
@@ -101,16 +103,19 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
         setEditing(true);
         setDaysInput(String(wage.daysWorked));
         setCommissionInput(String(wage.commission));
+        setDailyRateInput(String(wage.dailyRate));
     };
 
     const handleSaveCompensation = () => {
         const days = parseInt(daysInput);
         const commission = parseFloat(commissionInput);
+        const dailyRate = parseFloat(dailyRateInput);
         if (isNaN(days) || days < 0) return;
         if (isNaN(commission) || commission < 0) return;
+        if (isNaN(dailyRate) || dailyRate < 0) return;
 
         startTransition(async () => {
-            await updateEmployeeCompensation(channelId, staffId, { daysWorked: days, commission });
+            await updateEmployeeCompensation(channelId, staffId, { daysWorked: days, commission, dailyRate });
             setEditing(false);
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
@@ -289,6 +294,25 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
                 {editing ? (
                     /* ── Edit Mode ── */
                     <div className="mt-2 space-y-2">
+                        {/* Daily Rate Edit */}
+                        <div className="bg-white/15 rounded-lg p-2.5">
+                            <span className="text-blue-100 text-[11px] font-medium">ค่าแรง/วัน</span>
+                            <div className="flex items-center gap-1.5 mt-1">
+                                <span className="text-blue-100 text-sm">฿</span>
+                                <input
+                                    type="number"
+                                    value={dailyRateInput}
+                                    onChange={(e) => setDailyRateInput(e.target.value)}
+                                    onFocus={(e) => e.target.select()}
+                                    className="w-full px-2 py-1.5 rounded-lg bg-white/20 text-white text-lg font-bold text-center border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    min="0"
+                                    step="1"
+                                    autoFocus
+                                />
+                            </div>
+                            <p className="text-blue-200 text-[10px] mt-1">ค่าเริ่มต้นจากระบบ: ฿{wage.dailyRate.toLocaleString()}</p>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-2">
                             <div className="bg-white/15 rounded-lg p-2.5">
                                 <span className="text-blue-100 text-[11px] font-medium">วันทำงาน</span>
@@ -300,11 +324,10 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
                                         onFocus={(e) => e.target.select()}
                                         className="w-14 px-2 py-1.5 rounded-lg bg-white/20 text-white text-lg font-bold text-center border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         min="0"
-                                        autoFocus
                                     />
                                     <span className="text-blue-100 text-xs">วัน</span>
                                 </div>
-                                <p className="text-blue-200 text-[10px] mt-1">× ฿{wage.dailyRate.toLocaleString()}/วัน</p>
+                                <p className="text-blue-200 text-[10px] mt-1">× ฿{currentDailyRate.toLocaleString()}/วัน</p>
                             </div>
 
                             <div className="bg-white/15 rounded-lg p-2.5">

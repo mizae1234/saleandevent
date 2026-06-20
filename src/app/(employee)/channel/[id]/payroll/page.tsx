@@ -57,8 +57,10 @@ export default async function EmployeePayrollPage({ params }: { params: Promise<
         }),
     ]);
 
-    // Calculate wage summary
-    const dailyRate = Number(staff?.dailyRate || 0);
+    // Calculate wage summary — use per-event override if set, otherwise master rate
+    const dailyRate = assignment?.dailyRateOverride != null
+        ? Number(assignment.dailyRateOverride)
+        : Number(staff?.dailyRate || 0);
     const daysWorked = assignment?.daysWorkedOverride ?? attendanceDays;
     const commission = Number(assignment?.commissionOverride ?? staff?.commissionAmount ?? 0);
     const wageSummary = (dailyRate * daysWorked) + commission;

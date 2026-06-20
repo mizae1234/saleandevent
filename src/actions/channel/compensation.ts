@@ -94,10 +94,11 @@ export async function saveStaffCompensation(
 export async function updateEmployeeCompensation(
     channelId: string,
     staffId: string,
-    data: { daysWorked: number; commission: number }
+    data: { daysWorked: number; commission: number; dailyRate?: number }
 ) {
     if (data.daysWorked < 0) throw new Error('Days worked cannot be negative');
     if (data.commission < 0) throw new Error('Commission cannot be negative');
+    if (data.dailyRate != null && data.dailyRate < 0) throw new Error('Daily rate cannot be negative');
 
     const assignment = await db.channelStaff.findFirst({
         where: { channelId, staffId },
@@ -109,6 +110,7 @@ export async function updateEmployeeCompensation(
         data: {
             daysWorkedOverride: data.daysWorked,
             commissionOverride: data.commission,
+            ...(data.dailyRate != null ? { dailyRateOverride: data.dailyRate } : {}),
         },
     });
 
@@ -116,7 +118,7 @@ export async function updateEmployeeCompensation(
         data: {
             channelId,
             action: 'compensation_updated_by_staff',
-            details: { staffId, daysWorked: data.daysWorked, commission: data.commission },
+            details: { staffId, daysWorked: data.daysWorked, commission: data.commission, dailyRate: data.dailyRate },
             changedBy: staffId,
         },
     });
