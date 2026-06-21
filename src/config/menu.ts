@@ -90,6 +90,7 @@ export const MENU_SECTIONS: MenuSection[] = [
         items: [
             { title: "จัดการพนักงาน", href: "/hr/employees", icon: UserCog },
             { title: "เงินเดือน/คอมฯ", href: "/hr/payroll", icon: Banknote },
+            { title: "รายงานค่าแรง", href: "/hr/payroll/report", icon: FileText },
         ],
     },
     {

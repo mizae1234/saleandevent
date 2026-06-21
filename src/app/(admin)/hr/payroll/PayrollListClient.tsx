@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { Banknote, Calendar, MapPin, ArrowRight, Users, Search, Store } from "lucide-react";
+import { Banknote, Calendar, MapPin, ArrowRight, Users, Search, Store, CheckCircle2, Clock, CircleDot } from "lucide-react";
 import Link from "next/link";
 import { PageHeader, EmptyState } from "@/components/shared";
 import { getChannelStatus } from "@/config/status";
@@ -17,24 +17,46 @@ interface PayrollEvent {
     startDate: string | null;
     endDate: string | null;
     staffCount: number;
+    wagePaid: number;
+    comPaid: number;
+    submitted: number;
 }
 
-
-
-const STATUS_TABS = [
-    { key: 'all', label: 'ทั้งหมด' },
-    { key: 'active', label: 'กำลังขาย' },
-    { key: 'returned', label: 'คืนแล้ว' },
-    { key: 'completed', label: 'ปิดงาน' },
+const PAY_FILTER_OPTIONS = [
+    { key: 'all', label: 'สถานะจ่าย: ทั้งหมด' },
+    { key: 'paid', label: 'จ่ายครบแล้ว' },
+    { key: 'partial', label: 'จ่ายบางส่วน' },
+    { key: 'unpaid', label: 'ยังไม่จ่าย' },
 ];
+
+function getPayStatus(e: PayrollEvent): 'paid' | 'partial' | 'unpaid' {
+    if (e.staffCount === 0) return 'unpaid';
+    if (e.wagePaid >= e.staffCount && e.comPaid >= e.staffCount) return 'paid';
+    if (e.wagePaid > 0 || e.comPaid > 0) return 'partial';
+    return 'unpaid';
+}
 
 export function PayrollListClient({ events }: { events: PayrollEvent[] }) {
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [payFilter, setPayFilter] = useState('all');
+
+    // Dynamic status tabs from events data
+    const statusTabs = useMemo(() => {
+        const counts = new Map<string, number>();
+        events.forEach(e => counts.set(e.status, (counts.get(e.status) || 0) + 1));
+        const tabs: { key: string; label: string; count: number }[] = [{ key: 'all', label: 'ทั้งหมด', count: events.length }];
+        counts.forEach((count, status) => {
+            const config = getChannelStatus(status);
+            tabs.push({ key: status, label: config.label, count });
+        });
+        return tabs;
+    }, [events]);
 
     const filtered = useMemo(() => {
         return events.filter(e => {
             if (statusFilter !== 'all' && e.status !== statusFilter) return false;
+            if (payFilter !== 'all' && getPayStatus(e) !== payFilter) return false;
             if (search) {
                 const s = search.toLowerCase();
                 return e.name.toLowerCase().includes(s) ||
@@ -43,7 +65,7 @@ export function PayrollListClient({ events }: { events: PayrollEvent[] }) {
             }
             return true;
         });
-    }, [events, search, statusFilter]);
+    }, [events, search, statusFilter, payFilter]);
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
@@ -66,22 +88,28 @@ export function PayrollListClient({ events }: { events: PayrollEvent[] }) {
                             className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors"
                         />
                     </div>
-                    <div className="flex border border-slate-200 rounded-xl overflow-hidden flex-shrink-0">
-                        {STATUS_TABS.map(tab => (
-                            <button
-                                key={tab.key}
-                                onClick={() => setStatusFilter(tab.key)}
-                                className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-colors ${statusFilter === tab.key
-                                        ? 'bg-teal-600 text-white'
-                                        : 'bg-white text-slate-600 hover:bg-slate-50'
-                                    }`}
-                            >
-                                {tab.label}
-                            </button>
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="h-10 px-3 pr-8 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
+                    >
+                        {statusTabs.map(tab => (
+                            <option key={tab.key} value={tab.key}>
+                                {tab.label} ({tab.count})
+                            </option>
                         ))}
-                    </div>
+                    </select>
+                    <select
+                        value={payFilter}
+                        onChange={(e) => setPayFilter(e.target.value)}
+                        className="h-10 px-3 pr-8 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
+                    >
+                        {PAY_FILTER_OPTIONS.map(opt => (
+                            <option key={opt.key} value={opt.key}>{opt.label}</option>
+                        ))}
+                    </select>
                 </div>
-                {(search || statusFilter !== 'all') && (
+                {(search || statusFilter !== 'all' || payFilter !== 'all') && (
                     <p className="text-xs text-slate-400 mt-2">พบ {filtered.length} จาก {events.length} Event</p>
                 )}
             </div>
@@ -92,13 +120,14 @@ export function PayrollListClient({ events }: { events: PayrollEvent[] }) {
                     <div className="p-8">
                         <EmptyState
                             icon={Store}
-                            message={search || statusFilter !== 'all' ? "ไม่พบ Event ที่ตรงกับตัวกรอง" : "ไม่พบ Event"}
+                            message={search || statusFilter !== 'all' || payFilter !== 'all' ? "ไม่พบ Event ที่ตรงกับตัวกรอง" : "ไม่พบ Event"}
                         />
                     </div>
                 ) : (
                     <div className="divide-y divide-slate-50">
                         {filtered.map(event => {
                             const status = getChannelStatus(event.status);
+                            const wagePercent = event.staffCount > 0 ? Math.round((event.wagePaid / event.staffCount) * 100) : 0;
                             return (
                                 <Link
                                     key={event.id}
@@ -137,6 +166,50 @@ export function PayrollListClient({ events }: { events: PayrollEvent[] }) {
                                                 <Users className="h-3 w-3" /> {event.staffCount} คน
                                             </span>
                                         </div>
+
+                                        {/* Payment Progress */}
+                                        {event.staffCount > 0 && (
+                                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                                                <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                                    event.wagePaid >= event.staffCount
+                                                        ? 'bg-emerald-50 text-emerald-700'
+                                                        : event.wagePaid > 0
+                                                            ? 'bg-amber-50 text-amber-700'
+                                                            : 'bg-slate-50 text-slate-500'
+                                                }`}>
+                                                    {event.wagePaid >= event.staffCount ? <CheckCircle2 className="h-3 w-3" /> : event.wagePaid > 0 ? <Clock className="h-3 w-3" /> : <CircleDot className="h-3 w-3" />}
+                                                    ค่าแรง {event.wagePaid}/{event.staffCount}
+                                                </span>
+                                                <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                                    event.comPaid >= event.staffCount
+                                                        ? 'bg-emerald-50 text-emerald-700'
+                                                        : event.comPaid > 0
+                                                            ? 'bg-amber-50 text-amber-700'
+                                                            : 'bg-slate-50 text-slate-500'
+                                                }`}>
+                                                    {event.comPaid >= event.staffCount ? <CheckCircle2 className="h-3 w-3" /> : event.comPaid > 0 ? <Clock className="h-3 w-3" /> : <CircleDot className="h-3 w-3" />}
+                                                    คอม {event.comPaid}/{event.staffCount}
+                                                </span>
+                                                <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                                    event.submitted >= event.staffCount
+                                                        ? 'bg-blue-50 text-blue-700'
+                                                        : event.submitted > 0
+                                                            ? 'bg-blue-50 text-blue-500'
+                                                            : 'bg-slate-50 text-slate-400'
+                                                }`}>
+                                                    ส่งเบิก {event.submitted}/{event.staffCount}
+                                                </span>
+                                                {/* Mini progress bar */}
+                                                <div className="hidden sm:block w-16">
+                                                    <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-full transition-all ${wagePercent >= 100 ? 'bg-emerald-500' : wagePercent > 0 ? 'bg-amber-500' : 'bg-slate-200'}`}
+                                                            style={{ width: `${wagePercent}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <span className={`flex-shrink-0 hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border ${status.bg} ${status.text} ${status.border}`}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
     ResponsiveContainer,
     BarChart,
@@ -11,7 +11,7 @@ import {
     Tooltip,
     Legend,
 } from "recharts";
-import { Package, Truck, ShoppingCart, ChevronDown, ChevronRight, EyeOff, Download } from "lucide-react";
+import { Package, Truck, ShoppingCart, ChevronDown, ChevronRight, EyeOff, Download, Filter } from "lucide-react";
 import { getChannelStatus } from "@/config/status";
 
 interface StockItem {
@@ -69,12 +69,33 @@ function CustomTooltip({ active, payload }: any) {
 
 export function ChannelStockReport({ data }: Props) {
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [statusFilter, setStatusFilter] = useState('all');
 
-    const totalSent = data.reduce((s, c) => s + c.totalSent, 0);
-    const totalSold = data.reduce((s, c) => s + c.totalSold, 0);
-    const totalRemaining = data.reduce((s, c) => s + c.totalRemaining, 0);
+    // Dynamic status tabs from data
+    const statusTabs = useMemo(() => {
+        const counts = new Map<string, number>();
+        data.forEach(c => {
+            counts.set(c.status, (counts.get(c.status) || 0) + 1);
+        });
+        const tabs: { key: string; label: string; count: number }[] = [{ key: 'all', label: 'ทั้งหมด', count: data.length }];
+        counts.forEach((count, status) => {
+            const config = getChannelStatus(status);
+            tabs.push({ key: status, label: config.label, count });
+        });
+        return tabs;
+    }, [data]);
 
-    const chartData = data
+    // Filter data by channel status
+    const filteredData = useMemo(() => {
+        if (statusFilter === 'all') return data;
+        return data.filter(c => c.status === statusFilter);
+    }, [data, statusFilter]);
+
+    const totalSent = filteredData.reduce((s, c) => s + c.totalSent, 0);
+    const totalSold = filteredData.reduce((s, c) => s + c.totalSold, 0);
+    const totalRemaining = filteredData.reduce((s, c) => s + c.totalRemaining, 0);
+
+    const chartData = filteredData
         .filter((c) => c.totalSent > 0)
         .map((c) => ({
             ...c,
@@ -82,7 +103,7 @@ export function ChannelStockReport({ data }: Props) {
         }));
 
     const itemMap = new Map<string, any>();
-    data.filter(c => c.totalSent > 0).forEach(c => {
+    filteredData.filter(c => c.totalSent > 0).forEach(c => {
         c.items.forEach(item => {
             if (!itemMap.has(item.barcode)) {
                 itemMap.set(item.barcode, {
@@ -110,7 +131,7 @@ export function ChannelStockReport({ data }: Props) {
         try {
             const XLSX = await import("xlsx");
             const rows: any[] = [];
-            data.filter(c => c.totalSent > 0).forEach((c, i) => {
+            filteredData.filter(c => c.totalSent > 0).forEach((c, i) => {
                 c.items.forEach((item) => {
                     rows.push({
                         "ลำดับสาขา": i + 1,
@@ -154,6 +175,30 @@ export function ChannelStockReport({ data }: Props) {
                     <p className="text-xs text-white/70 flex items-center gap-1"><Package className="h-3 w-3" /> คงเหลือ</p>
                     <p className="text-xl font-bold mt-1">{fmt(totalRemaining)}</p>
                 </div>
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="h-9 px-3 pr-8 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
+                >
+                    {statusTabs.map(tab => (
+                        <option key={tab.key} value={tab.key}>
+                            {tab.label} ({tab.count})
+                        </option>
+                    ))}
+                </select>
+                {statusFilter !== 'all' && (
+                    <button
+                        onClick={() => setStatusFilter('all')}
+                        className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                        ล้าง
+                    </button>
+                )}
             </div>
 
             {/* Chart */}
@@ -208,7 +253,7 @@ export function ChannelStockReport({ data }: Props) {
                     </button>
                 </div>
                 <div className="divide-y divide-slate-50">
-                    {data.filter((c) => c.totalSent > 0).map((channel) => {
+                    {filteredData.filter((c) => c.totalSent > 0).map((channel) => {
                         const isExpanded = expandedId === channel.id;
                         const status = getChannelStatus(channel.status);
 

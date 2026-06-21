@@ -25,6 +25,7 @@ async function getEvents(searchParams: Promise<{ [key: string]: string | string[
     const startDate = typeof params.startDate === 'string' ? params.startDate : undefined;
     const endDate = typeof params.endDate === 'string' ? params.endDate : undefined;
     const type = typeof params.type === 'string' ? params.type : undefined;
+    const status = typeof params.status === 'string' ? params.status : undefined;
     const page = typeof params.page === 'string' ? Math.max(1, parseInt(params.page) || 1) : 1;
 
     const where: Prisma.SalesChannelWhereInput = {
@@ -33,6 +34,10 @@ async function getEvents(searchParams: Promise<{ [key: string]: string | string[
 
     if (type) {
         (where.AND as Prisma.SalesChannelWhereInput[]).push({ type });
+    }
+
+    if (status) {
+        (where.AND as Prisma.SalesChannelWhereInput[]).push({ status });
     }
 
     if (q) {
@@ -110,6 +115,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         if (params.type) p.set('type', String(params.type));
         if (params.startDate) p.set('startDate', String(params.startDate));
         if (params.endDate) p.set('endDate', String(params.endDate));
+        if (params.status) p.set('status', String(params.status));
         if (page > 1) p.set('page', String(page));
         const qs = p.toString();
         return `/channels${qs ? `?${qs}` : ''}`;

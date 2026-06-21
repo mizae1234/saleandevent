@@ -2,8 +2,9 @@
 
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { Search, Calendar, X, CalendarDays, Building2 } from "lucide-react";
+import { Search, Calendar, X, CalendarDays, Building2, Filter } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
+import { CHANNEL_STATUS } from "@/config/status";
 
 const TABS = [
     { key: "", label: "ทั้งหมด", icon: null },
@@ -20,6 +21,7 @@ export function EventFilters() {
     const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
     const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
     const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
+    const activeStatus = searchParams.get("status") || "";
 
     const handleTypeChange = (type: string) => {
         const params = new URLSearchParams(searchParams);
@@ -42,6 +44,13 @@ export function EventFilters() {
         replace(`${pathname}?${params.toString()}`);
     };
 
+    const handleStatusChange = (status: string) => {
+        const params = new URLSearchParams(searchParams);
+        if (status) params.set("status", status);
+        else params.delete("status");
+        replace(`${pathname}?${params.toString()}`);
+    };
+
     const clearFilters = () => {
         setSearchTerm("");
         setStartDate("");
@@ -49,7 +58,7 @@ export function EventFilters() {
         replace(pathname);
     };
 
-    const hasFilters = searchTerm || startDate || endDate;
+    const hasFilters = searchTerm || startDate || endDate || activeStatus;
 
     return (
         <div className="rounded-2xl bg-white border border-slate-100 p-4 space-y-4">
@@ -74,8 +83,8 @@ export function EventFilters() {
                 })}
             </div>
 
-            {/* Search & Date filters */}
-            <div className="grid gap-3 md:grid-cols-4">
+            {/* Search & Date & Status filters */}
+            <div className="grid gap-3 md:grid-cols-5">
                 {/* Search */}
                 <div className="relative md:col-span-2">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -117,6 +126,23 @@ export function EventFilters() {
                             handleDateChange("endDate", e.target.value);
                         }}
                     />
+                </div>
+
+                {/* Status Filter */}
+                <div className="relative">
+                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                    <select
+                        value={activeStatus}
+                        onChange={(e) => handleStatusChange(e.target.value)}
+                        className="w-full h-10 pl-10 pr-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors cursor-pointer"
+                    >
+                        <option value="">สถานะทั้งหมด</option>
+                        {Object.entries(CHANNEL_STATUS).map(([key, config]) => (
+                            <option key={key} value={key}>
+                                {config.label}
+                            </option>
+                        ))}
+                    </select>
                 </div>
             </div>
 
