@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import {
@@ -56,6 +56,7 @@ interface ChannelOption {
     id: string;
     name: string;
     code: string;
+    status: string;
 }
 
 interface Props {
@@ -70,6 +71,25 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
     const [wageFilter, setWageFilter] = useState("all");
     const [commissionFilter, setCommissionFilter] = useState("all");
     const [submissionFilter, setSubmissionFilter] = useState("all");
+    const [excludeClosed, setExcludeClosed] = useState(true);
+
+    // Searchable dropdown state
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [dropdownSearch, setDropdownSearch] = useState("");
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Close searchable dropdown on click outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
 
     // Check if salary information is visible to the user
     const canView = (paymentType: string) => {
@@ -85,9 +105,42 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
             ? val.toLocaleString()
             : val;
 
-    // Filter logic
+    // Reset channel filter if it's closed and user excludes closed events
+    const handleExcludeClosedChange = (checked: boolean) => {
+        setExcludeClosed(checked);
+        if (checked && channelFilter !== "all") {
+            const selectedChan = channels.find((c) => c.id === channelFilter);
+            if (selectedChan && selectedChan.status === "closed") {
+                setChannelFilter("all");
+            }
+        }
+    };
+
+    // Filtered channels for the searchable dropdown
+    const filteredChannelsForDropdown = useMemo(() => {
+        let list = channels;
+        if (excludeClosed) {
+            list = list.filter((c) => c.status !== "closed");
+        }
+        if (dropdownSearch) {
+            const query = dropdownSearch.toLowerCase();
+            return list.filter(
+                (c) =>
+                    c.name.toLowerCase().includes(query) ||
+                    c.code.toLowerCase().includes(query)
+            );
+        }
+        return list;
+    }, [channels, excludeClosed, dropdownSearch]);
+
+    // Filter logic for table rows
     const filteredRows = useMemo(() => {
         return rows.filter((row) => {
+            // Exclude closed events
+            if (excludeClosed && row.channelStatus === "closed") {
+                return false;
+            }
+
             // Search filter
             if (search) {
                 const s = search.toLowerCase();
@@ -127,7 +180,15 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
 
             return true;
         });
-    }, [rows, search, channelFilter, wageFilter, commissionFilter, submissionFilter]);
+    }, [
+        rows,
+        search,
+        channelFilter,
+        wageFilter,
+        commissionFilter,
+        submissionFilter,
+        excludeClosed,
+    ]);
 
     // Summary calculations
     const summary = useMemo(() => {
@@ -288,65 +349,154 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
 
             {/* Filter Section */}
             <div className="rounded-2xl bg-white border border-slate-100 p-4 shadow-sm">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
                     {/* Search Input */}
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="ค้นหาชื่อ, รหัสพนักงาน, Event..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors"
-                        />
+                    <div>
+                        <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">ค้นหา</label>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="ค้นหาชื่อ, รหัสพนักงาน, Event..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors"
+                            />
+                        </div>
                     </div>
 
-                    {/* Event Filter */}
-                    <select
-                        value={channelFilter}
-                        onChange={(e) => setChannelFilter(e.target.value)}
-                        className="h-10 px-3 pr-8 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
-                    >
-                        <option value="all">ทุก Event / สาขา</option>
-                        {channels.map((chan) => (
-                            <option key={chan.id} value={chan.id}>
-                                {chan.name} ({chan.code})
-                            </option>
-                        ))}
-                    </select>
+                    {/* Custom Searchable Event Dropdown */}
+                    <div className="relative" ref={dropdownRef}>
+                        <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Event / สาขา</label>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setIsDropdownOpen(!isDropdownOpen);
+                                setDropdownSearch("");
+                            }}
+                            className="w-full h-10 px-3 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 font-medium hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors cursor-pointer text-left"
+                        >
+                            <span className="truncate">
+                                {channelFilter === "all"
+                                    ? "ทุก Event / สาขา"
+                                    : channels.find((c) => c.id === channelFilter)?.name || "ทุก Event / สาขา"}
+                            </span>
+                            <span className="ml-2 text-slate-400 text-[10px]">▼</span>
+                        </button>
+
+                        {isDropdownOpen && (
+                            <div className="absolute left-0 z-50 mt-1 w-72 rounded-xl border border-slate-100 bg-white p-2 shadow-lg max-h-72 overflow-y-auto">
+                                <div className="relative mb-2">
+                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="ค้นหา Event..."
+                                        value={dropdownSearch}
+                                        onChange={(e) => setDropdownSearch(e.target.value)}
+                                        className="w-full h-8 pl-8 pr-2.5 rounded-lg border border-slate-200 bg-slate-50 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors"
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="space-y-0.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setChannelFilter("all");
+                                            setIsDropdownOpen(false);
+                                        }}
+                                        className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                                            channelFilter === "all"
+                                                ? "bg-teal-50 text-teal-700 font-semibold"
+                                                : "text-slate-600 hover:bg-slate-50"
+                                        }`}
+                                    >
+                                        ทุก Event / สาขา
+                                    </button>
+                                    {filteredChannelsForDropdown.map((chan) => (
+                                        <button
+                                            key={chan.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setChannelFilter(chan.id);
+                                                setIsDropdownOpen(false);
+                                            }}
+                                            className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-medium transition-colors truncate ${
+                                                channelFilter === chan.id
+                                                    ? "bg-teal-50 text-teal-700 font-semibold"
+                                                    : "text-slate-600 hover:bg-slate-50"
+                                            }`}
+                                        >
+                                            {chan.name} ({chan.code})
+                                        </button>
+                                    ))}
+                                    {filteredChannelsForDropdown.length === 0 && (
+                                        <div className="text-center py-4 text-slate-400 text-xs">
+                                            ไม่พบ Event
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Exclude Closed Events Checkbox */}
+                    <div className="flex items-center gap-2 h-10 px-3 border border-slate-200 bg-slate-50 rounded-xl">
+                        <input
+                            type="checkbox"
+                            id="excludeClosed"
+                            checked={excludeClosed}
+                            onChange={(e) => handleExcludeClosedChange(e.target.checked)}
+                            className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                        />
+                        <label
+                            htmlFor="excludeClosed"
+                            className="text-xs text-slate-600 font-medium cursor-pointer select-none truncate"
+                        >
+                            ไม่รวม Event ที่ปิดงาน
+                        </label>
+                    </div>
 
                     {/* Wage Payment Filter */}
-                    <select
-                        value={wageFilter}
-                        onChange={(e) => setWageFilter(e.target.value)}
-                        className="h-10 px-3 pr-8 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
-                    >
-                        <option value="all">ค่าแรง: ทั้งหมด</option>
-                        <option value="paid">ค่าแรง: โอนแล้ว</option>
-                        <option value="unpaid">ค่าแรง: ยังไม่โอน</option>
-                    </select>
+                    <div>
+                        <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">ค่าแรง</label>
+                        <select
+                            value={wageFilter}
+                            onChange={(e) => setWageFilter(e.target.value)}
+                            className="w-full h-10 px-3 pr-8 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
+                        >
+                            <option value="all">ทั้งหมด</option>
+                            <option value="paid">โอนแล้ว</option>
+                            <option value="unpaid">ยังไม่โอน</option>
+                        </select>
+                    </div>
 
                     {/* Commission Payment Filter */}
-                    <select
-                        value={commissionFilter}
-                        onChange={(e) => setCommissionFilter(e.target.value)}
-                        className="h-10 px-3 pr-8 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
-                    >
-                        <option value="all">ค่าคอมฯ: ทั้งหมด</option>
-                        <option value="paid">ค่าคอมฯ: โอนแล้ว</option>
-                        <option value="unpaid">ค่าคอมฯ: ยังไม่โอน</option>
-                    </select>
+                    <div>
+                        <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">ค่าคอมฯ</label>
+                        <select
+                            value={commissionFilter}
+                            onChange={(e) => setCommissionFilter(e.target.value)}
+                            className="w-full h-10 px-3 pr-8 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
+                        >
+                            <option value="all">ทั้งหมด</option>
+                            <option value="paid">โอนแล้ว</option>
+                            <option value="unpaid">ยังไม่โอน</option>
+                        </select>
+                    </div>
 
                     {/* Submission status filter */}
-                    <select
-                        value={submissionFilter}
-                        onChange={(e) => setSubmissionFilter(e.target.value)}
-                        className="h-10 px-3 pr-8 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
-                    >
-                        <option value="all">สถานะเบิก: ทั้งหมด</option>
-                        <option value="submitted">สถานะเบิก: ส่งแล้ว</option>
-                        <option value="pending">สถานะเบิก: รอส่ง</option>
-                    </select>
+                    <div>
+                        <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">สถานะส่งเบิก</label>
+                        <select
+                            value={submissionFilter}
+                            onChange={(e) => setSubmissionFilter(e.target.value)}
+                            className="w-full h-10 px-3 pr-8 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
+                        >
+                            <option value="all">ทั้งหมด</option>
+                            <option value="submitted">ส่งแล้ว</option>
+                            <option value="pending">รอส่ง</option>
+                        </select>
+                    </div>
                 </div>
                 {filteredRows.length !== rows.length && (
                     <p className="text-xs text-slate-400 mt-2">

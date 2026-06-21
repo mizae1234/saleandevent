@@ -128,7 +128,7 @@ export default async function PayrollReportPage() {
 
     // Extract unique channels for the filter dropdown
     const channels = Array.from(
-        new Map(rows.map(r => [r.channelId, { id: r.channelId, name: r.channelName, code: r.channelCode }])).values()
+        new Map(rows.map(r => [r.channelId, { id: r.channelId, name: r.channelName, code: r.channelCode, status: r.channelStatus }])).values()
     );
 
     return (
