@@ -216,7 +216,8 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
             const XLSX = await import("xlsx");
             const data = filteredRows.map((row, i) => ({
                 ลำดับ: i + 1,
-                "อีเวนต์/สาขา": `${row.channelName} (${row.channelCode})`,
+                "รหัสสาขา/Event": row.channelCode,
+                "อีเวนต์/สาขา": row.channelName,
                 รหัสพนักงาน: row.staffCode,
                 ชื่อพนักงาน: row.name,
                 บทบาท: row.role,
@@ -237,6 +238,7 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
             // Add summary row at the bottom
             data.push({
                 ลำดับ: 0,
+                "รหัสสาขา/Event": "",
                 "อีเวนต์/สาขา": "",
                 รหัสพนักงาน: "",
                 ชื่อพนักงาน: "รวมทั้งหมด",
@@ -262,6 +264,7 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
             // Set column widths
             ws["!cols"] = [
                 { wch: 6 }, // ลำดับ
+                { wch: 18 }, // รหัสสาขา/Event
                 { wch: 25 }, // อีเวนต์/สาขา
                 { wch: 12 }, // รหัสพนักงาน
                 { wch: 22 }, // ชื่อพนักงาน
@@ -531,6 +534,7 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
                                     <th className="px-3 py-3 text-center w-16">สถานะ</th>
                                     <th className="px-3 py-3 w-16">รหัส</th>
                                     <th className="px-3 py-3">ชื่อพนักงาน</th>
+                                    <th className="px-3 py-3 w-28">รหัสสาขา</th>
                                     <th className="px-3 py-3">อีเวนต์/สาขา</th>
                                     <th className="px-3 py-3">บัญชีธนาคาร</th>
                                     <th className="px-3 py-3 text-center w-12">วัน</th>
@@ -626,7 +630,11 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
                                                     </span>
                                                 )}
                                             </td>
-                                            {/* Event/Channel */}
+                                            {/* Channel Code */}
+                                            <td className="px-3 py-3 font-mono text-slate-500 text-[11px]">
+                                                {row.channelCode}
+                                            </td>
+                                            {/* Event/Channel Name */}
                                             <td className="px-3 py-3">
                                                 <Link
                                                     href={`/hr/payroll/${row.channelId}`}
@@ -634,9 +642,6 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
                                                 >
                                                     <span className="font-semibold text-slate-700">
                                                         {row.channelName}
-                                                    </span>
-                                                    <span className="block text-[10px] text-slate-400">
-                                                        {row.channelCode}
                                                     </span>
                                                 </Link>
                                             </td>
@@ -743,7 +748,7 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
                             </tbody>
                             <tfoot className="border-t-2 border-slate-200 bg-slate-50 font-semibold">
                                 <tr className="text-slate-700">
-                                    <td colSpan={7} className="px-3 py-3 text-right font-bold">
+                                    <td colSpan={8} className="px-3 py-3 text-right font-bold">
                                         รวมทั้งหมด
                                     </td>
                                     <td className="px-3 py-3 text-center">
