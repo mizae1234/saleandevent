@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
     ResponsiveContainer,
     BarChart,
@@ -9,7 +10,7 @@ import {
     CartesianGrid,
     Tooltip,
 } from "recharts";
-import { Package, Hash, Download } from "lucide-react";
+import { Package, Hash, Download, FileSpreadsheet } from "lucide-react";
 
 interface Channel {
     id: string;
@@ -22,6 +23,10 @@ interface Channel {
 
 interface Props {
     data: Channel[];
+    from: string;
+    to: string;
+    channelId: string;
+    channelType: string;
 }
 
 function fmt(n: number) {
@@ -44,7 +49,8 @@ function CustomTooltip({ active, payload }: any) {
     );
 }
 
-export function ChannelQuantityReport({ data }: Props) {
+export function ChannelQuantityReport({ data, from, to, channelId, channelType }: Props) {
+    const [exportingDetail, setExportingDetail] = useState(false);
     const totalQty = data.reduce((s, c) => s + c.totalQty, 0);
     const totalBills = data.reduce((s, c) => s + c.billCount, 0);
 
@@ -73,6 +79,50 @@ export function ChannelQuantityReport({ data }: Props) {
         } catch (err) {
             console.error("Export failed", err);
             alert("เกิดข้อผิดพลาดในการส่งออกไฟล์");
+        }
+    };
+
+    const handleExportDetail = async () => {
+        setExportingDetail(true);
+        try {
+            const res = await fetch(`/api/reports/quantity-detail?from=${from}&to=${to}&channelId=${channelId}&channelType=${channelType}`);
+            if (!res.ok) throw new Error("Failed to fetch detail");
+            const json = await res.json();
+            const detail: any[] = json.data;
+
+            const XLSX = await import("xlsx");
+            const rows = detail.map((r, i) => ({
+                "ลำดับ": i + 1,
+                "สาขา/Event": r.channelName,
+                "รหัสสาขา": r.channelCode,
+                "ประเภท": r.channelType === 'EVENT' ? 'Event' : 'Branch',
+                "รหัสสินค้า": r.productCode,
+                "ชื่อสินค้า": r.productName,
+                "สี": r.productColor,
+                "ไซส์": r.productSize,
+                "จำนวนที่ขาย (ชิ้น)": r.qtySold,
+            }));
+            const ws = XLSX.utils.json_to_sheet(rows);
+
+            // Auto-width columns
+            const colWidths = Object.keys(rows[0] || {}).map((key) => {
+                const maxLen = Math.max(
+                    key.length,
+                    ...rows.map((r) => String((r as any)[key] ?? "").length)
+                );
+                return { wch: Math.min(maxLen + 2, 40) };
+            });
+            ws["!cols"] = colWidths;
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "รายรุ่นที่ขาย");
+            const dateStr = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `quantity_by_model_${dateStr}.xlsx`);
+        } catch (err) {
+            console.error("Export detail failed", err);
+            alert("เกิดข้อผิดพลาดในการส่งออกไฟล์");
+        } finally {
+            setExportingDetail(false);
         }
     };
 
@@ -122,13 +172,23 @@ export function ChannelQuantityReport({ data }: Props) {
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="px-4 sm:px-6 py-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                     <h3 className="text-sm font-bold text-slate-700">รายละเอียดจำนวนขายแต่ละสาขา</h3>
-                    <button
-                        onClick={handleExport}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
-                    >
-                        <Download className="h-3.5 w-3.5" />
-                        ส่งออก Excel
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleExportDetail}
+                            disabled={exportingDetail}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors shadow-sm disabled:opacity-50"
+                        >
+                            <FileSpreadsheet className={`h-3.5 w-3.5 ${exportingDetail ? 'animate-spin' : ''}`} />
+                            {exportingDetail ? 'กำลังโหลด...' : 'ส่งออก Excel (รายรุ่น)'}
+                        </button>
+                        <button
+                            onClick={handleExport}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
+                        >
+                            <Download className="h-3.5 w-3.5" />
+                            ส่งออก Excel
+                        </button>
+                    </div>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-xs border-collapse border border-slate-200">

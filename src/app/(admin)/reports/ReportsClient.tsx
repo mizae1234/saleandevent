@@ -313,7 +313,7 @@ export function ReportsClient() {
                 <>
                     {activeTab === "products" && <TopProductsReport data={data.topProducts} />}
                     {activeTab === "revenue" && <ChannelRevenueReport data={data.channelRevenue} />}
-                    {activeTab === "quantity" && <ChannelQuantityReport data={data.channelQuantity} />}
+                    {activeTab === "quantity" && <ChannelQuantityReport data={data.channelQuantity} from={from} to={to} channelId={channelId} channelType={channelType} />}
                     {activeTab === "stock" && <ChannelStockReport data={data.channelStock} />}
                     {activeTab === "totalStock" && <TotalStockReport data={data.totalStockSummary} />}
                 </>

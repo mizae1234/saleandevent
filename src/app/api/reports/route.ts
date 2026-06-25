@@ -144,6 +144,14 @@ export async function GET(request: NextRequest) {
     }
 
     if (!tab || tab === "totalStock") {
+        // Channel filters for totalStock subquery (uses sc. prefix like the subquery)
+        const totalStockChannelFilter = channelId !== "all"
+            ? Prisma.sql`AND sc.id = ${channelId}::uuid`
+            : Prisma.empty;
+        const totalStockTypeFilter = channelType !== "all"
+            ? Prisma.sql`AND sc.type = ${channelType}`
+            : Prisma.empty;
+
         // 5. Total stock summary — warehouse + all channel stock remaining
         totalStockPromise = db.$queryRaw`
             SELECT
@@ -163,6 +171,8 @@ export async function GET(request: NextRequest) {
                 FROM channel_stock cs
                 JOIN sales_channels sc ON sc.id = cs.channel_id
                 WHERE sc.status NOT IN ('draft', 'submitted')
+                    ${totalStockChannelFilter}
+                    ${totalStockTypeFilter}
                 GROUP BY cs.barcode
             ) cs_agg ON cs_agg.barcode = p.barcode
             WHERE p.status = 'active'
