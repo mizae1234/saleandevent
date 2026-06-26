@@ -26,6 +26,11 @@ export async function GET(request: NextRequest) {
         ? Prisma.sql`AND sc.type = ${channelType}`
         : Prisma.empty;
 
+    const includeClosed = searchParams.get("includeClosed") === "true";
+    const closedStatusFilter = !includeClosed
+        ? Prisma.sql`AND sc.status NOT IN ('closed', 'completed', 'returned')`
+        : Prisma.empty;
+
     // Query: Per-channel, per-product quantity breakdown
     const rows: any[] = await db.$queryRaw`
         SELECT 
@@ -45,6 +50,7 @@ export async function GET(request: NextRequest) {
             AND s.status = 'active'
             ${channelFilter}
             ${typeFilter}
+            ${closedStatusFilter}
         GROUP BY sc.name, sc.code, sc.type, p.code, p.name, p.color, p.size
         ORDER BY sc.name ASC, SUM(si.quantity) DESC
     `;

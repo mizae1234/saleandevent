@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     const channelId = searchParams.get("channelId") || "all";
     const channelType = searchParams.get("channelType") || "all"; // "all" | "EVENT" | "BRANCH"
     const tab = searchParams.get("tab"); // "products" | "revenue" | "quantity" | "stock" | "totalStock" or null
+    const includeClosed = searchParams.get("includeClosed") === "true";
 
     // Default: this month
     const now = new Date();
@@ -27,14 +28,24 @@ export async function GET(request: NextRequest) {
         ? Prisma.sql`AND sc.type = ${channelType}`
         : Prisma.empty;
 
+    const closedStatusFilter = !includeClosed
+        ? Prisma.sql`AND sc.status NOT IN ('closed', 'completed', 'returned')`
+        : Prisma.empty;
+
     // 0. List of all channels for dropdown (always needed)
     const availableChannelsPromise = db.salesChannel.findMany({
         where: {
             isActive: true,
-            status: { notIn: ['draft', 'submitted'] },
+            status: { 
+                notIn: [
+                    'draft', 
+                    'submitted', 
+                    ...(includeClosed ? [] : ['closed', 'completed', 'returned'])
+                ] 
+            },
             ...(channelType !== 'all' ? { type: channelType } : {}),
         },
-        select: { id: true, name: true, code: true, type: true },
+        select: { id: true, name: true, code: true, type: true, status: true },
         orderBy: { createdAt: 'desc' }
     });
 
@@ -59,6 +70,7 @@ export async function GET(request: NextRequest) {
             WHERE s.sold_at >= ${dateFrom} AND s.sold_at <= ${dateTo} AND s.status = 'active'
             ${channelFilter}
             ${typeFilter}
+            ${closedStatusFilter}
             GROUP BY si.barcode, p.name, p.code, p.size, p.color
             ORDER BY revenue DESC
         ` as Promise<any[]>;
@@ -78,6 +90,7 @@ export async function GET(request: NextRequest) {
                 AND sc.status NOT IN ('draft', 'submitted')
                 ${channelId !== "all" ? Prisma.sql`AND sc.id = ${channelId}::uuid` : Prisma.empty}
                 ${typeFilter}
+                ${closedStatusFilter}
             GROUP BY sc.id, sc.name, sc.code, sc.type, sc.location, sc.sales_target
             ORDER BY total_sales DESC
         ` as Promise<any[]>;
@@ -98,17 +111,25 @@ export async function GET(request: NextRequest) {
                 AND sc.status NOT IN ('draft', 'submitted')
                 ${channelId !== "all" ? Prisma.sql`AND sc.id = ${channelId}::uuid` : Prisma.empty}
                 ${typeFilter}
+                ${closedStatusFilter}
             GROUP BY sc.id, sc.name, sc.code, sc.type
             ORDER BY total_qty DESC
         ` as Promise<any[]>;
     }
 
     if (!tab || tab === "stock") {
-        // 4. Channel stock — real-time (all non-draft channels, regardless of isActive)
+        // 4. Channel stock — real-time (exclude inactive channels, closed channels optional)
         // Optimization: Filter stock to only retrieve items with quantity > 0 directly from DB
         channelStockPromise = db.salesChannel.findMany({
             where: {
-                status: { notIn: ['draft', 'submitted'] },
+                isActive: true,
+                status: { 
+                    notIn: [
+                        'draft', 
+                        'submitted', 
+                        ...(includeClosed ? [] : ['closed', 'completed', 'returned'])
+                    ] 
+                },
                 ...(channelId !== "all" ? { id: channelId } : {}),
                 ...(channelType !== 'all' ? { type: channelType } : {}),
             },
@@ -170,7 +191,9 @@ export async function GET(request: NextRequest) {
                     SUM(cs.quantity - cs.sold_quantity - cs.returned_quantity) as channel_remaining
                 FROM channel_stock cs
                 JOIN sales_channels sc ON sc.id = cs.channel_id
-                WHERE sc.status NOT IN ('draft', 'submitted')
+                WHERE sc.is_active = true
+                    AND sc.status NOT IN ('draft', 'submitted')
+                    ${closedStatusFilter}
                     ${totalStockChannelFilter}
                     ${totalStockTypeFilter}
                 GROUP BY cs.barcode

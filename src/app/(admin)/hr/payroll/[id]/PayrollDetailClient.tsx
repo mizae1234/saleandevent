@@ -140,6 +140,8 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
     const handleExport = () => {
         const data = localRows.map((row, i) => ({
             'ลำดับ': i + 1,
+            'รหัสสาขา/Event': channel.code,
+            'ชื่อสาขา/Event': channel.name,
             'รหัส': row.staffCode,
             'ชื่อพนักงาน': row.name,
             'ธนาคาร': row.bankName !== '-' ? row.bankName : '',
@@ -159,6 +161,8 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
         // Add totals row
         data.push({
             'ลำดับ': 0,
+            'รหัสสาขา/Event': '',
+            'ชื่อสาขา/Event': '',
             'รหัส': '',
             'ชื่อพนักงาน': 'รวมทั้งหมด',
             'ธนาคาร': '',
@@ -181,7 +185,7 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
 
         // Set column widths
         ws['!cols'] = [
-            { wch: 5 }, { wch: 8 }, { wch: 20 }, { wch: 12 }, { wch: 16 },
+            { wch: 5 }, { wch: 15 }, { wch: 25 }, { wch: 8 }, { wch: 20 }, { wch: 12 }, { wch: 16 },
             { wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 15 },
             { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
         ];

@@ -110,15 +110,16 @@ export function ReportsClient() {
     const [quickRange, setQuickRange] = useState<QuickRange>("thisMonth");
     const [channelId, setChannelId] = useState("all");
     const [channelType, setChannelType] = useState<ChannelType>("all");
+    const [includeClosed, setIncludeClosed] = useState(false);
     const [activeTab, setActiveTab] = useState<TabKey>("products");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchData = useCallback(async (f: string, t: string, cId: string, cType: string, tab: string) => {
+    const fetchData = useCallback(async (f: string, t: string, cId: string, cType: string, tab: string, incClosed: boolean) => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/reports?from=${f}&to=${t}&channelId=${cId}&channelType=${cType}&tab=${tab}`);
+            const res = await fetch(`/api/reports?from=${f}&to=${t}&channelId=${cId}&channelType=${cType}&tab=${tab}&includeClosed=${incClosed}`);
             if (!res.ok) throw new Error("Failed to fetch");
             const json = await res.json();
             setData(json);
@@ -130,8 +131,18 @@ export function ReportsClient() {
     }, []);
 
     useEffect(() => {
-        fetchData(from, to, channelId, channelType, activeTab);
-    }, [from, to, channelId, channelType, activeTab, fetchData]);
+        fetchData(from, to, channelId, channelType, activeTab, includeClosed);
+    }, [from, to, channelId, channelType, activeTab, includeClosed, fetchData]);
+
+    const handleIncludeClosedChange = (checked: boolean) => {
+        setIncludeClosed(checked);
+        if (!checked && channelId !== "all") {
+            const selected = data?.availableChannels?.find((c: any) => c.id === channelId);
+            if (selected && ["closed", "completed", "returned"].includes(selected.status)) {
+                setChannelId("all");
+            }
+        }
+    };
 
     const handleQuick = (range: QuickRange) => {
         const now = new Date();
@@ -181,7 +192,7 @@ export function ReportsClient() {
                     </p>
                 </div>
                 <button
-                    onClick={() => fetchData(from, to, channelId, channelType, activeTab)}
+                    onClick={() => fetchData(from, to, channelId, channelType, activeTab, includeClosed)}
                     disabled={loading}
                     className="self-start md:self-auto inline-flex items-center gap-2 px-3 py-2 text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
                 >
@@ -228,6 +239,23 @@ export function ReportsClient() {
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    <div className="h-8 w-px bg-slate-200 hidden md:block" />
+
+                    {/* Include Closed Channels Checkbox */}
+                    <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-2 cursor-pointer h-9 px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors select-none">
+                            <input
+                                type="checkbox"
+                                checked={includeClosed}
+                                onChange={(e) => handleIncludeClosedChange(e.target.checked)}
+                                className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                            />
+                            <span className="text-xs sm:text-sm font-medium text-slate-600">
+                                รวมสาขา/Event ที่ปิดไปแล้ว
+                            </span>
+                        </label>
                     </div>
 
                     <div className="h-8 w-px bg-slate-200 hidden md:block" />
@@ -313,7 +341,7 @@ export function ReportsClient() {
                 <>
                     {activeTab === "products" && <TopProductsReport data={data.topProducts} />}
                     {activeTab === "revenue" && <ChannelRevenueReport data={data.channelRevenue} />}
-                    {activeTab === "quantity" && <ChannelQuantityReport data={data.channelQuantity} from={from} to={to} channelId={channelId} channelType={channelType} />}
+                    {activeTab === "quantity" && <ChannelQuantityReport data={data.channelQuantity} from={from} to={to} channelId={channelId} channelType={channelType} includeClosed={includeClosed} />}
                     {activeTab === "stock" && <ChannelStockReport data={data.channelStock} />}
                     {activeTab === "totalStock" && <TotalStockReport data={data.totalStockSummary} />}
                 </>

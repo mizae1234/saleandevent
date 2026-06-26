@@ -27,6 +27,7 @@ interface Props {
     to: string;
     channelId: string;
     channelType: string;
+    includeClosed: boolean;
 }
 
 function fmt(n: number) {
@@ -49,7 +50,7 @@ function CustomTooltip({ active, payload }: any) {
     );
 }
 
-export function ChannelQuantityReport({ data, from, to, channelId, channelType }: Props) {
+export function ChannelQuantityReport({ data, from, to, channelId, channelType, includeClosed }: Props) {
     const [exportingDetail, setExportingDetail] = useState(false);
     const totalQty = data.reduce((s, c) => s + c.totalQty, 0);
     const totalBills = data.reduce((s, c) => s + c.billCount, 0);
@@ -85,7 +86,7 @@ export function ChannelQuantityReport({ data, from, to, channelId, channelType }
     const handleExportDetail = async () => {
         setExportingDetail(true);
         try {
-            const res = await fetch(`/api/reports/quantity-detail?from=${from}&to=${to}&channelId=${channelId}&channelType=${channelType}`);
+            const res = await fetch(`/api/reports/quantity-detail?from=${from}&to=${to}&channelId=${channelId}&channelType=${channelType}&includeClosed=${includeClosed}`);
             if (!res.ok) throw new Error("Failed to fetch detail");
             const json = await res.json();
             const detail: any[] = json.data;
