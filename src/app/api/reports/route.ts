@@ -180,9 +180,9 @@ export async function GET(request: NextRequest) {
                 p.name,
                 p.color,
                 p.size,
-                COALESCE(ws.quantity, 0) as warehouse_qty,
+                GREATEST(COALESCE(ws.quantity, 0), 0) as warehouse_qty,
                 COALESCE(cs_agg.channel_remaining, 0) as channel_qty,
-                COALESCE(ws.quantity, 0) + COALESCE(cs_agg.channel_remaining, 0) as total_qty
+                GREATEST(COALESCE(ws.quantity, 0), 0) + COALESCE(cs_agg.channel_remaining, 0) as total_qty
             FROM products p
             LEFT JOIN warehouse_stock ws ON ws.barcode = p.barcode
             LEFT JOIN (
@@ -199,7 +199,7 @@ export async function GET(request: NextRequest) {
                 GROUP BY cs.barcode
             ) cs_agg ON cs_agg.barcode = p.barcode
             WHERE p.status = 'active'
-                AND (COALESCE(ws.quantity, 0) + COALESCE(cs_agg.channel_remaining, 0)) > 0
+                AND (GREATEST(COALESCE(ws.quantity, 0), 0) > 0 OR COALESCE(cs_agg.channel_remaining, 0) > 0)
             ORDER BY p.code ASC, p.name ASC, p.color ASC, p.size ASC
         ` as Promise<any[]>;
     }
