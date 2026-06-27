@@ -75,17 +75,17 @@ export default async function PayrollReportPage() {
     // Parse and map records
     const rows = channelStaffs.map(cs => {
         const attendanceCount = attendanceMap.get(`${cs.channelId}_${cs.staffId}`) || 0;
-        const daysWorked = cs.daysWorkedOverride !== null && cs.daysWorkedOverride !== undefined
+        const daysWorked = cs.isSubmitted && cs.daysWorkedOverride !== null && cs.daysWorkedOverride !== undefined
             ? cs.daysWorkedOverride
             : attendanceCount;
 
-        const dailyRate = cs.dailyRateOverride !== null && cs.dailyRateOverride !== undefined
+        const dailyRate = cs.isSubmitted && cs.dailyRateOverride !== null && cs.dailyRateOverride !== undefined
             ? Number(cs.dailyRateOverride)
             : Number(cs.staff.dailyRate || 0);
 
         const totalWage = daysWorked * dailyRate;
 
-        const commissionRate = cs.commissionOverride !== null && cs.commissionOverride !== undefined
+        const commissionRate = cs.isSubmitted && cs.commissionOverride !== null && cs.commissionOverride !== undefined
             ? Number(cs.commissionOverride)
             : Number(cs.staff.commissionAmount || 0);
 

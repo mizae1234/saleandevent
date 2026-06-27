@@ -28,13 +28,19 @@ export async function getChannelCompensationSummary(channelId: string) {
     const staffSummary = channel.staff.map((cs: any) => {
         const staffAttendance = channel.attendance.filter((a: any) => a.staffId === cs.staffId);
         const attendanceDays = staffAttendance.length;
-        // Use override if set, otherwise use attendance count
-        const daysWorked = cs.daysWorkedOverride != null ? cs.daysWorkedOverride : attendanceDays;
-        const dailyRate = cs.dailyRateOverride != null ? Number(cs.dailyRateOverride) : Number(cs.staff.dailyRate || 0);
+        // Show overrides only if submitted, otherwise use master values
+        const daysWorked = (cs.isSubmitted && cs.daysWorkedOverride != null) 
+            ? cs.daysWorkedOverride 
+            : attendanceDays;
+        const dailyRate = (cs.isSubmitted && cs.dailyRateOverride != null) 
+            ? Number(cs.dailyRateOverride) 
+            : Number(cs.staff.dailyRate || 0);
         const totalWage = daysWorked * dailyRate;
 
         // Commission: flat amount (not multiplied by days)
-        const commissionRate = Number(cs.commissionOverride ?? cs.staff.commissionAmount ?? 0);
+        const commissionRate = cs.isSubmitted 
+            ? Number(cs.commissionOverride ?? cs.staff.commissionAmount ?? 0)
+            : Number(cs.staff.commissionAmount ?? 0);
         const totalCommission = commissionRate;
 
         return {
@@ -74,6 +80,8 @@ export async function saveStaffCompensation(
                 data: {
                     daysWorkedOverride: item.daysWorked,
                     commissionOverride: item.commissionRate,
+                    isSubmitted: true,
+                    submittedAt: new Date(),
                 },
             });
         }
