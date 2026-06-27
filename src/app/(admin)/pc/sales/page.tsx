@@ -19,7 +19,15 @@ async function getEventsWithSales() {
         },
         orderBy: { startDate: 'desc' }
     });
-    return events;
+
+    return events.map(e => ({
+        ...e,
+        salesTarget: e.salesTarget !== null ? Number(e.salesTarget) : null,
+        sales: e.sales.map(s => ({
+            ...s,
+            totalAmount: Number(s.totalAmount)
+        }))
+    }));
 }
 
 export default async function SalesEventSelectPage() {
