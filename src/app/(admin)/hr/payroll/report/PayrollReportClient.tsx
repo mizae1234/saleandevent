@@ -41,6 +41,11 @@ interface PayrollRow {
     commissionRate: number;
     totalCommission: number;
     expenseAmount: number;
+    travelExpense: number;
+    setupExpense: number;
+    teardownExpense: number;
+    otherExpense: number;
+    expenseDetailsStr: string;
     totalPay: number;
 
     // Channel details
@@ -226,6 +231,11 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
                 จำนวนวัน: row.daysWorked,
                 "ค่าแรง/วัน": row.dailyRate,
                 ค่าแรงรวม: row.totalWage,
+                ค่าลงงาน: row.setupExpense,
+                ค่าเก็บงาน: row.teardownExpense,
+                ค่าเดินทาง: row.travelExpense,
+                ค่าใช้จ่ายอื่นๆ: row.otherExpense,
+                รายละเอียดเบิก: row.expenseDetailsStr,
                 ค่าใช้จ่ายเบิก: row.expenseAmount,
                 "ค่าแรง+ค่าใช้จ่าย": row.totalWage + row.expenseAmount,
                 ค่าคอม: row.totalCommission,
@@ -248,6 +258,11 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
                 จำนวนวัน: 0,
                 "ค่าแรง/วัน": 0,
                 ค่าแรงรวม: summary.totalWage,
+                ค่าลงงาน: filteredRows.reduce((sum, r) => sum + r.setupExpense, 0),
+                ค่าเก็บงาน: filteredRows.reduce((sum, r) => sum + r.teardownExpense, 0),
+                ค่าเดินทาง: filteredRows.reduce((sum, r) => sum + r.travelExpense, 0),
+                ค่าใช้จ่ายอื่นๆ: filteredRows.reduce((sum, r) => sum + r.otherExpense, 0),
+                รายละเอียดเบิก: "",
                 ค่าใช้จ่ายเบิก: summary.totalExpense,
                 "ค่าแรง+ค่าใช้จ่าย": summary.totalWage + summary.totalExpense,
                 ค่าคอม: summary.totalCommission,
@@ -274,6 +289,11 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
                 { wch: 10 }, // จำนวนวัน
                 { wch: 12 }, // ค่าแรง/วัน
                 { wch: 12 }, // ค่าแรงรวม
+                { wch: 10 }, // ค่าลงงาน
+                { wch: 10 }, // ค่าเก็บงาน
+                { wch: 10 }, // ค่าเดินทาง
+                { wch: 12 }, // ค่าใช้จ่ายอื่นๆ
+                { wch: 35 }, // รายละเอียดเบิก
                 { wch: 15 }, // ค่าใช้จ่ายเบิก
                 { wch: 16 }, // ค่าแรง+ค่าใช้จ่าย
                 { wch: 12 }, // ค่าคอม

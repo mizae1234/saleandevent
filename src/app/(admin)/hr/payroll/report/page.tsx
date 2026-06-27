@@ -58,18 +58,32 @@ export default async function PayrollReportPage() {
         attendanceMap.set(`${agg.channelId}_${agg.staffId}`, agg._count);
     });
 
-    // Grouped expense sum lookup Map: key -> `${channelId}_${createdBy}`
-    const expenseAggs = await db.channelExpense.groupBy({
-        by: ['channelId', 'createdBy'],
+    // Detailed expenses lookup Map: key -> list of expenses
+    const expenseDetails = await db.channelExpense.findMany({
         where: {
             status: { in: ['approved', 'pending'] },
             createdBy: { not: null },
         },
-        _sum: { amount: true },
+        select: {
+            channelId: true,
+            createdBy: true,
+            category: true,
+            amount: true,
+            description: true,
+        },
     });
-    const expenseMap = new Map<string, number>();
-    expenseAggs.forEach(agg => {
-        expenseMap.set(`${agg.channelId}_${agg.createdBy}`, Number(agg._sum.amount || 0));
+
+    const expenseMap = new Map<string, { category: string; amount: number; description: string | null }[]>();
+    expenseDetails.forEach(e => {
+        const key = `${e.channelId}_${e.createdBy}`;
+        if (!expenseMap.has(key)) {
+            expenseMap.set(key, []);
+        }
+        expenseMap.get(key)!.push({
+            category: e.category,
+            amount: Number(e.amount),
+            description: e.description,
+        });
     });
 
     // Parse and map records
@@ -89,7 +103,18 @@ export default async function PayrollReportPage() {
             ? Number(cs.commissionOverride)
             : Number(cs.staff.commissionAmount || 0);
 
-        const expenseAmount = expenseMap.get(`${cs.channelId}_${cs.staffId}`) || 0;
+        const staffExpenses = expenseMap.get(`${cs.channelId}_${cs.staffId}`) || [];
+        const expenseAmount = staffExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+        const travelExpense = staffExpenses.filter(e => e.category === 'ค่าเดินทาง').reduce((sum, e) => sum + e.amount, 0);
+        const setupExpense = staffExpenses.filter(e => e.category === 'ค่าลงงาน').reduce((sum, e) => sum + e.amount, 0);
+        const teardownExpense = staffExpenses.filter(e => e.category === 'ค่าเก็บงาน').reduce((sum, e) => sum + e.amount, 0);
+        const otherExpense = staffExpenses.filter(e => !['ค่าเดินทาง', 'ค่าลงงาน', 'ค่าเก็บงาน'].includes(e.category)).reduce((sum, e) => sum + e.amount, 0);
+
+        const expenseDetailsStr = staffExpenses.map(e => {
+            const descSuffix = e.description && e.description !== e.category ? ` (${e.description})` : '';
+            return `${e.category}${descSuffix} ฿${e.amount.toLocaleString()}`;
+        }).join(' | ');
 
         return {
             channelStaffId: cs.id,
@@ -114,6 +139,11 @@ export default async function PayrollReportPage() {
             commissionRate,
             totalCommission: commissionRate,
             expenseAmount,
+            travelExpense,
+            setupExpense,
+            teardownExpense,
+            otherExpense,
+            expenseDetailsStr: expenseDetailsStr || '-',
             totalPay: totalWage + commissionRate,
 
             // Channel Info

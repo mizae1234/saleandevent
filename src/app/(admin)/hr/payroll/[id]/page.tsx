@@ -9,7 +9,7 @@ export default async function PayrollDetailPage({ params }: { params: Promise<{ 
     const session = await getSession();
     const salaryAccess = session?.salaryAccess || null;
 
-    const [channel, compensation, expenseAggs] = await Promise.all([
+    const [channel, compensation, expenseDetails] = await Promise.all([
         db.salesChannel.findUnique({
             where: { id: channelId },
             select: {
@@ -29,31 +29,55 @@ export default async function PayrollDetailPage({ params }: { params: Promise<{ 
             },
         }),
         getChannelCompensationSummary(channelId).catch(() => null),
-        // Sum approved expenses per staff
-        db.channelExpense.groupBy({
-            by: ['createdBy'],
+        db.channelExpense.findMany({
             where: {
                 channelId,
                 status: { in: ['approved', 'pending'] },
                 createdBy: { not: null },
             },
-            _sum: { amount: true },
+            select: {
+                createdBy: true,
+                category: true,
+                amount: true,
+                description: true,
+            },
         }),
     ]);
 
     if (!channel) notFound();
 
-    // Build expense map: staffId -> total
-    const expenseMap = new Map(
-        expenseAggs.map(e => [e.createdBy!, Number(e._sum.amount || 0)])
-    );
+    // Build expense map: staffId -> list of expenses
+    const expenseDetailsMap = new Map<string, { category: string; amount: number; description: string | null }[]>();
+    expenseDetails.forEach(e => {
+        const staffId = e.createdBy!;
+        if (!expenseDetailsMap.has(staffId)) {
+            expenseDetailsMap.set(staffId, []);
+        }
+        expenseDetailsMap.get(staffId)!.push({
+            category: e.category,
+            amount: Number(e.amount),
+            description: e.description,
+        });
+    });
 
     // Merge staff bank data with compensation data
     const staffMap = new Map(channel.staff.map(cs => [cs.staffId, { ...cs.staff, channelStaffId: cs.id, isWagePaid: cs.isWagePaid, wagePaidAt: cs.wagePaidAt, isCommissionPaid: cs.isCommissionPaid, commissionPaidAt: cs.commissionPaidAt, isSubmitted: cs.isSubmitted, submittedAt: cs.submittedAt }]));
 
     const rows = (compensation?.staffSummary || []).map(s => {
         const staff = staffMap.get(s.staffId);
-        const expenseAmount = expenseMap.get(s.staffId) || 0;
+        const staffExpenses = expenseDetailsMap.get(s.staffId) || [];
+        const expenseAmount = staffExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+        const travelExpense = staffExpenses.filter(e => e.category === 'ค่าเดินทาง').reduce((sum, e) => sum + e.amount, 0);
+        const setupExpense = staffExpenses.filter(e => e.category === 'ค่าลงงาน').reduce((sum, e) => sum + e.amount, 0);
+        const teardownExpense = staffExpenses.filter(e => e.category === 'ค่าเก็บงาน').reduce((sum, e) => sum + e.amount, 0);
+        const otherExpense = staffExpenses.filter(e => !['ค่าเดินทาง', 'ค่าลงงาน', 'ค่าเก็บงาน'].includes(e.category)).reduce((sum, e) => sum + e.amount, 0);
+
+        const expenseDetailsStr = staffExpenses.map(e => {
+            const descSuffix = e.description && e.description !== e.category ? ` (${e.description})` : '';
+            return `${e.category}${descSuffix} ฿${e.amount.toLocaleString()}`;
+        }).join(' | ');
+
         return {
             ...s,
             staffCode: staff?.code || '-',
@@ -68,6 +92,11 @@ export default async function PayrollDetailPage({ params }: { params: Promise<{ 
             isSubmitted: staff?.isSubmitted || false,
             submittedAt: staff?.submittedAt?.toISOString() || null,
             expenseAmount,
+            travelExpense,
+            setupExpense,
+            teardownExpense,
+            otherExpense,
+            expenseDetailsStr: expenseDetailsStr || '-',
         };
     });
 

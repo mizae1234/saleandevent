@@ -33,6 +33,11 @@ type PayrollRow = {
     isSubmitted: boolean;
     submittedAt: string | null;
     expenseAmount: number;
+    travelExpense: number;
+    setupExpense: number;
+    teardownExpense: number;
+    otherExpense: number;
+    expenseDetailsStr: string;
 };
 
 interface Props {
@@ -149,6 +154,11 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
             'ค่าแรง/วัน': row.dailyRate,
             'จำนวนวัน': row.daysWorked,
             'ค่าแรงรวม': row.totalWage,
+            'ค่าลงงาน': row.setupExpense,
+            'ค่าเก็บงาน': row.teardownExpense,
+            'ค่าเดินทาง': row.travelExpense,
+            'ค่าใช้จ่ายอื่นๆ': row.otherExpense,
+            'รายละเอียดเบิก': row.expenseDetailsStr,
             'ค่าใช้จ่ายเบิก': row.expenseAmount,
             'ค่าแรง+ค่าใช้จ่าย': row.totalWage + row.expenseAmount,
             'ค่าคอม': row.totalCommission,
@@ -170,6 +180,11 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
             'ค่าแรง/วัน': 0,
             'จำนวนวัน': 0,
             'ค่าแรงรวม': totalWage,
+            'ค่าลงงาน': localRows.reduce((sum, r) => sum + r.setupExpense, 0),
+            'ค่าเก็บงาน': localRows.reduce((sum, r) => sum + r.teardownExpense, 0),
+            'ค่าเดินทาง': localRows.reduce((sum, r) => sum + r.travelExpense, 0),
+            'ค่าใช้จ่ายอื่นๆ': localRows.reduce((sum, r) => sum + r.otherExpense, 0),
+            'รายละเอียดเบิก': '',
             'ค่าใช้จ่ายเบิก': totalExpense,
             'ค่าแรง+ค่าใช้จ่าย': totalWageExp,
             'ค่าคอม': totalCommission,
@@ -186,8 +201,9 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
         // Set column widths
         ws['!cols'] = [
             { wch: 5 }, { wch: 15 }, { wch: 25 }, { wch: 8 }, { wch: 20 }, { wch: 12 }, { wch: 16 },
-            { wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 15 },
-            { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+            { wch: 10 }, { wch: 8 }, { wch: 12 },
+            { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 35 },
+            { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
         ];
 
         XLSX.writeFile(wb, `payroll_${channel.code}_${new Date().toISOString().slice(0, 10)}.xlsx`);
