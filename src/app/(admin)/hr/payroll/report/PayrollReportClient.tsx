@@ -730,7 +730,7 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
                                             <td
                                                 className={`px-3 py-3 text-right font-bold border-l border-slate-100 ${
                                                     bothPaid
-                                                        ? "text-emerald-505 line-through text-slate-400"
+                                                        ? "text-emerald-500 line-through text-slate-400"
                                                         : "text-emerald-700 bg-emerald-50/20"
                                                 }`}
                                             >
