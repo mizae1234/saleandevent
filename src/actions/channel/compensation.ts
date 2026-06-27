@@ -89,6 +89,11 @@ export async function saveStaffCompensation(
     });
 
     revalidatePath(`/channels/${channelId}`);
+    revalidatePath(`/hr/payroll/${channelId}`);
+    revalidatePath(`/hr/payroll/${channelId}/staff/${items[0]?.channelStaffId}`); // revalidate staff sub-page if dynamic, or just dynamic path
+    revalidatePath('/hr/payroll');
+    revalidatePath('/hr/payroll/report');
+    revalidatePath(`/channel/${channelId}/payroll`);
 }
 
 export async function updateEmployeeCompensation(
@@ -124,4 +129,8 @@ export async function updateEmployeeCompensation(
     });
 
     revalidatePath(`/channel/${channelId}/payroll`);
+    revalidatePath(`/hr/payroll/${channelId}`);
+    revalidatePath(`/hr/payroll/${channelId}/staff/${staffId}`);
+    revalidatePath('/hr/payroll');
+    revalidatePath('/hr/payroll/report');
 }

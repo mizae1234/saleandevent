@@ -8,8 +8,17 @@ export async function updateStaffDailyRate(channelStaffId: string, dailyRate: nu
         where: { id: channelStaffId },
         data: { dailyRateOverride: dailyRate },
     });
-    const cs = await db.channelStaff.findUnique({ where: { id: channelStaffId }, select: { channelId: true } });
-    if (cs) revalidatePath(`/hr/payroll/${cs.channelId}`);
+    const cs = await db.channelStaff.findUnique({ 
+        where: { id: channelStaffId }, 
+        select: { channelId: true, staffId: true } 
+    });
+    if (cs) {
+        revalidatePath(`/hr/payroll/${cs.channelId}`);
+        revalidatePath(`/hr/payroll/${cs.channelId}/staff/${cs.staffId}`);
+        revalidatePath('/hr/payroll');
+        revalidatePath('/hr/payroll/report');
+        revalidatePath(`/channel/${cs.channelId}/payroll`);
+    }
 }
 
 export async function toggleWagePaid(channelStaffId: string, isWagePaid: boolean) {
@@ -20,8 +29,17 @@ export async function toggleWagePaid(channelStaffId: string, isWagePaid: boolean
             wagePaidAt: isWagePaid ? new Date() : null,
         },
     });
-    const cs = await db.channelStaff.findUnique({ where: { id: channelStaffId }, select: { channelId: true } });
-    if (cs) revalidatePath(`/hr/payroll/${cs.channelId}`);
+    const cs = await db.channelStaff.findUnique({ 
+        where: { id: channelStaffId }, 
+        select: { channelId: true, staffId: true } 
+    });
+    if (cs) {
+        revalidatePath(`/hr/payroll/${cs.channelId}`);
+        revalidatePath(`/hr/payroll/${cs.channelId}/staff/${cs.staffId}`);
+        revalidatePath('/hr/payroll');
+        revalidatePath('/hr/payroll/report');
+        revalidatePath(`/channel/${cs.channelId}/payroll`);
+    }
 }
 
 export async function toggleCommissionPaid(channelStaffId: string, isCommissionPaid: boolean) {
@@ -32,8 +50,17 @@ export async function toggleCommissionPaid(channelStaffId: string, isCommissionP
             commissionPaidAt: isCommissionPaid ? new Date() : null,
         },
     });
-    const cs = await db.channelStaff.findUnique({ where: { id: channelStaffId }, select: { channelId: true } });
-    if (cs) revalidatePath(`/hr/payroll/${cs.channelId}`);
+    const cs = await db.channelStaff.findUnique({ 
+        where: { id: channelStaffId }, 
+        select: { channelId: true, staffId: true } 
+    });
+    if (cs) {
+        revalidatePath(`/hr/payroll/${cs.channelId}`);
+        revalidatePath(`/hr/payroll/${cs.channelId}/staff/${cs.staffId}`);
+        revalidatePath('/hr/payroll');
+        revalidatePath('/hr/payroll/report');
+        revalidatePath(`/channel/${cs.channelId}/payroll`);
+    }
 }
 
 export async function markAllWagePaid(channelId: string, isWagePaid: boolean) {
@@ -42,6 +69,9 @@ export async function markAllWagePaid(channelId: string, isWagePaid: boolean) {
         data: { isWagePaid, wagePaidAt: isWagePaid ? new Date() : null },
     });
     revalidatePath(`/hr/payroll/${channelId}`);
+    revalidatePath('/hr/payroll');
+    revalidatePath('/hr/payroll/report');
+    revalidatePath(`/channel/${channelId}/payroll`);
 }
 
 export async function markAllCommissionPaid(channelId: string, isCommissionPaid: boolean) {
@@ -50,6 +80,9 @@ export async function markAllCommissionPaid(channelId: string, isCommissionPaid:
         data: { isCommissionPaid, commissionPaidAt: isCommissionPaid ? new Date() : null },
     });
     revalidatePath(`/hr/payroll/${channelId}`);
+    revalidatePath('/hr/payroll');
+    revalidatePath('/hr/payroll/report');
+    revalidatePath(`/channel/${channelId}/payroll`);
 }
 
 export async function submitPayroll(channelId: string, staffId: string) {
@@ -61,4 +94,8 @@ export async function submitPayroll(channelId: string, staffId: string) {
         },
     });
     revalidatePath(`/hr/payroll/${channelId}`);
+    revalidatePath(`/hr/payroll/${channelId}/staff/${staffId}`);
+    revalidatePath('/hr/payroll');
+    revalidatePath('/hr/payroll/report');
+    revalidatePath(`/channel/${channelId}/payroll`);
 }
