@@ -173,6 +173,20 @@ export async function GET(request: NextRequest) {
             ? Prisma.sql`AND sc.type = ${channelType}`
             : Prisma.empty;
 
+        const isFiltered = channelId !== "all" || channelType !== "all";
+
+        const warehouseQtySql = isFiltered
+            ? Prisma.sql`0 as warehouse_qty`
+            : Prisma.sql`GREATEST(COALESCE(ws.quantity, 0), 0) as warehouse_qty`;
+
+        const totalQtySql = isFiltered
+            ? Prisma.sql`COALESCE(cs_agg.channel_remaining, 0) as total_qty`
+            : Prisma.sql`GREATEST(COALESCE(ws.quantity, 0), 0) + COALESCE(cs_agg.channel_remaining, 0) as total_qty`;
+
+        const whereStockSql = isFiltered
+            ? Prisma.sql`COALESCE(cs_agg.channel_remaining, 0) > 0`
+            : Prisma.sql`GREATEST(COALESCE(ws.quantity, 0), 0) > 0 OR COALESCE(cs_agg.channel_remaining, 0) > 0`;
+
         // 5. Total stock summary — warehouse + all channel stock remaining
         totalStockPromise = db.$queryRaw`
             SELECT
@@ -180,9 +194,9 @@ export async function GET(request: NextRequest) {
                 p.name,
                 p.color,
                 p.size,
-                GREATEST(COALESCE(ws.quantity, 0), 0) as warehouse_qty,
+                ${warehouseQtySql},
                 COALESCE(cs_agg.channel_remaining, 0) as channel_qty,
-                GREATEST(COALESCE(ws.quantity, 0), 0) + COALESCE(cs_agg.channel_remaining, 0) as total_qty
+                ${totalQtySql}
             FROM products p
             LEFT JOIN warehouse_stock ws ON ws.barcode = p.barcode
             LEFT JOIN (
@@ -199,7 +213,7 @@ export async function GET(request: NextRequest) {
                 GROUP BY cs.barcode
             ) cs_agg ON cs_agg.barcode = p.barcode
             WHERE p.status = 'active'
-                AND (GREATEST(COALESCE(ws.quantity, 0), 0) > 0 OR COALESCE(cs_agg.channel_remaining, 0) > 0)
+                AND (${whereStockSql})
             ORDER BY p.code ASC, p.name ASC, p.color ASC, p.size ASC
         ` as Promise<any[]>;
     }
