@@ -128,7 +128,10 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
             // Sheet 2: รายละเอียดสินค้า (Item Details)
             const detailRows: Record<string, string | number>[] = [];
             filtered.forEach(sale => {
+                let itemsSum = 0;
                 sale.items.forEach(item => {
+                    const itemTotal = Number(item.totalAmount);
+                    itemsSum += itemTotal;
                     detailRows.push({
                         "เลขบิล": sale.billCode || sale.id.slice(0, 8),
                         "วันที่": format(new Date(sale.soldAt), "d/MM/yyyy HH:mm", { locale: th }),
@@ -139,11 +142,48 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                         "สี": item.product.color || "-",
                         "จำนวน": item.quantity,
                         "ราคาต่อชิ้น": Number(item.unitPrice),
-                        "รวม": Number(item.totalAmount),
+                        "รวม": itemTotal,
                         "แถม": item.isFreebie ? "ใช่" : "-",
                         "สถานะบิล": sale.status === 'active' ? 'สำเร็จ' : 'ยกเลิก',
                     });
                 });
+
+                // Add adjustment row if there's any discrepancy
+                const adjustment = Number(sale.totalAmount) - itemsSum + Number(sale.discount);
+                if (Math.abs(adjustment) > 0.01) {
+                    detailRows.push({
+                        "เลขบิล": sale.billCode || sale.id.slice(0, 8),
+                        "วันที่": format(new Date(sale.soldAt), "d/MM/yyyy HH:mm", { locale: th }),
+                        "รหัสสินค้า": "SPECIAL",
+                        "Barcode": "-",
+                        "ชื่อสินค้า": "รายการพิเศษ (Adjustment)",
+                        "ไซส์": "-",
+                        "สี": "-",
+                        "จำนวน": 1,
+                        "ราคาต่อชิ้น": Number(adjustment.toFixed(2)),
+                        "รวม": Number(adjustment.toFixed(2)),
+                        "แถม": "-",
+                        "สถานะบิล": sale.status === 'active' ? 'สำเร็จ' : 'ยกเลิก',
+                    });
+                }
+
+                // Add discount row if there's a bill-level discount
+                if (Number(sale.discount) > 0) {
+                    detailRows.push({
+                        "เลขบิล": sale.billCode || sale.id.slice(0, 8),
+                        "วันที่": format(new Date(sale.soldAt), "d/MM/yyyy HH:mm", { locale: th }),
+                        "รหัสสินค้า": "DISCOUNT",
+                        "Barcode": "-",
+                        "ชื่อสินค้า": "ส่วนลดท้ายบิล (Bill Discount)",
+                        "ไซส์": "-",
+                        "สี": "-",
+                        "จำนวน": 1,
+                        "ราคาต่อชิ้น": -Number(Number(sale.discount).toFixed(2)),
+                        "รวม": -Number(Number(sale.discount).toFixed(2)),
+                        "แถม": "-",
+                        "สถานะบิล": sale.status === 'active' ? 'สำเร็จ' : 'ยกเลิก',
+                    });
+                }
             });
 
             const wsDetail = XLSX.utils.json_to_sheet(detailRows);

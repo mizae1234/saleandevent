@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { ArrowLeft, Banknote, CreditCard, Users, CheckCircle2, Circle, FileCheck, Clock, Download } from 'lucide-react';
@@ -72,6 +72,16 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
             return aDone - bDone;
         })
     );
+
+    useEffect(() => {
+        setLocalRows(
+            [...initialRows].sort((a, b) => {
+                const aDone = a.isWagePaid && a.isCommissionPaid ? 1 : 0;
+                const bDone = b.isWagePaid && b.isCommissionPaid ? 1 : 0;
+                return aDone - bDone;
+            })
+        );
+    }, [initialRows]);
 
     const totalWage = localRows.reduce((sum, r) => sum + r.dailyRate * r.daysWorked, 0);
     const totalCommission = localRows.reduce((sum, r) => sum + r.totalCommission, 0);

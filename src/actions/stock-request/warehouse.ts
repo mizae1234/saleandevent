@@ -63,7 +63,11 @@ export async function uploadAllocation(
     const SIZE_MAP: Record<string, string> = {
         'XXL': '2XL',
     };
-    const normalizeSize = (s: string | null) => s ? (SIZE_MAP[s] || s) : null;
+    const normalizeSize = (s: string | null) => {
+        if (!s) return null;
+        const upper = s.trim().toUpperCase();
+        return SIZE_MAP[upper] || upper;
+    };
 
     // Build lookup maps — handle all combinations of color/size being present or null
     const lookupMap = new Map<string, string>();

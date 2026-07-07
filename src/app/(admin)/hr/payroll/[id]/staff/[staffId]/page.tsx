@@ -53,7 +53,9 @@ export default async function StaffPayrollDetailPage({
 
     if (!channel || !staffRecord || !assignment) notFound();
 
-    const dailyRate = Number(staffRecord.dailyRate || 0);
+    const dailyRate = assignment.dailyRateOverride !== null && assignment.dailyRateOverride !== undefined
+        ? Number(assignment.dailyRateOverride)
+        : Number(staffRecord.dailyRate || 0);
     const daysWorked = assignment.daysWorkedOverride ?? attendanceDays;
     const commission = Number(assignment.commissionOverride ?? staffRecord.commissionAmount ?? 0);
     const totalWage = dailyRate * daysWorked;

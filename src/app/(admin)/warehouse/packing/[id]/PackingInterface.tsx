@@ -103,7 +103,10 @@ export default function PackingInterface({ requestId, requestedTotal, status, al
                 row = { no: counter, producttype: a.product.producttype || a.product.name || '', code: a.product.code || a.barcode, color: a.product.color || '-', sizes: {}, total: 0, price: a.price };
                 map.set(key, row);
             }
-            if (a.size) row.sizes[a.size] = (row.sizes[a.size] || 0) + a.packedQuantity;
+            if (a.size) {
+                const upperSize = a.size.trim().toUpperCase();
+                row.sizes[upperSize] = (row.sizes[upperSize] || 0) + a.packedQuantity;
+            }
             row.total += a.packedQuantity;
         }
         return Array.from(map.values());

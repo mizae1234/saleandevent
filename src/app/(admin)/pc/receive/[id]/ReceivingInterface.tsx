@@ -72,7 +72,8 @@ export default function ReceivingInterface({ requestId, allocations, redirectTo 
                 map.set(key, row);
             }
             if (a.size) {
-                row.sizes[a.size] = {
+                const upperSize = a.size.trim().toUpperCase();
+                row.sizes[upperSize] = {
                     barcode: a.barcode,
                     allocated: a.packedQuantity,
                 };
