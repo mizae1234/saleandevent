@@ -8,8 +8,9 @@ import { ChannelRevenueReport } from "@/components/reports/ChannelRevenueReport"
 import { ChannelQuantityReport } from "@/components/reports/ChannelQuantityReport";
 import { ChannelStockReport } from "@/components/reports/ChannelStockReport";
 import { TotalStockReport } from "@/components/reports/TotalStockReport";
+import { ByModelReport } from "@/components/reports/ByModelReport";
 
-type TabKey = "products" | "revenue" | "quantity" | "stock" | "totalStock";
+type TabKey = "products" | "revenue" | "quantity" | "stock" | "totalStock" | "byModel";
 type QuickRange = "thisMonth" | "lastMonth" | "last7" | "last30" | "custom";
 type ChannelType = "all" | "EVENT" | "BRANCH";
 
@@ -19,6 +20,7 @@ const TABS: { key: TabKey; label: string; icon: typeof Trophy }[] = [
     { key: "quantity", label: "จำนวนขาย", icon: Package },
     { key: "stock", label: "สินค้าคงเหลือ", icon: Boxes },
     { key: "totalStock", label: "คงเหลือรวม", icon: Package },
+    { key: "byModel", label: "ยอดขายรายรุ่น", icon: Search },
 ];
 
 function getDefaultRange() {
@@ -112,14 +114,16 @@ export function ReportsClient() {
     const [channelType, setChannelType] = useState<ChannelType>("all");
     const [includeClosed, setIncludeClosed] = useState(false);
     const [activeTab, setActiveTab] = useState<TabKey>("products");
+    const [modelCode, setModelCode] = useState("");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchData = useCallback(async (f: string, t: string, cId: string, cType: string, tab: string, incClosed: boolean) => {
+    const fetchData = useCallback(async (f: string, t: string, cId: string, cType: string, tab: string, incClosed: boolean, mCode?: string) => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/reports?from=${f}&to=${t}&channelId=${cId}&channelType=${cType}&tab=${tab}&includeClosed=${incClosed}`);
+            const mParam = mCode ? `&modelCode=${mCode}` : "";
+            const res = await fetch(`/api/reports?from=${f}&to=${t}&channelId=${cId}&channelType=${cType}&tab=${tab}&includeClosed=${incClosed}${mParam}`);
             if (!res.ok) throw new Error("Failed to fetch");
             const json = await res.json();
             setData(json);
@@ -131,8 +135,8 @@ export function ReportsClient() {
     }, []);
 
     useEffect(() => {
-        fetchData(from, to, channelId, channelType, activeTab, includeClosed);
-    }, [from, to, channelId, channelType, activeTab, includeClosed, fetchData]);
+        fetchData(from, to, channelId, channelType, activeTab, includeClosed, modelCode);
+    }, [from, to, channelId, channelType, activeTab, includeClosed, modelCode, fetchData]);
 
     const handleIncludeClosedChange = (checked: boolean) => {
         setIncludeClosed(checked);
@@ -192,7 +196,7 @@ export function ReportsClient() {
                     </p>
                 </div>
                 <button
-                    onClick={() => fetchData(from, to, channelId, channelType, activeTab, includeClosed)}
+                    onClick={() => fetchData(from, to, channelId, channelType, activeTab, includeClosed, modelCode)}
                     disabled={loading}
                     className="self-start md:self-auto inline-flex items-center gap-2 px-3 py-2 text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
                 >
@@ -344,6 +348,7 @@ export function ReportsClient() {
                     {activeTab === "quantity" && <ChannelQuantityReport data={data.channelQuantity} from={from} to={to} channelId={channelId} channelType={channelType} includeClosed={includeClosed} />}
                     {activeTab === "stock" && <ChannelStockReport data={data.channelStock} />}
                     {activeTab === "totalStock" && <TotalStockReport data={data.totalStockSummary} />}
+                    {activeTab === "byModel" && <ByModelReport data={data.modelSales || []} selectedModel={modelCode} setSelectedModel={setModelCode} />}
                 </>
             )}
 

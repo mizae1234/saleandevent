@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     const channelType = searchParams.get("channelType") || "all"; // "all" | "EVENT" | "BRANCH"
     const tab = searchParams.get("tab"); // "products" | "revenue" | "quantity" | "stock" | "totalStock" or null
     const includeClosed = searchParams.get("includeClosed") === "true";
+    const modelCode = searchParams.get("modelCode");
 
     // Default: this month
     const now = new Date();
@@ -55,6 +56,35 @@ export async function GET(request: NextRequest) {
     let channelQuantityPromise = Promise.resolve<any[]>([]);
     let channelStockPromise = Promise.resolve<any[]>([]);
     let totalStockPromise = Promise.resolve<any[]>([]);
+    let modelSalesPromise = Promise.resolve<any[]>([]);
+
+    if (tab === "byModel" && modelCode) {
+        modelSalesPromise = db.$queryRaw`
+            SELECT 
+                sc.id as channel_id,
+                sc.name as channel_name,
+                sc.code as channel_code,
+                sc.type as channel_type,
+                p.code as product_code,
+                p.name as product_name,
+                p.color as product_color,
+                p.size as product_size,
+                SUM(si.quantity) as qty_sold,
+                SUM(si.total_amount) as revenue
+            FROM sale_items si
+            JOIN sales s ON s.id = si.sale_id
+            JOIN sales_channels sc ON sc.id = s.channel_id AND sc.is_active = true
+            JOIN products p ON p.barcode = si.barcode
+            WHERE s.sold_at >= ${dateFrom} AND s.sold_at <= ${dateTo} 
+                AND s.status = 'active'
+                AND UPPER(TRIM(p.code)) = UPPER(TRIM(${modelCode}))
+                ${channelFilter}
+                ${typeFilter}
+                ${closedStatusFilter}
+            GROUP BY sc.id, sc.name, sc.code, sc.type, p.code, p.name, p.color, p.size
+            ORDER BY qty_sold DESC, sc.name ASC
+        ` as Promise<any[]>;
+    }
 
     if (!tab || tab === "products") {
         // 1. Top products by revenue (exclude inactive channels)
@@ -225,6 +255,7 @@ export async function GET(request: NextRequest) {
         channelQuantityRaw,
         channelStockRaw,
         totalStockRaw,
+        modelSalesRaw,
     ] = await Promise.all([
         availableChannelsPromise,
         topProductsPromise,
@@ -232,6 +263,7 @@ export async function GET(request: NextRequest) {
         channelQuantityPromise,
         channelStockPromise,
         totalStockPromise,
+        modelSalesPromise,
     ]);
 
     // Format top products
@@ -315,6 +347,20 @@ export async function GET(request: NextRequest) {
         totalQty: Number(p.total_qty),
     }));
 
+    // Format model sales
+    const modelSales = modelSalesRaw.map((p) => ({
+        channelId: p.channel_id,
+        channelName: p.channel_name,
+        channelCode: p.channel_code,
+        channelType: p.channel_type,
+        productCode: p.product_code,
+        productName: p.product_name,
+        productColor: p.product_color || "-",
+        productSize: p.product_size || "-",
+        qtySold: Number(p.qty_sold),
+        revenue: Number(p.revenue),
+    }));
+
     return NextResponse.json({
         availableChannels,
         topProducts,
@@ -322,6 +368,7 @@ export async function GET(request: NextRequest) {
         channelQuantity,
         channelStock,
         totalStockSummary,
+        modelSales,
         dateRange: {
             from: dateFrom.toISOString(),
             to: dateTo.toISOString(),
