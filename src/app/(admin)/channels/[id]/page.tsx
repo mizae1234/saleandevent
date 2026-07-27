@@ -40,7 +40,7 @@ async function getChannelDetails(id: string) {
                 stock: {
                     include: {
                         product: {
-                            select: { name: true, code: true, size: true, color: true, producttype: true }
+                            select: { name: true, code: true, size: true, color: true, producttype: true, price: true }
                         }
                     },
                     orderBy: { quantity: 'desc' },
@@ -173,6 +173,8 @@ export default async function ChannelDetailPage({ params }: { params: Promise<{ 
                     <EventStockTabs
                         channelName={channel.name}
                         channelCode={channel.code}
+                        startDate={channel.startDate ? channel.startDate.toISOString() : null}
+                        endDate={channel.endDate ? channel.endDate.toISOString() : null}
                         stock={channel.stock.map(s => ({
                             id: s.id,
                             barcode: s.barcode,
@@ -184,6 +186,7 @@ export default async function ChannelDetailPage({ params }: { params: Promise<{ 
                                 size: s.product.size,
                                 color: s.product.color,
                                 producttype: s.product.producttype,
+                                price: s.product.price ? Number(s.product.price) : 0,
                             }
                         }))}
                         stockRequests={channel.stockRequests.map(req => ({

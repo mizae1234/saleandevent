@@ -21,6 +21,7 @@ interface StockItem {
         size: string | null;
         color: string | null;
         producttype: string | null;
+        price: number;
     };
 }
 
@@ -45,6 +46,7 @@ interface GroupedRow {
     sizes: Record<string, { qty: number; sold: number }>;
     totalQty: number;
     totalSold: number;
+    price: number;
 }
 
 interface Props {
@@ -52,6 +54,8 @@ interface Props {
     stockRequests: StockRequest[];
     channelName: string;
     channelCode: string;
+    startDate?: string | null;
+    endDate?: string | null;
 }
 
 const requestStatusConfig: Record<string, { label: string; color: string }> = {
@@ -65,7 +69,7 @@ const requestStatusConfig: Record<string, { label: string; color: string }> = {
     cancelled: { label: 'ยกเลิก', color: 'bg-red-100 text-red-600' },
 };
 
-export function EventStockTabs({ stock, stockRequests, channelName, channelCode }: Props) {
+export function EventStockTabs({ stock, stockRequests, channelName, channelCode, startDate, endDate }: Props) {
     const [activeTab, setActiveTab] = useState<'requests' | 'stock'>(stock.length > 0 ? 'stock' : 'requests');
     const [stockPage, setStockPage] = useState(1);
     const [exporting, setExporting] = useState(false);
@@ -77,14 +81,29 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode 
         setExporting(true);
         try {
             const XLSX = await import("xlsx");
+            
+            let dateStrFormat = "";
+            if (startDate) {
+                dateStrFormat = format(new Date(startDate), 'd MMM yyyy', { locale: th });
+                if (endDate) {
+                    dateStrFormat += ` - ${format(new Date(endDate), 'd MMM yyyy', { locale: th })}`;
+                }
+            } else {
+                dateStrFormat = "-";
+            }
+
+            const headerRow1 = { "#": `รายงานสต็อกช่องทางขาย: ${channelName} (${channelCode})` };
+            const headerRow2 = { "#": `วันที่จัดรายการ: ${dateStrFormat}` };
+            const emptyRow = { "#": "" };
 
             // Same format as web table: grouped by code+color, size spread as columns
-            const rows = groupedRows.map((row) => {
+            const dataRows = groupedRows.map((row) => {
                 const r: Record<string, string | number> = {
                     "#": row.no,
                     "ชื่อสินค้า": row.name,
                     "รุ่น": row.code,
                     "สี": row.color,
+                    "ราคา": row.price,
                 };
                 for (const size of SIZES) {
                     r[size] = row.sizes[size] ? row.sizes[size].qty - row.sizes[size].sold : 0;
@@ -101,6 +120,7 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode 
                 "ชื่อสินค้า": "",
                 "รุ่น": "รวมทั้งหมด",
                 "สี": "",
+                "ราคา": "",
             };
             for (const size of SIZES) {
                 totalsRow[size] = sizeTotals[size].qty - sizeTotals[size].sold;
@@ -108,14 +128,16 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode 
             totalsRow["รวมรับเข้า"] = totalStock;
             totalsRow["ขายแล้ว"] = totalSold;
             totalsRow["คงเหลือ"] = totalStock - totalSold;
-            rows.push(totalsRow);
+            
+            const finalRows = [headerRow1, headerRow2, emptyRow, ...dataRows, totalsRow];
 
-            const ws = XLSX.utils.json_to_sheet(rows);
+            const ws = XLSX.utils.json_to_sheet(finalRows);
             ws["!cols"] = [
-                { wch: 5 },  // #
+                { wch: 10 },  // #
                 { wch: 30 }, // ชื่อสินค้า
                 { wch: 14 }, // รุ่น
                 { wch: 12 }, // สี
+                { wch: 10 }, // ราคา
                 ...SIZES.map(() => ({ wch: 8 })), // S M L XL 2XL 3XL
                 { wch: 10 }, // รวมรับเข้า
                 { wch: 10 }, // ขายแล้ว
@@ -142,39 +164,61 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode 
         try {
             const XLSX = await import("xlsx");
             
-            const rows: Record<string, string | number>[] = stock.map((s, index) => ({
+            let dateStrFormat = "";
+            if (startDate) {
+                dateStrFormat = format(new Date(startDate), 'd MMM yyyy', { locale: th });
+                if (endDate) {
+                    dateStrFormat += ` - ${format(new Date(endDate), 'd MMM yyyy', { locale: th })}`;
+                }
+            } else {
+                dateStrFormat = "-";
+            }
+
+            const headerRow1 = { "#": `รายงานสต็อกช่องทางขาย: ${channelName} (${channelCode})` };
+            const headerRow2 = { "#": `วันที่จัดรายการ: ${dateStrFormat}` };
+            const emptyRow = { "#": "" };
+            
+            // Sort raw stock by price before mapping
+            const sortedStock = [...stock].sort((a, b) => a.product.price - b.product.price);
+
+            const dataRows: Record<string, string | number>[] = sortedStock.map((s, index) => ({
                 "#": index + 1,
                 "บาร์โค้ด": s.barcode,
                 "ชื่อสินค้า": s.product.name || s.product.producttype || '',
                 "รุ่น": s.product.code || '-',
                 "สี": s.product.color || '-',
                 "ไซส์": s.product.size || '-',
+                "ราคา": s.product.price,
                 "รวมรับเข้า": s.quantity,
                 "ขายแล้ว": s.soldQuantity,
                 "คงเหลือ": s.quantity - s.soldQuantity,
             }));
 
             // Total row
-            rows.push({
+            const totalsRow = {
                 "#": "",
                 "บาร์โค้ด": "",
                 "ชื่อสินค้า": "",
                 "รุ่น": "รวมทั้งหมด",
                 "สี": "",
                 "ไซส์": "",
+                "ราคา": "",
                 "รวมรับเข้า": totalStock as any,
                 "ขายแล้ว": totalSold as any,
                 "คงเหลือ": (totalStock - totalSold) as any,
-            });
+            };
+            
+            const finalRows = [headerRow1, headerRow2, emptyRow, ...dataRows, totalsRow];
 
-            const ws = XLSX.utils.json_to_sheet(rows);
+            const ws = XLSX.utils.json_to_sheet(finalRows);
             ws["!cols"] = [
-                { wch: 5 },  // #
+                { wch: 10 },  // #
                 { wch: 16 }, // บาร์โค้ด
                 { wch: 30 }, // ชื่อสินค้า
                 { wch: 14 }, // รุ่น
                 { wch: 12 }, // สี
                 { wch: 8 },  // ไซส์
+                { wch: 10 }, // ราคา
                 { wch: 10 }, // รวมรับเข้า
                 { wch: 10 }, // ขายแล้ว
                 { wch: 10 }, // คงเหลือ
@@ -225,9 +269,19 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode 
             }
             row.totalQty += s.quantity;
             row.totalSold += s.soldQuantity;
+            row.price = s.product.price;
         }
 
-        return Array.from(map.values());
+        const result = Array.from(map.values());
+        // Sort by price ascending
+        result.sort((a, b) => a.price - b.price);
+        
+        // Re-assign row numbers after sort
+        result.forEach((row, idx) => {
+            row.no = idx + 1;
+        });
+
+        return result;
     }, [stock]);
 
     // Size totals
