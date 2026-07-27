@@ -256,6 +256,7 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode,
                     sizes: {},
                     totalQty: 0,
                     totalSold: 0,
+                    price: s.product.price,
                 };
                 map.set(key, row);
             }
