@@ -193,13 +193,13 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode,
             const headerRow2 = { "#": `วันที่จัดรายการ: ${dateStrFormat}` };
             const emptyRow = { "#": "" };
             
-            // Sort raw stock by producttype then price before mapping
+            // Sort raw stock by producttype (or name) then price before mapping
             const sortedStock = [...stock].sort((a, b) => {
-                const typeA = a.product.producttype || '';
-                const typeB = b.product.producttype || '';
-                if (typeA < typeB) return -1;
-                if (typeA > typeB) return 1;
-                return a.product.price - b.product.price;
+                const typeA = a.product.producttype || a.product.name || '';
+                const typeB = b.product.producttype || b.product.name || '';
+                const cmp = typeA.localeCompare(typeB, 'th');
+                if (cmp !== 0) return cmp;
+                return (a.product.price || 0) - (b.product.price || 0);
             });
 
             const dataRows: Record<string, string | number>[] = sortedStock.map((s, index) => ({
@@ -311,9 +311,11 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode,
         const result = Array.from(map.values());
         // Sort by producttype then price ascending
         result.sort((a, b) => {
-            if (a.producttype < b.producttype) return -1;
-            if (a.producttype > b.producttype) return 1;
-            return a.price - b.price;
+            const typeA = a.producttype || a.name || '';
+            const typeB = b.producttype || b.name || '';
+            const cmp = typeA.localeCompare(typeB, 'th');
+            if (cmp !== 0) return cmp;
+            return (a.price || 0) - (b.price || 0);
         });
         
         // Re-assign row numbers after sort
