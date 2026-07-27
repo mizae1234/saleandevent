@@ -70,6 +70,7 @@ export default async function EmployeePOSSellPage({ params }: { params: Promise<
                 channelId={event.id}
                 eventName={event.name}
                 stockItems={stockItems}
+                isCashBooth={event.isCashBooth}
             />
         </div>
     );

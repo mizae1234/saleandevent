@@ -15,11 +15,17 @@ const PAGE_SIZE = 20;
 async function getStaffList(searchParams: Promise<{ [key: string]: string | string[] | undefined }>) {
     const params = await searchParams;
     const q = typeof params.q === 'string' ? params.q : '';
+    const statusParam = typeof params.status === 'string' ? params.status : 'active';
     const page = typeof params.page === 'string' ? Math.max(1, parseInt(params.page, 10) || 1) : 1;
 
-    const where: Prisma.StaffWhereInput = {
-        status: 'active',
-    };
+    const where: Prisma.StaffWhereInput = {};
+
+    if (statusParam === 'active') {
+        where.status = 'active';
+    } else if (statusParam === 'inactive') {
+        where.status = 'inactive';
+    }
+    // if 'all', don't set status filter
 
     if (q) {
         where.OR = [
@@ -38,7 +44,7 @@ async function getStaffList(searchParams: Promise<{ [key: string]: string | stri
         db.staff.count({ where }),
     ]);
 
-    return { staffList, totalCount, page, q };
+    return { staffList, totalCount, page, q, statusParam };
 }
 
 const EMPLOYEE_TYPE_MAP: Record<string, string> = {
@@ -48,12 +54,13 @@ const EMPLOYEE_TYPE_MAP: Record<string, string> = {
 };
 
 export default async function EmployeesPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
-    const { staffList, totalCount, page, q } = await getStaffList(searchParams);
+    const { staffList, totalCount, page, q, statusParam } = await getStaffList(searchParams);
     const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
     function buildPageUrl(targetPage: number) {
         const p = new URLSearchParams();
         if (q) p.set('q', q);
+        if (statusParam && statusParam !== 'active') p.set('status', statusParam);
         if (targetPage > 1) p.set('page', String(targetPage));
         const qs = p.toString();
         return `/hr/employees${qs ? `?${qs}` : ''}`;
@@ -107,7 +114,14 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                                             {staff.code || '-'}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 font-medium text-slate-900">{staff.name}</td>
+                                    <td className="px-6 py-4 font-medium text-slate-900">
+                                        <div className="flex items-center gap-2">
+                                            {staff.name}
+                                            {staff.status === 'inactive' && (
+                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700">ลาออก/ปิดใช้งาน</span>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${staff.role === 'ADMIN' ? 'bg-purple-100 text-purple-700'
                                                 : staff.role === 'MANAGER' ? 'bg-blue-100 text-blue-700'

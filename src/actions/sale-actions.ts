@@ -23,6 +23,9 @@ interface CreateSaleInput {
     adjustments?: AdjustmentInput[];
     discount?: number;
     soldAt?: Date; // วันที่ขาย (บันทึกย้อนหลังได้)
+    paymentMethod?: string;
+    receivedAmount?: number;
+    changeAmount?: number;
 }
 
 export async function createSale(data: CreateSaleInput) {
@@ -77,6 +80,9 @@ export async function createSale(data: CreateSaleInput) {
                     discount: data.discount || 0,
                     soldAt: data.soldAt ?? new Date(),
                     createdBy: "00000000-0000-0000-0000-000000000000",
+                    paymentMethod: data.paymentMethod || 'cash',
+                    receivedAmount: data.receivedAmount || null,
+                    changeAmount: data.changeAmount || null,
                 }
             });
 

@@ -72,7 +72,7 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode 
     const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
     const { toastError, toastSuccess } = useToast();
 
-    const handleExport = async () => {
+    const handleExportMatrix = async () => {
         if (groupedRows.length === 0) return;
         setExporting(true);
         try {
@@ -127,8 +127,66 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode 
 
             const d = new Date();
             const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-            XLSX.writeFile(wb, `stock_${channelCode}_${dateStr}.xlsx`);
+            XLSX.writeFile(wb, `stock_matrix_${channelCode}_${dateStr}.xlsx`);
             toastSuccess(`Export สำเร็จ ${groupedRows.length} รายการ`);
+        } catch {
+            toastError("เกิดข้อผิดพลาดในการ Export");
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const handleExportRow = async () => {
+        if (stock.length === 0) return;
+        setExporting(true);
+        try {
+            const XLSX = await import("xlsx");
+            
+            const rows = stock.map((s, index) => ({
+                "#": index + 1,
+                "บาร์โค้ด": s.barcode,
+                "ชื่อสินค้า": s.product.name || s.product.producttype || '',
+                "รุ่น": s.product.code || '-',
+                "สี": s.product.color || '-',
+                "ไซส์": s.product.size || '-',
+                "รวมรับเข้า": s.quantity,
+                "ขายแล้ว": s.soldQuantity,
+                "คงเหลือ": s.quantity - s.soldQuantity,
+            }));
+
+            // Total row
+            rows.push({
+                "#": "",
+                "บาร์โค้ด": "",
+                "ชื่อสินค้า": "",
+                "รุ่น": "รวมทั้งหมด",
+                "สี": "",
+                "ไซส์": "",
+                "รวมรับเข้า": totalStock as any,
+                "ขายแล้ว": totalSold as any,
+                "คงเหลือ": (totalStock - totalSold) as any,
+            });
+
+            const ws = XLSX.utils.json_to_sheet(rows);
+            ws["!cols"] = [
+                { wch: 5 },  // #
+                { wch: 16 }, // บาร์โค้ด
+                { wch: 30 }, // ชื่อสินค้า
+                { wch: 14 }, // รุ่น
+                { wch: 12 }, // สี
+                { wch: 8 },  // ไซส์
+                { wch: 10 }, // รวมรับเข้า
+                { wch: 10 }, // ขายแล้ว
+                { wch: 10 }, // คงเหลือ
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "สต็อก");
+
+            const d = new Date();
+            const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+            XLSX.writeFile(wb, `stock_row_${channelCode}_${dateStr}.xlsx`);
+            toastSuccess(`Export สำเร็จ ${stock.length} รายการ`);
         } catch {
             toastError("เกิดข้อผิดพลาดในการ Export");
         } finally {
@@ -216,14 +274,24 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode 
                     ))}
                 </div>
                 {activeTab === 'stock' && stock.length > 0 && (
-                    <button
-                        onClick={handleExport}
-                        disabled={exporting}
-                        className="mr-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50"
-                    >
-                        {exporting ? <Spinner size="sm" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
-                        {exporting ? "กำลัง Export..." : "Export Excel"}
-                    </button>
+                    <div className="flex items-center gap-2 mr-3 my-1.5">
+                        <button
+                            onClick={handleExportMatrix}
+                            disabled={exporting}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                        >
+                            {exporting ? <Spinner size="sm" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+                            {exporting ? "กำลัง Export..." : "Export (แบบตาราง)"}
+                        </button>
+                        <button
+                            onClick={handleExportRow}
+                            disabled={exporting}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-emerald-600 text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                            {exporting ? <Spinner size="sm" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+                            {exporting ? "กำลัง Export..." : "Export (แนวแถว)"}
+                        </button>
+                    </div>
                 )}
             </div>
 

@@ -21,6 +21,7 @@ interface Props {
     endDate: string | null;
     salesTarget: number | null;
     customerId: string | null;
+    isCashBooth: boolean;
 }
 
 export default function ChannelBasicInfoEditor(props: Props) {
@@ -37,6 +38,7 @@ export default function ChannelBasicInfoEditor(props: Props) {
     const [endDate, setEndDate] = useState(props.endDate || "");
     const [salesTarget, setSalesTarget] = useState(props.salesTarget?.toString() || "");
     const [customerId, setCustomerId] = useState(props.customerId || "");
+    const [isCashBooth, setIsCashBooth] = useState(props.isCashBooth || false);
 
     // Customer dropdown state
     const [customerList, setCustomerList] = useState<Customer[]>([]);
@@ -77,6 +79,7 @@ export default function ChannelBasicInfoEditor(props: Props) {
         setEndDate(props.endDate || "");
         setSalesTarget(props.salesTarget?.toString() || "");
         setCustomerId(props.customerId || "");
+        setIsCashBooth(props.isCashBooth || false);
         setIsEditing(false);
     };
 
@@ -95,6 +98,7 @@ export default function ChannelBasicInfoEditor(props: Props) {
                         endDate: endDate || null,
                         salesTarget: salesTarget ? parseFloat(salesTarget) : null,
                         customerId: customerId || null,
+                        isCashBooth,
                     }),
                 });
                 if (res.ok) {
@@ -125,6 +129,12 @@ export default function ChannelBasicInfoEditor(props: Props) {
                     <div className="flex justify-between">
                         <span className="text-slate-500">ลูกค้า</span>
                         <span className="text-slate-900 font-medium">{selectedCustomer.code} — {selectedCustomer.name}</span>
+                    </div>
+                )}
+                {props.isCashBooth && (
+                    <div className="flex justify-between">
+                        <span className="text-slate-500">ประเภทบูท</span>
+                        <span className="text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded text-xs">บูทเงินสด</span>
                     </div>
                 )}
                 {props.responsiblePersonName && (
@@ -224,6 +234,20 @@ export default function ChannelBasicInfoEditor(props: Props) {
                         </div>
                     )}
                 </div>
+                
+                <div className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg bg-slate-50 mt-2">
+                    <input
+                        type="checkbox"
+                        id="isCashBooth"
+                        checked={isCashBooth}
+                        onChange={(e) => setIsCashBooth(e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-600"
+                    />
+                    <label htmlFor="isCashBooth" className="text-xs font-medium text-slate-700 cursor-pointer">
+                        เป็นบูทเงินสด (พนักงานทอนเงินเองหน้าบูท)
+                    </label>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                     <div>
                         <label className="block text-xs font-medium text-slate-600 mb-1">วันเริ่ม</label>

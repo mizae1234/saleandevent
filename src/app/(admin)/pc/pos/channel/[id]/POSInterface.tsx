@@ -52,9 +52,10 @@ interface POSInterfaceProps {
     channelId: string;
     eventName: string;
     stockItems: StockItem[];
+    isCashBooth?: boolean;
 }
 
-export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceProps) {
+export function POSInterface({ channelId, eventName, stockItems, isCashBooth }: POSInterfaceProps) {
     const router = useRouter();
     const { toastError } = useToast();
     const [search, setSearch] = useState("");
@@ -62,6 +63,9 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
     const [adjustments, setAdjustments] = useState<Adjustment[]>([]);
     const [billDiscount, setBillDiscount] = useState(0);
     const [showConfirm, setShowConfirm] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
+    const [receivedAmount, setReceivedAmount] = useState<string>('');
     const [isLoaded, setIsLoaded] = useState(false);
 
     // โหลดข้อมูลจาก localStorage
@@ -262,6 +266,9 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
                 })),
                 discount: billDiscount,
                 soldAt,
+                paymentMethod: isCashBooth ? paymentMethod : 'cash',
+                receivedAmount: isCashBooth && paymentMethod === 'cash' ? parseFloat(receivedAmount) || 0 : undefined,
+                changeAmount: isCashBooth && paymentMethod === 'cash' ? (parseFloat(receivedAmount) || 0) - grandTotal : undefined,
             });
 
             if (res && 'error' in res && res.error) {
@@ -274,6 +281,8 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
             setAdjustments([]);
             setBillDiscount(0);
             setShowConfirm(false);
+            setShowPaymentModal(false);
+            setReceivedAmount('');
             setMobileTab('products');
             localStorage.removeItem(`pos_cart_${channelId}`);
             localStorage.removeItem(`pos_adjustments_${channelId}`);
@@ -518,7 +527,7 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
                 </div>
 
                 <button
-                    onClick={() => setShowConfirm(true)}
+                    onClick={() => isCashBooth ? setShowPaymentModal(true) : setShowConfirm(true)}
                     disabled={cart.length === 0 && adjustments.length === 0}
                     className="w-full mt-1 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:bg-emerald-800 transition-colors shadow-sm text-sm"
                 >
@@ -691,6 +700,100 @@ export function POSInterface({ channelId, eventName, stockItems }: POSInterfaceP
                             เพิ่ม
                         </AlertDialogAction>
                     </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Payment Modal (For Cash Booth) */}
+            <AlertDialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+                <AlertDialogContent className="max-w-md p-0 overflow-hidden border-0">
+                    <div className="bg-emerald-500 text-white p-4">
+                        <div className="flex justify-between items-center mb-2">
+                            <h2 className="text-lg font-bold flex items-center gap-2">ชำระเงิน</h2>
+                            <button onClick={() => setShowPaymentModal(false)} className="text-emerald-100 hover:text-white">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="text-4xl font-bold">
+                            ฿{grandTotal.toLocaleString()}
+                        </div>
+                    </div>
+                    
+                    <div className="p-4 space-y-4 bg-slate-50">
+                        {/* Payment Method Tabs */}
+                        <div className="flex p-1 bg-white border border-slate-200 rounded-lg">
+                            <button
+                                onClick={() => setPaymentMethod('cash')}
+                                className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${paymentMethod === 'cash' ? 'bg-emerald-500 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                            >
+                                เงินสด
+                            </button>
+                            <button
+                                onClick={() => setPaymentMethod('transfer')}
+                                className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${paymentMethod === 'transfer' ? 'bg-emerald-500 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                            >
+                                เงินโอน
+                            </button>
+                        </div>
+
+                        {/* Cash Details */}
+                        {paymentMethod === 'cash' && (
+                            <div className="bg-white border border-emerald-200 rounded-xl p-4 shadow-sm space-y-3">
+                                <div className="flex justify-between gap-4">
+                                    <div className="flex-1">
+                                        <label className="block text-xs font-medium text-slate-500 mb-1">รับมา (บาท) <span className="text-red-500">*</span></label>
+                                        <input
+                                            type="number"
+                                            value={receivedAmount}
+                                            onChange={(e) => setReceivedAmount(e.target.value)}
+                                            onFocus={(e) => e.target.select()}
+                                            autoFocus
+                                            className="w-full text-xl font-bold px-3 py-2 border-2 border-emerald-400 rounded-lg focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="block text-xs font-medium text-slate-500 mb-1">เงินทอน (บาท)</label>
+                                        <div className={`w-full text-xl font-bold px-3 py-2 rounded-lg ${parseFloat(receivedAmount) - grandTotal >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>
+                                            {receivedAmount ? (parseFloat(receivedAmount) - grandTotal).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}
+                                        </div>
+                                    </div>
+                                </div>
+                                {parseFloat(receivedAmount) > 0 && parseFloat(receivedAmount) < grandTotal && (
+                                    <p className="text-xs text-red-500 font-medium">! ยอดเงินรับมาไม่เพียงพอ</p>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                    <CalendarDays className="h-4 w-4 text-emerald-600" />
+                                    การรับรู้ยอดขาย
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    {saleDate !== todayStr && (
+                                        <span className="text-[10px] text-amber-600 font-bold bg-amber-100 px-1.5 py-0.5 rounded">ย้อนหลัง</span>
+                                    )}
+                                    <input
+                                        type="date"
+                                        value={saleDate}
+                                        onChange={(e) => setSaleDate(e.target.value || todayStr)}
+                                        className="text-sm font-medium px-2 py-1 rounded-md border border-slate-200 bg-white"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="pt-2">
+                            <button
+                                onClick={handleSubmit}
+                                disabled={isSubmitting || (paymentMethod === 'cash' && (parseFloat(receivedAmount) || 0) < grandTotal)}
+                                className="w-full py-3 bg-emerald-500 text-white rounded-xl font-bold text-lg hover:bg-emerald-600 disabled:bg-slate-300 disabled:text-slate-500 transition-colors shadow-sm"
+                            >
+                                {isSubmitting ? 'กำลังบันทึก...' : 'ยืนยันชำระเงิน'}
+                            </button>
+                        </div>
+                    </div>
                 </AlertDialogContent>
             </AlertDialog>
         </>

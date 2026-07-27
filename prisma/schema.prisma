@@ -27,6 +27,7 @@ model SalesChannel {
   customerId            String?         @map("customer_id") @db.Uuid
   version               Int             @default(1)
   isActive              Boolean         @default(true) @map("is_active")
+  isCashBooth           Boolean         @default(false) @map("is_cash_booth")
   
   // Audit fields
   createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -361,6 +362,9 @@ model Sale {
   cancelledBy String?      @map("cancelled_by") @db.Uuid
   cancelReason String?     @map("cancel_reason")
   soldAt      DateTime     @default(now()) @map("sold_at") @db.Timestamptz(6)
+  paymentMethod String?    @default("cash") @map("payment_method") @db.VarChar(50)
+  receivedAmount Decimal?  @map("received_amount") @db.Decimal(12, 2)
+  changeAmount Decimal?    @map("change_amount") @db.Decimal(12, 2)
   
   // Audit fields
   createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)

@@ -50,6 +50,14 @@ export async function createChannelWithDetails(formData: FormData) {
 
     let channel;
     try {
+        const initialQuantityStr = formData.get('initialQuantity') as string | null;
+        const notes = formData.get('notes') as string | null;
+        const isCashBooth = formData.get('isCashBooth') === 'true';
+
+        if (!name || !location || !type) {
+            throw new Error('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน (ชื่อ, สถานที่, ประเภท)');
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         channel = await db.$transaction(async (tx: any) => {
             // 1. Create channel
@@ -65,6 +73,7 @@ export async function createChannelWithDetails(formData: FormData) {
                     responsiblePersonName: responsiblePersonName || null,
                     phone: phone || null,
                     customerId: customerId || null,
+                    isCashBooth,
                     status: 'draft',
                 },
             });

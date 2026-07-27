@@ -42,6 +42,7 @@ export default function CreateChannelForm({ staffList, customerList }: Props) {
     const [staffSearch, setStaffSearch] = useState("");
     const [initialQuantity, setInitialQuantity] = useState('');
     const [notes, setNotes] = useState('');
+    const [isCashBooth, setIsCashBooth] = useState(false);
 
     const customerDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -80,6 +81,7 @@ export default function CreateChannelForm({ staffList, customerList }: Props) {
             formData.set('staff', JSON.stringify(selectedStaff));
             if (initialQuantity) formData.set('initialQuantity', initialQuantity);
             if (notes) formData.set('notes', notes);
+            formData.set('isCashBooth', String(isCashBooth));
 
             await createChannelWithDetails(formData);
         } catch {
@@ -146,6 +148,20 @@ export default function CreateChannelForm({ staffList, customerList }: Props) {
                             <p className="font-semibold text-slate-900">Branch</p>
                             <p className="text-xs text-slate-500 mt-1">สาขาถาวร ไม่มีวันสิ้นสุด</p>
                         </button>
+                    </div>
+
+                    <div className="flex items-center gap-2 p-4 border-2 border-slate-200 rounded-xl bg-white">
+                        <input
+                            type="checkbox"
+                            id="isCashBooth"
+                            checked={isCashBooth}
+                            onChange={(e) => setIsCashBooth(e.target.checked)}
+                            className="h-5 w-5 rounded border-slate-300 text-teal-600 focus:ring-teal-600"
+                        />
+                        <label htmlFor="isCashBooth" className="font-semibold text-slate-900 cursor-pointer">
+                            เป็นบูทเงินสด
+                            <span className="block text-xs font-normal text-slate-500 mt-0.5">พนักงานต้องรับชำระและทอนเงินสดเองหน้าบูท (มีหน้าจอเลือกการชำระเงินใน POS)</span>
+                        </label>
                     </div>
 
                     {/* Basic Info */}

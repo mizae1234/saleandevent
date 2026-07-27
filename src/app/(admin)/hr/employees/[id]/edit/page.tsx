@@ -35,6 +35,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
         allowedMenus: staff.allowedMenus as string[] | null,
         taxId: staff.taxId,
         address: staff.address,
+        status: staff.status,
     };
 
     return (

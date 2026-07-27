@@ -88,6 +88,7 @@ export default async function POSEventPage({ params }: { params: Promise<{ id: s
                 channelId={event.id}
                 eventName={event.name}
                 stockItems={stockItems}
+                isCashBooth={event.isCashBooth}
             />
         </div>
     );

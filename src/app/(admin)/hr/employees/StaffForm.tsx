@@ -22,6 +22,7 @@ interface StaffData {
     commissionAmount?: number | null;
     taxId?: string | null;
     address?: string | null;
+    status?: string;
 }
 
 interface StaffFormProps {
@@ -77,6 +78,16 @@ export function StaffForm({ initialData, action, isEdit = false, salaryAccess }:
                         required
                         placeholder="กรอกชื่อ-นามสกุล"
                     />
+
+                    {/* สถานะการทำงาน */}
+                    <FormSelect
+                        label="สถานะการทำงาน"
+                        name="status"
+                        defaultValue={initialData?.status || 'active'}
+                    >
+                        <option value="active">ทำงานอยู่ (Active)</option>
+                        <option value="inactive">ลาออก / ปิดใช้งาน (Inactive)</option>
+                    </FormSelect>
 
                     {/* ประเภทพนักงาน */}
                     <FormSelect

@@ -73,6 +73,7 @@ export async function PATCH(
                 responsiblePersonName: body.responsiblePersonName || null,
                 phone: body.phone || null,
                 customerId: body.customerId || null,
+                isCashBooth: body.isCashBooth !== undefined ? body.isCashBooth : undefined,
             },
         });
 

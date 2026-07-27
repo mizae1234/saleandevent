@@ -250,9 +250,10 @@ export default async function ChannelDetailPage({ params }: { params: Promise<{ 
                         responsiblePersonName={channel.responsiblePersonName}
                         phone={channel.phone}
                         startDate={channel.startDate ? format(channel.startDate, 'yyyy-MM-dd') : null}
-                        endDate={channel.endDate ? format(channel.endDate, 'yyyy-MM-dd') : null}
-                        salesTarget={channel.salesTarget ? Number(channel.salesTarget) : null}
+                        endDate={channel.endDate ? format(new Date(channel.endDate), "yyyy-MM-dd") : null}
+                        salesTarget={channel.salesTarget ? parseFloat(channel.salesTarget.toString()) : null}
                         customerId={channel.customerId}
+                        isCashBooth={channel.isCashBooth}
                     />
                     <div className="bg-white rounded-xl p-4 text-sm shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100">
                         <div className="flex justify-between">

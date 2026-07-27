@@ -46,6 +46,7 @@ export async function createStaff(formData: FormData) {
         const allowedMenus = selectedMenus.length > 0 ? selectedMenus : Prisma.JsonNull;
         const taxId = formData.get('taxId') as string | null;
         const address = formData.get('address') as string | null;
+        const status = formData.get('status') as string || 'active';
 
         if (!name) {
             return { error: 'กรุณากรอกชื่อ-สกุล' };
@@ -68,6 +69,7 @@ export async function createStaff(formData: FormData) {
                 allowedMenus,
                 taxId: taxId || null,
                 address: address || null,
+                status,
             }
         });
     } catch (error) {
@@ -98,6 +100,7 @@ export async function updateStaff(id: string, formData: FormData) {
         const allowedMenus = selectedMenus.length > 0 ? selectedMenus : Prisma.JsonNull;
         const taxId = formData.get('taxId') as string | null;
         const address = formData.get('address') as string | null;
+        const status = formData.get('status') as string || 'active';
 
         if (!name) {
             return { error: 'กรุณากรอกชื่อ-สกุล' };
@@ -120,6 +123,7 @@ export async function updateStaff(id: string, formData: FormData) {
                 allowedMenus,
                 taxId: taxId || null,
                 address: address || null,
+                status,
             }
         });
     } catch (error) {
