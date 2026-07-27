@@ -130,9 +130,23 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode,
             totalsRow["ขายแล้ว"] = totalSold;
             totalsRow["คงเหลือ"] = totalStock - totalSold;
             
-            const finalRows = [headerRow1, headerRow2, emptyRow, ...dataRows, totalsRow];
+            const colHeaders: Record<string, string> = {
+                "#": "#",
+                "ชื่อสินค้า": "ชื่อสินค้า",
+                "รุ่น": "รุ่น",
+                "สี": "สี",
+                "ราคา": "ราคา",
+            };
+            for (const size of SIZES) {
+                colHeaders[size] = size;
+            }
+            colHeaders["รวมรับเข้า"] = "รวมรับเข้า";
+            colHeaders["ขายแล้ว"] = "ขายแล้ว";
+            colHeaders["คงเหลือ"] = "คงเหลือ";
+            
+            const finalRows = [headerRow1, headerRow2, emptyRow, colHeaders, ...dataRows, totalsRow];
 
-            const ws = XLSX.utils.json_to_sheet(finalRows);
+            const ws = XLSX.utils.json_to_sheet(finalRows, { skipHeader: true });
             ws["!cols"] = [
                 { wch: 10 },  // #
                 { wch: 30 }, // ชื่อสินค้า
@@ -215,9 +229,22 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode,
                 "คงเหลือ": (totalStock - totalSold) as any,
             };
             
-            const finalRows = [headerRow1, headerRow2, emptyRow, ...dataRows, totalsRow];
+            const colHeaders = {
+                "#": "#",
+                "บาร์โค้ด": "บาร์โค้ด",
+                "ชื่อสินค้า": "ชื่อสินค้า",
+                "รุ่น": "รุ่น",
+                "สี": "สี",
+                "ไซส์": "ไซส์",
+                "ราคา": "ราคา",
+                "รวมรับเข้า": "รวมรับเข้า",
+                "ขายแล้ว": "ขายแล้ว",
+                "คงเหลือ": "คงเหลือ",
+            };
+            
+            const finalRows = [headerRow1, headerRow2, emptyRow, colHeaders, ...dataRows, totalsRow];
 
-            const ws = XLSX.utils.json_to_sheet(finalRows);
+            const ws = XLSX.utils.json_to_sheet(finalRows, { skipHeader: true });
             ws["!cols"] = [
                 { wch: 10 },  // #
                 { wch: 16 }, // บาร์โค้ด
