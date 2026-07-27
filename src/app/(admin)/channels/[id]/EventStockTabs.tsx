@@ -47,6 +47,7 @@ interface GroupedRow {
     totalQty: number;
     totalSold: number;
     price: number;
+    producttype: string;
 }
 
 interface Props {
@@ -178,8 +179,14 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode,
             const headerRow2 = { "#": `วันที่จัดรายการ: ${dateStrFormat}` };
             const emptyRow = { "#": "" };
             
-            // Sort raw stock by price before mapping
-            const sortedStock = [...stock].sort((a, b) => a.product.price - b.product.price);
+            // Sort raw stock by producttype then price before mapping
+            const sortedStock = [...stock].sort((a, b) => {
+                const typeA = a.product.producttype || '';
+                const typeB = b.product.producttype || '';
+                if (typeA < typeB) return -1;
+                if (typeA > typeB) return 1;
+                return a.product.price - b.product.price;
+            });
 
             const dataRows: Record<string, string | number>[] = sortedStock.map((s, index) => ({
                 "#": index + 1,
@@ -257,6 +264,7 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode,
                     totalQty: 0,
                     totalSold: 0,
                     price: s.product.price,
+                    producttype: s.product.producttype || '',
                 };
                 map.set(key, row);
             }
@@ -274,8 +282,12 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode,
         }
 
         const result = Array.from(map.values());
-        // Sort by price ascending
-        result.sort((a, b) => a.price - b.price);
+        // Sort by producttype then price ascending
+        result.sort((a, b) => {
+            if (a.producttype < b.producttype) return -1;
+            if (a.producttype > b.producttype) return 1;
+            return a.price - b.price;
+        });
         
         // Re-assign row numbers after sort
         result.forEach((row, idx) => {
