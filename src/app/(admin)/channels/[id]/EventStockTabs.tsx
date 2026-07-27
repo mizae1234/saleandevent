@@ -142,7 +142,7 @@ export function EventStockTabs({ stock, stockRequests, channelName, channelCode 
         try {
             const XLSX = await import("xlsx");
             
-            const rows = stock.map((s, index) => ({
+            const rows: Record<string, string | number>[] = stock.map((s, index) => ({
                 "#": index + 1,
                 "บาร์โค้ด": s.barcode,
                 "ชื่อสินค้า": s.product.name || s.product.producttype || '',
