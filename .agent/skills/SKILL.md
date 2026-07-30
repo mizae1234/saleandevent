@@ -5,6 +5,9 @@ description: Full codebase reference for the unified sales channel & stock manag
 
 # Saran Jeans — Saleandevent System Skill
 
+> [!NOTE]
+> Detailed workflows, status descriptions (Event/Branch creation, stock lifecycle), and detailed business rules are documented in the separate reference file: [Business Logic & Workflows Reference](file:///Users/kanittamac/web/saleandevent/.agent/skills/references/business_logic.md).
+
 ## 1. Technology Stack
 
 | Layer | Technology |
@@ -528,3 +531,21 @@ import { cn, fmt } from '@/lib/utils';
 |---|---|
 | `/workspace` | Employee home — channel assignment view |
 | `/channel/[id]/*` | Employee channel-scoped operations (POS, expenses, payroll self-service) |
+
+---
+
+## 14. Business & Payroll Rules
+
+### Withholding Tax (หัก ณ ที่จ่าย 3%)
+1. **Tax Applicability**: A staff member's compensation is subject to Withholding Tax (ภ.ง.ด.3) at a rate of **3%** only if their **days worked is strictly greater than 10 days** (`daysWorked > 10`).
+2. **Taxable Income**:
+   - **Wage (ม.40(1))**: `daysWorked * dailyRate`.
+   - **Commission (ม.40(2))**: The base commission (`totalCommission`) plus any target incentive withdrawals (`targetIncentive`).
+3. **Target Incentive (ค่าเป้า)**:
+   - "ค่าเป้า" is set up as an employee-facing expense category (`type: 'emp'`).
+   - When a staff member withdraws (เบิก) this category, it is stored as a `ChannelExpense` with category `"ค่าเป้า"`.
+   - For Withholding Tax calculation and certificate generation, any approved/submitted `"ค่าเป้า"` expenses are added directly to the commission (ม.40(2)) category.
+4. **Net Payout Calculation**:
+   - `ยอดโอนรวม` (Net Transfer Amount) = `ค่าแรงรวม + ค่าคอม + เบิกค่าใช้จ่ายทั้งหมด - หัก ณ ที่จ่าย`.
+   - Both the summary Excel and the KCASH bank transfer file use the net payout.
+

@@ -12,6 +12,7 @@ const categories = [
     { name: 'ค่าอุปกรณ์สิ้นเปลือง', type: 'admin', sortOrder: 8 },
     { name: 'ค่าขนส่ง', type: 'admin', sortOrder: 9 },
     { name: 'ค่า GP', type: 'admin', sortOrder: 10 },
+    { name: 'ค่าเป้า', type: 'emp', sortOrder: 11 },
 ];
 
 async function main() {

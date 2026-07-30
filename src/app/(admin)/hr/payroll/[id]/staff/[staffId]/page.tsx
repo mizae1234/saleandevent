@@ -59,6 +59,11 @@ export default async function StaffPayrollDetailPage({
     const daysWorked = assignment.daysWorkedOverride ?? attendanceDays;
     const commission = Number(assignment.commissionOverride ?? staffRecord.commissionAmount ?? 0);
     const totalWage = dailyRate * daysWorked;
+    
+    // Group target incentive (ค่าเป้า) expenses under commission for withholding tax calculation
+    const targetIncentiveExpenses = expenses.filter(e => e.category === 'ค่าเป้า');
+    const targetIncentiveSum = targetIncentiveExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+
     const totalExpense = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
     const grandTotal = totalWage + commission + totalExpense;
 

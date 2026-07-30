@@ -71,7 +71,14 @@ export default async function PayrollDetailPage({ params }: { params: Promise<{ 
         const travelExpense = staffExpenses.filter(e => e.category === 'ค่าเดินทาง').reduce((sum, e) => sum + e.amount, 0);
         const setupExpense = staffExpenses.filter(e => e.category === 'ค่าลงงาน').reduce((sum, e) => sum + e.amount, 0);
         const teardownExpense = staffExpenses.filter(e => e.category === 'ค่าเก็บงาน').reduce((sum, e) => sum + e.amount, 0);
-        const otherExpense = staffExpenses.filter(e => !['ค่าเดินทาง', 'ค่าลงงาน', 'ค่าเก็บงาน'].includes(e.category)).reduce((sum, e) => sum + e.amount, 0);
+        const targetIncentive = staffExpenses.filter(e => e.category === 'ค่าเป้า').reduce((sum, e) => sum + e.amount, 0);
+        const otherExpense = staffExpenses.filter(e => !['ค่าเดินทาง', 'ค่าลงงาน', 'ค่าเก็บงาน', 'ค่าเป้า'].includes(e.category)).reduce((sum, e) => sum + e.amount, 0);
+
+        const shouldWithhold = s.daysWorked > 10;
+        const totalCommissionForTax = s.totalCommission + targetIncentive;
+        const wageTax = shouldWithhold ? Math.round(s.totalWage * 0.03 * 100) / 100 : 0;
+        const commissionTax = shouldWithhold ? Math.round(totalCommissionForTax * 0.03 * 100) / 100 : 0;
+        const withholdingTax = wageTax + commissionTax;
 
         const expenseDetailsStr = staffExpenses.map(e => {
             const descSuffix = e.description && e.description !== e.category ? ` (${e.description})` : '';
@@ -95,7 +102,9 @@ export default async function PayrollDetailPage({ params }: { params: Promise<{ 
             travelExpense,
             setupExpense,
             teardownExpense,
+            targetIncentive,
             otherExpense,
+            withholdingTax,
             expenseDetailsStr: expenseDetailsStr || '-',
         };
     });

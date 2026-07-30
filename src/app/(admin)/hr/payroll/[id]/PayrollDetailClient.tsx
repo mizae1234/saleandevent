@@ -36,7 +36,9 @@ type PayrollRow = {
     travelExpense: number;
     setupExpense: number;
     teardownExpense: number;
+    targetIncentive: number;
     otherExpense: number;
+    withholdingTax: number;
     expenseDetailsStr: string;
 };
 
@@ -87,7 +89,8 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
     const totalCommission = localRows.reduce((sum, r) => sum + r.totalCommission, 0);
     const totalExpense = localRows.reduce((sum, r) => sum + r.expenseAmount, 0);
     const totalWageExp = localRows.reduce((sum, r) => sum + (r.dailyRate * r.daysWorked) + r.expenseAmount, 0);
-    const totalPay = localRows.reduce((sum, r) => sum + (r.dailyRate * r.daysWorked) + r.totalCommission + r.expenseAmount, 0);
+    const totalWithholdingTax = localRows.reduce((sum, r) => sum + r.withholdingTax, 0);
+    const totalPay = localRows.reduce((sum, r) => sum + (r.dailyRate * r.daysWorked) + r.totalCommission + r.expenseAmount - r.withholdingTax, 0);
     const wagePaidCount = localRows.filter(r => r.isWagePaid).length;
     const comPaidCount = localRows.filter(r => r.isCommissionPaid).length;
     const allWagePaid = wagePaidCount === localRows.length && localRows.length > 0;
@@ -145,7 +148,19 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
         setLocalRows(prev => prev.map(r => {
             if (r.channelStaffId !== channelStaffId) return r;
             const totalWage = r.daysWorked * newRate;
-            return { ...r, dailyRate: newRate, totalWage, totalPay: totalWage + r.totalCommission };
+            const shouldWithhold = r.daysWorked > 10;
+            const totalCommissionForTax = r.totalCommission + r.targetIncentive;
+            const wageTax = shouldWithhold ? Math.round(totalWage * 0.03 * 100) / 100 : 0;
+            const commissionTax = shouldWithhold ? Math.round(totalCommissionForTax * 0.03 * 100) / 100 : 0;
+            const withholdingTax = wageTax + commissionTax;
+
+            return {
+                ...r,
+                dailyRate: newRate,
+                totalWage,
+                withholdingTax,
+                totalPay: totalWage + r.totalCommission
+            };
         }));
         startTransition(async () => {
             await updateStaffDailyRate(channelStaffId, newRate || null);
@@ -153,30 +168,35 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
     };
 
     const handleExport = () => {
-        const data = localRows.map((row, i) => ({
-            'ลำดับ': i + 1,
-            'รหัสสาขา/Event': channel.code,
-            'ชื่อสาขา/Event': channel.name,
-            'รหัส': row.staffCode,
-            'ชื่อพนักงาน': row.name,
-            'ธนาคาร': row.bankName !== '-' ? row.bankName : '',
-            'เลขบัญชี': row.bankAccountNo !== '-' ? row.bankAccountNo : '',
-            'ค่าแรง/วัน': row.dailyRate,
-            'จำนวนวัน': row.daysWorked,
-            'ค่าแรงรวม': row.totalWage,
-            'ค่าลงงาน': row.setupExpense,
-            'ค่าเก็บงาน': row.teardownExpense,
-            'ค่าเดินทาง': row.travelExpense,
-            'ค่าใช้จ่ายอื่นๆ': row.otherExpense,
-            'รายละเอียดเบิก': row.expenseDetailsStr,
-            'ค่าใช้จ่ายเบิก': row.expenseAmount,
-            'ค่าแรง+ค่าใช้จ่าย': row.totalWage + row.expenseAmount,
-            'ค่าคอม': row.totalCommission,
-            'ยอดโอนรวม': row.totalPay + row.expenseAmount,
-            'โอนค่าแรง': row.isWagePaid ? 'โอนแล้ว' : 'ยังไม่โอน',
-            'โอนคอม': row.isCommissionPaid ? 'โอนแล้ว' : 'ยังไม่โอน',
-            'สถานะส่งเบิก': row.isSubmitted ? 'ส่งแล้ว' : 'ยังไม่ส่ง',
-        }));
+        const data = localRows.map((row, i) => {
+            const netPay = (row.dailyRate * row.daysWorked) + row.totalCommission + row.expenseAmount - row.withholdingTax;
+            return {
+                'ลำดับ': i + 1,
+                'รหัสสาขา/Event': channel.code,
+                'ชื่อสาขา/Event': channel.name,
+                'รหัส': row.staffCode,
+                'ชื่อพนักงาน': row.name,
+                'ธนาคาร': row.bankName !== '-' ? row.bankName : '',
+                'เลขบัญชี': row.bankAccountNo !== '-' ? row.bankAccountNo : '',
+                'ค่าแรง/วัน': row.dailyRate,
+                'จำนวนวัน': row.daysWorked,
+                'ค่าแรงรวม': row.totalWage,
+                'ค่าลงงาน': row.setupExpense,
+                'ค่าเก็บงาน': row.teardownExpense,
+                'ค่าเดินทาง': row.travelExpense,
+                'ค่าเป้า': row.targetIncentive,
+                'ค่าใช้จ่ายอื่นๆ': row.otherExpense,
+                'รายละเอียดเบิก': row.expenseDetailsStr,
+                'ค่าใช้จ่ายเบิก': row.expenseAmount,
+                'ค่าแรง+ค่าใช้จ่าย': row.totalWage + row.expenseAmount,
+                'ค่าคอม': row.totalCommission,
+                'หัก ณ ที่จ่าย 3%': row.withholdingTax,
+                'ยอดโอนรวม': netPay,
+                'โอนค่าแรง': row.isWagePaid ? 'โอนแล้ว' : 'ยังไม่โอน',
+                'โอนคอม': row.isCommissionPaid ? 'โอนแล้ว' : 'ยังไม่โอน',
+                'สถานะส่งเบิก': row.isSubmitted ? 'ส่งแล้ว' : 'ยังไม่ส่ง',
+            };
+        });
 
         // Add totals row
         data.push({
@@ -193,11 +213,13 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
             'ค่าลงงาน': localRows.reduce((sum, r) => sum + r.setupExpense, 0),
             'ค่าเก็บงาน': localRows.reduce((sum, r) => sum + r.teardownExpense, 0),
             'ค่าเดินทาง': localRows.reduce((sum, r) => sum + r.travelExpense, 0),
+            'ค่าเป้า': localRows.reduce((sum, r) => sum + r.targetIncentive, 0),
             'ค่าใช้จ่ายอื่นๆ': localRows.reduce((sum, r) => sum + r.otherExpense, 0),
             'รายละเอียดเบิก': '',
             'ค่าใช้จ่ายเบิก': totalExpense,
             'ค่าแรง+ค่าใช้จ่าย': totalWageExp,
             'ค่าคอม': totalCommission,
+            'หัก ณ ที่จ่าย 3%': totalWithholdingTax,
             'ยอดโอนรวม': totalPay,
             'โอนค่าแรง': '',
             'โอนคอม': '',
@@ -212,8 +234,8 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
         ws['!cols'] = [
             { wch: 5 }, { wch: 15 }, { wch: 25 }, { wch: 8 }, { wch: 20 }, { wch: 12 }, { wch: 16 },
             { wch: 10 }, { wch: 8 }, { wch: 12 },
-            { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 35 },
-            { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+            { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 35 },
+            { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
         ];
 
         XLSX.writeFile(wb, `payroll_${channel.code}_${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -249,7 +271,7 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
         const sheetData = localRows.map(row => {
             const bankCode = getBankCode(row.bankName);
             const cleanAccountNo = (row.bankAccountNo || "").replace(/[^0-9]/g, "");
-            const amount = row.dailyRate * row.daysWorked + row.totalCommission + row.expenseAmount;
+            const netAmount = row.dailyRate * row.daysWorked + row.totalCommission + row.expenseAmount - row.withholdingTax;
 
             return [
                 { t: 's', v: row.staffCode || "" },
@@ -257,7 +279,7 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                 { t: 's', v: "" }, // Branch No
                 { t: 's', v: cleanAccountNo },
                 { t: 's', v: row.name },
-                { t: 'n', v: amount },
+                { t: 'n', v: netAmount },
                 { t: 's', v: channel.code }, // Bene Ref
                 { t: 's', v: "" }, // Advice Email
                 { t: 's', v: row.phone && row.phone !== '-' ? row.phone.replace(/[^0-9]/g, "") : "" }, // SMS Tel. No
@@ -408,6 +430,7 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                                 <th className="px-3 py-3 text-right text-xs font-semibold">เบิกค่าใช้จ่าย</th>
                                 <th className="px-3 py-3 text-right text-xs font-semibold bg-blue-50/50 border-l border-r border-slate-200">ค่าแรง+เบิก</th>
                                 <th className="px-3 py-3 text-right text-xs font-semibold">ค่าคอม</th>
+                                <th className="px-3 py-3 text-right text-xs font-semibold text-red-600">หัก ณ ที่จ่าย 3%</th>
                                 <th className="px-3 py-3 text-right text-xs font-semibold bg-emerald-50/50 border-l border-slate-200">ยอดโอนรวม</th>
                             </tr>
                         </thead>
@@ -499,8 +522,9 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                                             {!canView(row.paymentType) ? '***' : (row.dailyRate * row.daysWorked + row.expenseAmount) > 0 ? `฿${(row.dailyRate * row.daysWorked + row.expenseAmount).toLocaleString()}` : '-'}
                                         </td>
                                         <td className={`px-3 py-3 text-right ${row.isCommissionPaid ? 'text-slate-400 line-through' : 'text-purple-600'}`}>{!canView(row.paymentType) ? '***' : row.totalCommission > 0 ? row.totalCommission.toLocaleString() : '-'}</td>
+                                        <td className="px-3 py-3 text-right text-red-600 font-medium">{!canView(row.paymentType) ? '***' : row.withholdingTax > 0 ? `฿${row.withholdingTax.toLocaleString()}` : '-'}</td>
                                         <td className={`px-3 py-3 text-right font-bold border-l border-slate-100 ${bothPaid ? 'text-emerald-500 line-through' : 'text-emerald-700 bg-emerald-50/20'}`}>
-                                            {!canView(row.paymentType) ? '***' : `฿${(row.dailyRate * row.daysWorked + row.totalCommission + row.expenseAmount).toLocaleString()}`}
+                                            {!canView(row.paymentType) ? '***' : `฿${(row.dailyRate * row.daysWorked + row.totalCommission + row.expenseAmount - row.withholdingTax).toLocaleString()}`}
                                         </td>
                                     </tr>
                                 );
@@ -513,6 +537,7 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                                 <td className="px-3 py-3 text-right text-orange-700">{!canView('daily') ? '***' : totalExpense.toLocaleString()}</td>
                                 <td className="px-3 py-3 text-right text-blue-700 border-l border-r border-slate-200 font-bold">{!canView('daily') ? '***' : `฿${totalWageExp.toLocaleString()}`}</td>
                                 <td className="px-3 py-3 text-right text-purple-700">{!canView('daily') ? '***' : totalCommission.toLocaleString()}</td>
+                                <td className="px-3 py-3 text-right text-red-700 font-medium">{!canView('daily') ? '***' : totalWithholdingTax.toLocaleString()}</td>
                                 <td className="px-3 py-3 text-right text-emerald-700 text-base border-l border-slate-200">
                                     {!canView('daily') ? '***' : `฿${totalPay.toLocaleString()}`}
                                 </td>
