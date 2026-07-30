@@ -46,6 +46,8 @@ model SalesChannel {
   sales                 Sale[]
   movements             StockMovement[]
   stockRequests         StockRequest[]
+  transfersFrom         StockTransfer[] @relation("TransfersFrom")
+  transfersTo           StockTransfer[] @relation("TransfersTo")
   customer              Customer?       @relation(fields: [customerId], references: [id])
 
   @@index([type])
@@ -99,8 +101,9 @@ model Product {
   saleItems         SaleItem[]
   stockMovements    StockMovement[]
   warehouseStock    WarehouseStock?
-  stockRequestItems StockRequestItem[]
-  creditNoteItems   CreditNoteItem[]
+  stockRequestItems     StockRequestItem[]
+  stockTransferItems    StockTransferItem[]
+  creditNoteItems       CreditNoteItem[]
 
   @@map("products")
 }
@@ -807,4 +810,56 @@ model CreditNoteItem {
 
   @@index([creditNoteId])
   @@map("credit_note_items")
+}
+
+// ============ STOCK TRANSFER (Event-to-Event) ============
+// Direct stock transfer between channels without returning to warehouse.
+// Status: pending → shipped → received | cancelled
+
+model StockTransfer {
+  id              String              @id @default(uuid()) @db.Uuid
+  transferCode    String              @unique @map("transfer_code") @db.VarChar(20)
+  fromChannelId   String              @map("from_channel_id") @db.Uuid
+  toChannelId     String              @map("to_channel_id") @db.Uuid
+  status          String              @default("pending") @db.VarChar(20)
+  notes           String?
+  shippedAt       DateTime?           @map("shipped_at") @db.Timestamptz(6)
+  receivedAt      DateTime?           @map("received_at") @db.Timestamptz(6)
+  cancelledAt     DateTime?           @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason    String?             @map("cancel_reason")
+  
+  // Audit fields
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy       String?             @map("created_by") @db.Uuid
+  updatedBy       String?             @map("updated_by") @db.Uuid
+
+  // Relations
+  fromChannel     SalesChannel        @relation("TransfersFrom", fields: [fromChannelId], references: [id])
+  toChannel       SalesChannel        @relation("TransfersTo", fields: [toChannelId], references: [id])
+  items           StockTransferItem[]
+
+  @@index([fromChannelId])
+  @@index([toChannelId])
+  @@index([status])
+  @@map("stock_transfers")
+}
+
+model StockTransferItem {
+  id                String          @id @default(uuid()) @db.Uuid
+  stockTransferId   String          @map("stock_transfer_id") @db.Uuid
+  barcode           String          @db.VarChar(50)
+  quantity          Int
+  receivedQuantity  Int             @default(0) @map("received_quantity")
+  
+  // Audit fields
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  transfer          StockTransfer   @relation(fields: [stockTransferId], references: [id], onDelete: Cascade)
+  product           Product         @relation(fields: [barcode], references: [barcode])
+
+  @@index([stockTransferId])
+  @@map("stock_transfer_items")
 }

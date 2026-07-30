@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { closeChannelStock, createReturnShipment, confirmReturnReceived, closeChannelManual, submitChannel, approveChannel, toggleChannelActive } from '@/actions/channel';
 import { createStockRequest, submitStockRequest } from '@/actions/stock-request';
-import { Package, Truck, RotateCcw, CheckCircle2, Plus, Send, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Package, Truck, RotateCcw, CheckCircle2, Plus, Send, ArrowRight, Eye, EyeOff, ArrowRightLeft } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 
 interface Props {
@@ -114,6 +114,16 @@ export default function EventActions({ channel }: Props) {
                         </div>
                     )}
                 </div>
+            )}
+
+            {/* Stock Transfer (active channels) */}
+            {['active', 'pending_payment', 'payment_approved'].includes(channel.status) && (
+                <button
+                    onClick={() => router.push(`/warehouse/stock-transfer/new?from=${channel.id}`)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium transition-colors"
+                >
+                    <ArrowRightLeft className="h-4 w-4" /> โอนย้าย Stock
+                </button>
             )}
 
             {/* Close Stock (EVENT + active) */}

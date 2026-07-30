@@ -25,6 +25,7 @@ import {
     Contact,
     LayoutDashboard,
     SlidersHorizontal,
+    ArrowRightLeft,
     LucideIcon
 } from "lucide-react";
 
@@ -71,6 +72,7 @@ export const MENU_SECTIONS: MenuSection[] = [
             { title: "งานรอแพ็ค", href: "/warehouse/packing", icon: Package },
             { title: "รายการจัดส่ง", href: "/warehouse/shipments", icon: Truck },
             { title: "ปรับปรุง Stock", href: "/warehouse/stock-adjustment", icon: SlidersHorizontal },
+            { title: "โอนย้าย Stock", href: "/warehouse/stock-transfer", icon: ArrowRightLeft },
             { title: "รับคืนสินค้า", href: "/warehouse/return", icon: Undo2 },
         ],
     },

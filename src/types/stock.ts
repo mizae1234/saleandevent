@@ -13,3 +13,14 @@ export interface ReceivingItemInput {
     receivedQty: number;
     remarks?: string;
 }
+
+export interface TransferItemInput {
+    barcode: string;
+    quantity: number;
+}
+
+export interface TransferReceivingInput {
+    barcode: string;
+    sentQuantity: number;
+    receivedQuantity: number;
+}
