@@ -73,7 +73,7 @@ export async function createStockTransfer(
         if (!stock) {
             throw new Error(`ไม่พบสินค้า barcode ${item.barcode} ใน Stock ต้นทาง`);
         }
-        const remaining = stock.quantity - stock.soldQuantity;
+        const remaining = stock.quantity - stock.soldQuantity - stock.returnedQuantity;
         if (item.quantity > remaining) {
             throw new Error(`สินค้า ${item.barcode} มีเหลือ ${remaining} ชิ้น แต่ขอโอน ${item.quantity} ชิ้น`);
         }

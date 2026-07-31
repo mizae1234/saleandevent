@@ -109,6 +109,7 @@ export async function getTransferableChannels() {
                     barcode: true,
                     quantity: true,
                     soldQuantity: true,
+                    returnedQuantity: true,
                 },
             },
         },
@@ -125,7 +126,7 @@ export async function getTransferableChannels() {
             location: c.location,
             startDate: c.startDate?.toISOString() || null,
             endDate: c.endDate?.toISOString() || null,
-            totalRemaining: c.stock.reduce((sum, s) => sum + Math.max(0, s.quantity - s.soldQuantity), 0),
+            totalRemaining: c.stock.reduce((sum, s) => sum + Math.max(0, s.quantity - s.soldQuantity - s.returnedQuantity), 0),
         }));
 }
 
@@ -155,12 +156,12 @@ export async function getAvailableStock(channelId: string) {
     });
 
     return stock
-        .filter(s => s.quantity - s.soldQuantity > 0)
+        .filter(s => s.quantity - s.soldQuantity - s.returnedQuantity > 0)
         .map(s => ({
             barcode: s.barcode,
             quantity: s.quantity,
             soldQuantity: s.soldQuantity,
-            remaining: s.quantity - s.soldQuantity,
+            remaining: s.quantity - s.soldQuantity - s.returnedQuantity,
             product: {
                 code: s.product.code,
                 name: s.product.name,
