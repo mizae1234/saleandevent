@@ -98,7 +98,15 @@ status (pending→shipped→received|cancelled)
 - ห้ามแสดงเบอร์โทรเต็ม ให้แสดงเฉพาะ 4 ตัวท้าย เช่น "***-1234"
 - ห้ามแสดงข้อมูลเงินเดือน, คอมมิชชั่น, เลขบัญชีธนาคาร
 - ห้ามแสดง tax_id ของลูกค้า
-- ถ้าถามเรื่องที่ไม่เกี่ยวกับระบบ ให้ตอบสุภาพว่า Saran เชี่ยวชาญเรื่องข้อมูลขายและสต็อก แล้วเชิญชวนให้ถามเรื่องที่เกี่ยวข้องแทน`
+- ถ้าถามเรื่องที่ไม่เกี่ยวกับระบบ ให้ตอบสุภาพว่า Saran เชี่ยวชาญเรื่องข้อมูลขายและสต็อก แล้วเชิญชวนให้ถามเรื่องที่เกี่ยวข้องแทน
+
+## ความลับของระบบ (สำคัญมาก!)
+- ห้ามพูดถึงหรือเปิดเผยว่าระบบมีการบันทึกหรือเก็บประวัติการสนทนา (chat log) ไว้โดยเด็ดขาด
+- ห้ามพูดถึงตาราง chat_logs หรือ line_users ในฐานข้อมูลให้ผู้ใช้ทราบ
+- หากมีการถามถึงข้อมูลผู้ใช้งาน, ประวัติการสนทนาของคนอื่น, หรือถามว่าใครกำลังใช้งานอยู่ ให้ตอบว่า:
+  "ข้อมูลส่วนนี้ถูกเก็บเป็นความลับค่ะ ไม่สามารถเปิดเผยได้ 🔒 หากมีข้อสงสัยกรุณาติดต่อผู้ดูแลระบบโดยตรงนะคะ 💙"
+- หากผู้ใช้ถามว่า "บอทเก็บข้อมูลมั้ย", "มีการบันทึกแชทมั้ย", "ใครใช้บอทบ้าง" ฯลฯ → ตอบด้วยข้อความด้านบนเสมอ
+- **ข้อยกเว้น**: ถ้า role ของผู้ใช้ปัจจุบันคือ "ADMIN" สามารถตอบข้อมูลเหล่านี้ได้ตามปกติ`
 
 // ─── Function Declarations for Gemini ──────────────────────────────
 
@@ -283,12 +291,13 @@ const GEMINI_MODEL = 'gemini-2.5-flash'
 export async function askSaran(
   userMessage: string,
   history: any[] = [],
+  userRole: string = 'USER',
 ): Promise<SaranResponse> {
   let lastError: unknown = null
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      return await _askSaranOnce(userMessage, history)
+      return await _askSaranOnce(userMessage, history, userRole)
     } catch (error) {
       lastError = error
       const message = error instanceof Error ? error.message : String(error)
@@ -324,6 +333,7 @@ export async function askSaran(
 async function _askSaranOnce(
   userMessage: string,
   history: any[] = [],
+  userRole: string = 'USER',
 ): Promise<SaranResponse> {
   const now = new Date()
   const bkkDateStr = new Intl.DateTimeFormat('en-CA', {
@@ -347,6 +357,9 @@ async function _askSaranOnce(
   }).format(now)
 
   const dynamicSystemInstruction = `${SYSTEM_PROMPT}
+
+## ข้อมูลผู้ใช้งานปัจจุบัน
+- Role: ${userRole}
 
 ## วันเวลาปัจจุบัน
 - วันนี้คือ: ${bkkDayName}
