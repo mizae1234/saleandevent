@@ -9,7 +9,7 @@ export async function GET() {
 
     const [
         totalProducts,
-        lowStockProducts,
+        lowStockProductsRaw,
         todaySales,
         pendingRequests,
         recentSales,
@@ -18,8 +18,19 @@ export async function GET() {
         // Total active products
         db.product.count({ where: { status: 'active' } }),
 
-        // Low stock (warehouse qty <= 5 and > 0)
-        db.warehouseStock.count({ where: { quantity: { gt: 0, lte: 5 } } }),
+        // Low stock (total channel remaining stock <= 5 and > 0)
+        db.$queryRaw`
+            SELECT COUNT(*)::int as count
+            FROM products p
+            JOIN (
+                SELECT cs.barcode, SUM(cs.quantity - cs.sold_quantity - cs.returned_quantity) as remaining
+                FROM channel_stock cs
+                JOIN sales_channels sc ON sc.id = cs.channel_id
+                WHERE sc.is_active = true AND sc.status NOT IN ('draft', 'submitted')
+                GROUP BY cs.barcode
+            ) cs_agg ON cs_agg.barcode = p.barcode
+            WHERE p.status = 'active' AND cs_agg.remaining > 0 AND cs_agg.remaining <= 5
+        ` as Promise<Array<{ count: number }>>,
 
         // Today's sales (exclude inactive channels)
         db.sale.findMany({
@@ -59,6 +70,7 @@ export async function GET() {
     // Calculate today's total sales
     const todayTotalSales = todaySales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
     const todayBillCount = todaySales.length;
+    const lowStockProducts = (lowStockProductsRaw as any)[0]?.count || 0;
 
     return NextResponse.json({
         stats: {

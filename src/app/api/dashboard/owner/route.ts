@@ -84,12 +84,19 @@ export async function GET(request: Request) {
             ORDER BY revenue DESC
             LIMIT 10
         ` as Promise<Array<{ barcode: string; name: string; code: string | null; size: string | null; color: string | null; qty_sold: any; revenue: any }>>,
-        // Dead stock: high warehouse qty, low/no sales (exclude inactive channels)
+        // Dead stock: high channel remaining stock, low/no sales (exclude inactive channels)
         db.$queryRaw`
-            SELECT ws.barcode, p.name, p.code, p.size, p.color, ws.quantity as stock_qty,
+            SELECT cs_agg.barcode, p.name, p.code, p.size, p.color, 
+                   COALESCE(cs_agg.channel_remaining, 0) as stock_qty,
                    COALESCE(sold.qty, 0) as sold_qty
-            FROM warehouse_stock ws
-            JOIN products p ON p.barcode = ws.barcode
+            FROM products p
+            JOIN (
+                SELECT cs.barcode, SUM(cs.quantity - cs.sold_quantity - cs.returned_quantity) as channel_remaining
+                FROM channel_stock cs
+                JOIN sales_channels sc ON sc.id = cs.channel_id
+                WHERE sc.is_active = true AND sc.status NOT IN ('draft', 'submitted')
+                GROUP BY cs.barcode
+            ) cs_agg ON cs_agg.barcode = p.barcode
             LEFT JOIN (
                 SELECT si.barcode, SUM(si.quantity) as qty
                 FROM sale_items si
@@ -97,9 +104,9 @@ export async function GET(request: Request) {
                 JOIN sales_channels sc ON sc.id = s.channel_id AND sc.is_active = true
                 WHERE s.sold_at >= ${dateFrom} AND s.sold_at <= ${dateTo} AND s.status = 'active'
                 GROUP BY si.barcode
-            ) sold ON sold.barcode = ws.barcode
-            WHERE ws.quantity > 10
-            ORDER BY ws.quantity DESC, sold.qty ASC
+            ) sold ON sold.barcode = p.barcode
+            WHERE COALESCE(cs_agg.channel_remaining, 0) > 10
+            ORDER BY COALESCE(cs_agg.channel_remaining, 0) DESC, COALESCE(sold.qty, 0) ASC
             LIMIT 10
         ` as Promise<Array<{ barcode: string; name: string; code: string | null; size: string | null; color: string | null; stock_qty: number; sold_qty: any }>>,
     ]);

@@ -177,13 +177,16 @@ export async function getStockStatus(args: {
       }
     })
 
+    const qty = warehouseStock ? Math.max(0, warehouseStock.quantity) : 0
+    const rsv = warehouseStock ? Math.max(0, warehouseStock.reservedQuantity) : 0
+
     return {
       barcode,
       product: warehouseStock?.product || null,
       warehouse: warehouseStock ? {
-        quantity: warehouseStock.quantity,
-        reserved: warehouseStock.reservedQuantity,
-        available: warehouseStock.quantity - warehouseStock.reservedQuantity,
+        quantity: qty,
+        reserved: rsv,
+        available: Math.max(0, qty - rsv),
       } : null,
       channels: channelStocks.map(cs => ({
         channel: cs.channel.name,
@@ -191,7 +194,7 @@ export async function getStockStatus(args: {
         quantity: cs.quantity,
         sold: cs.soldQuantity,
         returned: cs.returnedQuantity,
-        remaining: cs.quantity - cs.soldQuantity,
+        remaining: Math.max(0, cs.quantity - cs.soldQuantity - cs.returnedQuantity),
       })),
     }
   }
@@ -220,30 +223,37 @@ export async function getStockStatus(args: {
 
     return {
       searchTerm: productName,
-      results: products.map(p => ({
-        barcode: p.barcode,
-        name: p.name,
-        size: p.size,
-        price: p.price ? Number(p.price) : null,
-        category: p.category,
-        warehouseQty: p.warehouseStock?.quantity || 0,
-        warehouseAvailable: (p.warehouseStock?.quantity || 0) - (p.warehouseStock?.reservedQuantity || 0),
-      })),
+      results: products.map(p => {
+        const qty = p.warehouseStock ? Math.max(0, p.warehouseStock.quantity) : 0
+        const rsv = p.warehouseStock ? Math.max(0, p.warehouseStock.reservedQuantity) : 0
+        return {
+          barcode: p.barcode,
+          name: p.name,
+          size: p.size,
+          price: p.price ? Number(p.price) : null,
+          category: p.category,
+          warehouseQty: qty,
+          warehouseAvailable: Math.max(0, qty - rsv),
+        }
+      }),
     }
   }
 
   // ถ้าไม่ระบุอะไรเลย → สรุปภาพรวมสต็อกคลัง
-  const warehouseTotal = await db.warehouseStock.aggregate({
-    _sum: { quantity: true, reservedQuantity: true },
-    _count: true,
-  })
+  const warehouseTotalRaw = await db.$queryRaw`
+    SELECT COUNT(*)::int as count,
+           SUM(CASE WHEN quantity > 0 THEN quantity ELSE 0 END)::int as quantity,
+           SUM(CASE WHEN reserved_quantity > 0 THEN reserved_quantity ELSE 0 END)::int as reserved_quantity
+    FROM warehouse_stock
+  ` as any[]
+  const row = warehouseTotalRaw[0] || { count: 0, quantity: 0, reserved_quantity: 0 }
 
   return {
     warehouseSummary: {
-      totalSKUs: warehouseTotal._count,
-      totalQuantity: warehouseTotal._sum.quantity || 0,
-      totalReserved: warehouseTotal._sum.reservedQuantity || 0,
-      totalAvailable: (warehouseTotal._sum.quantity || 0) - (warehouseTotal._sum.reservedQuantity || 0),
+      totalSKUs: row.count,
+      totalQuantity: row.quantity || 0,
+      totalReserved: row.reserved_quantity || 0,
+      totalAvailable: Math.max(0, (row.quantity || 0) - (row.reserved_quantity || 0)),
     }
   }
 }
