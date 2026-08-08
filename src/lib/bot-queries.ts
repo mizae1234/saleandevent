@@ -31,17 +31,20 @@ export function sanitizeQuery(rawQuery: string): string {
     }
   }
 
-  // ป้องกัน multi-statement (semicolons)
-  if (trimmed.includes(';')) {
+  // ป้องกัน multi-statement — ลบ semicolon ท้ายออก (Gemini มักใส่ ; ท้าย query)
+  let cleaned = trimmed.replace(/;\s*$/, '')
+
+  // ถ้ายังมี semicolon อยู่ = multi-statement → block
+  if (cleaned.includes(';')) {
     throw new Error('❌ ไม่อนุญาตให้ใช้ semicolon ค่ะ — อนุญาตเฉพาะ query เดียว')
   }
 
   // ป้องกัน comment injection
-  if (trimmed.includes('--') || trimmed.includes('/*')) {
+  if (cleaned.includes('--') || cleaned.includes('/*')) {
     throw new Error('❌ ไม่อนุญาตให้ใช้ SQL comments ค่ะ')
   }
 
-  return trimmed
+  return cleaned
 }
 
 // ─── Query Functions (all read-only) ───────────────────────────────
@@ -484,10 +487,18 @@ export async function runReadOnlyQuery(args: { sqlQuery: string }) {
     const results = await db.$queryRawUnsafe(sanitized) as any[]
     // จำกัดผลลัพธ์ไม่เกิน 50 rows
     const limited = results.slice(0, 50)
+    // แปลง BigInt → Number (PostgreSQL SUM/COUNT คืน BigInt ที่ JSON.stringify ไม่รองรับ)
+    const serializable = limited.map(row => {
+      const obj: Record<string, any> = {}
+      for (const [key, value] of Object.entries(row)) {
+        obj[key] = typeof value === 'bigint' ? Number(value) : value
+      }
+      return obj
+    })
     return {
       rowCount: results.length,
-      displayedRows: limited.length,
-      data: limited,
+      displayedRows: serializable.length,
+      data: serializable,
     }
   } catch (err: any) {
     return { error: `Query failed: ${err.message}` }
