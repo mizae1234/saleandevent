@@ -340,7 +340,9 @@ async function replyFlex(replyToken: string, flexMessage: any) {
   try {
     await lineClient.replyMessage(replyToken, flexMessage)
   } catch (err: any) {
-    console.error('[replyFlex Error]', JSON.stringify(err?.response?.data || err?.message || err, null, 2))
+    const detail = err?.originalError?.response?.data || err?.response?.data || err?.message || 'unknown'
+    console.error('[replyFlex Error]', JSON.stringify(detail, null, 2))
+    console.error('[replyFlex Flex Size]', JSON.stringify(flexMessage).length, 'bytes')
   }
 }
 
