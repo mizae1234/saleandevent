@@ -183,7 +183,7 @@ export async function GET(
         sold: totalSold,
         returned: totalReturned,
         remaining: stockRemaining,
-        detail: stockDetail.slice(0, 20)
+        detail: stockDetail
       },
       topProducts: topProductsWithNames
     })
