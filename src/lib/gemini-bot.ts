@@ -23,6 +23,8 @@ const SYSTEM_PROMPT = `คุณคือ "Saran" (👖) ผู้ช่วย A
 คอลัมน์สำคัญ: id, code (รหัส), type (EVENT/BRANCH), name (ชื่อ), location (สถานที่),
 start_date, end_date (สำหรับอีเว้นท์), sales_target (เป้ายอดขาย),
 status (draft/active/completed/cancelled), responsible_person_name, phone, is_cash_booth, is_active
+⚠️ สำคัญมาก: เมื่อเขียน SQL ค้นหาช่องทางขาย ต้องกรองด้วย "is_active = true" เสมอ! ห้ามใช้ข้อมูลที่มี is_active = false (ถูกปิดการใช้งาน/ลบไปแล้ว) เพราะอาจมีชื่อซ้ำกับงานที่กำลังเปิดจริง ทำให้ได้ข้อมูลยอดขายและสต็อกที่ผิดพลาด
+
 
 ### ตาราง: products (สินค้า)
 คอลัมน์: barcode (PK), code, name (ชื่อสินค้า), size (ไซส์), price (ราคา),
