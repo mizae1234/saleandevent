@@ -268,6 +268,36 @@ async function handleChat(
       // ถ้าระบุชื่อ → แสดง Flex ให้กดดูรายละเอียด
       if (searchKeyword && activeChannels.length <= 3) {
         const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || process.env.NEXT_PUBLIC_LIFF_ID || ''
+        
+        const buildChannelBox = (ch: any) => {
+          const fmt = (d: any) => d ? new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) : '-'
+          const target = ch.salesTarget ? `฿${Number(ch.salesTarget).toLocaleString()}` : '-'
+          
+          const contents: any[] = [
+            { type: 'text', text: `${ch.type === 'EVENT' ? '📍' : '🏬'} ${ch.name}`, weight: 'bold', size: 'md', wrap: true },
+            { type: 'text', text: `${ch.code}`, size: 'xxs', color: '#aaaaaa', margin: 'xs' },
+            { type: 'separator', margin: 'md' },
+            { type: 'text', text: `📌 สถานที่: ${ch.location || '-'}`, size: 'xs', color: '#555555', wrap: true, margin: 'md' },
+            { type: 'text', text: `📅 วันที่: ${fmt(ch.startDate)} - ${fmt(ch.endDate)}`, size: 'xs', color: '#555555', margin: 'sm' },
+            { type: 'text', text: `🎯 เป้ายอดขาย: ${target}`, size: 'xs', color: '#555555', margin: 'sm' },
+          ]
+
+          if (ch.responsiblePersonName) {
+            contents.push({ type: 'text', text: `👤 ผู้รับผิดชอบ: ${ch.responsiblePersonName}`, size: 'xs', color: '#555555', margin: 'sm' })
+          }
+
+          contents.push({
+            type: 'button',
+            action: { type: 'uri', label: '📊 ดูรายละเอียดเพิ่มเติม', uri: `https://liff.line.me/${liffId}/channels/${ch.id}` },
+            style: 'primary',
+            color: '#0d9488',
+            height: 'sm',
+            margin: 'lg'
+          })
+
+          return contents
+        }
+
         const flexMsg = {
           type: 'flex' as const,
           altText: `🏪 ค้นหาบูธ: ${searchKeyword}`,
@@ -276,25 +306,13 @@ async function handleChat(
             body: {
               type: 'box',
               layout: 'vertical',
-              spacing: 'md',
-              contents: activeChannels.map((ch: any) => ({
-                type: 'box',
-                layout: 'vertical',
-                spacing: 'sm',
-                contents: [
-                  { type: 'text', text: `${ch.type === 'EVENT' ? '📍' : '🏬'} ${ch.name}`, weight: 'bold', size: 'sm', wrap: true },
-                  { type: 'text', text: `📌 ${ch.location || '-'} | ${ch.code}`, size: 'xs', color: '#888888', wrap: true },
-                  {
-                    type: 'button',
-                    action: { type: 'uri', label: 'ดูรายละเอียด', uri: `https://liff.line.me/${liffId}/channels/${ch.id}` },
-                    style: 'primary',
-                    color: '#0d9488',
-                    height: 'sm',
-                    margin: 'sm'
-                  },
-                  { type: 'separator', margin: 'md' }
-                ].slice(0, activeChannels.length > 1 ? 4 : 3)
-              })).flat()
+              spacing: 'sm',
+              contents: activeChannels.length === 1
+                ? buildChannelBox(activeChannels[0])
+                : activeChannels.flatMap((ch: any, i: number) => [
+                    ...buildChannelBox(ch),
+                    ...(i < activeChannels.length - 1 ? [{ type: 'separator', margin: 'lg' }] : [])
+                  ])
             }
           },
           quickReply: QUICK_REPLY_ITEMS
