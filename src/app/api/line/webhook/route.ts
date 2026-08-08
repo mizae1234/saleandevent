@@ -451,17 +451,22 @@ function menuButton(label: string, desc: string, actionText: string) {
 function getSalesSummaryFlexMessage(summary: any) {
   const liffId = process.env.NEXT_PUBLIC_LIFF_ID || ''
   
-  const paymentItems = Object.entries(summary.byPayment).map(([method, data]: any) => {
+  const paymentItems = (summary.byPaymentMethod || []).map((data: any) => {
+    const method = data.method
     const methodName = method === 'cash' ? '💵 เงินสด' : method === 'transfer' ? '📱 โอนเงิน' : '💳 บัตรเครดิต'
+    const amount = Number(data.amount)
     return {
       type: 'box',
       layout: 'horizontal',
       contents: [
         { type: 'text', text: methodName, size: 'xs', color: '#475569' },
-        { type: 'text', text: `฿ ${data.amount.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`, size: 'xs', weight: 'bold', color: '#334155', align: 'end' }
+        { type: 'text', text: `฿ ${amount.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`, size: 'xs', weight: 'bold', color: '#334155', align: 'end' }
       ]
     }
   })
+
+  const totalAmount = Number(summary.summary.totalAmount)
+  const totalBills = summary.summary.totalBills
 
   return {
     type: 'flex' as const,
@@ -502,7 +507,7 @@ function getSalesSummaryFlexMessage(summary: any) {
               },
               {
                 type: 'text',
-                text: '฿ ' + summary.totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                text: '฿ ' + totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
                 weight: 'bold',
                 size: 'xxl',
                 color: '#0f172a',
@@ -529,7 +534,7 @@ function getSalesSummaryFlexMessage(summary: any) {
                   },
                   {
                     type: 'text',
-                    text: summary.totalSales + ' บิล',
+                    text: totalBills + ' บิล',
                     weight: 'bold',
                     size: 'sm',
                     color: '#334155',
@@ -550,7 +555,7 @@ function getSalesSummaryFlexMessage(summary: any) {
                   },
                   {
                     type: 'text',
-                    text: '฿ ' + (summary.totalAmount / (summary.totalSales || 1)).toLocaleString('th-TH', { maximumFractionDigits: 0 }),
+                    text: '฿ ' + (totalAmount / (totalBills || 1)).toLocaleString('th-TH', { maximumFractionDigits: 0 }),
                     weight: 'bold',
                     size: 'sm',
                     color: '#334155',

@@ -68,7 +68,7 @@ export default function LiffChannelDetailsPage() {
   }
 
   const { channel, staff, sales } = data
-  const todaySales = sales?.totalAmount || 0
+  const todaySales = Number(sales?.summary?.totalAmount) || 0
   const salesTarget = channel.salesTarget || 0
   const progressPct = salesTarget > 0 ? Math.min((todaySales / salesTarget) * 100, 100) : 0
 

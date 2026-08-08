@@ -130,7 +130,7 @@ export default function LiffSalesPage() {
           <div>
             <div className="text-slate-400 text-xs">ยอดขายรวมสุทธิ</div>
             <div className="text-3xl font-extrabold text-slate-800 tracking-tight mt-0.5">
-              ฿ {fmt(summary.totalAmount)}
+              ฿ {fmt(Number(summary.summary.totalAmount))}
             </div>
           </div>
           
@@ -141,7 +141,7 @@ export default function LiffSalesPage() {
               </div>
               <div>
                 <div className="text-[10px] text-slate-400">จำนวนบิล</div>
-                <div className="text-sm font-bold text-slate-700">{summary.totalSales} บิล</div>
+                <div className="text-sm font-bold text-slate-700">{summary.summary.totalBills} บิล</div>
               </div>
             </div>
             
@@ -152,7 +152,7 @@ export default function LiffSalesPage() {
               <div>
                 <div className="text-[10px] text-slate-400">เฉลี่ย/บิล</div>
                 <div className="text-sm font-bold text-slate-700">
-                  ฿ {Math.round(summary.totalAmount / (summary.totalSales || 1)).toLocaleString()}
+                  ฿ {Math.round(Number(summary.summary.totalAmount) / (summary.summary.totalBills || 1)).toLocaleString()}
                 </div>
               </div>
             </div>
@@ -163,18 +163,20 @@ export default function LiffSalesPage() {
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">ช่องทางการชำระเงิน</h3>
           
           <div className="space-y-3.5">
-            {Object.entries(summary.byPayment).map(([method, data]: any) => {
-              const pct = summary.totalAmount > 0 ? (data.amount / summary.totalAmount) * 100 : 0
-              const label = method === 'cash' ? '💵 เงินสด' : method === 'transfer' ? '📱 โอนเงิน' : '💳 บัตรเครดิต'
-              const color = method === 'cash' ? 'bg-amber-500' : method === 'transfer' ? 'bg-sky-500' : 'bg-violet-500'
+            {(summary.byPaymentMethod || []).map((data: any) => {
+              const amount = Number(data.amount)
+              const totalAmount = Number(summary.summary.totalAmount)
+              const pct = totalAmount > 0 ? (amount / totalAmount) * 100 : 0
+              const label = data.method === 'cash' ? '💵 เงินสด' : data.method === 'transfer' ? '📱 โอนเงิน' : '💳 บัตรเครดิต'
+              const color = data.method === 'cash' ? 'bg-amber-500' : data.method === 'transfer' ? 'bg-sky-500' : 'bg-violet-500'
               
               return (
-                <div key={method} className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
+                <div key={data.method} className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-sans">
                     <span className="font-semibold text-slate-600">{label}</span>
                     <div className="space-x-1.5">
                       <span className="text-slate-400">({pct.toFixed(0)}%)</span>
-                      <span className="font-bold text-slate-800">฿ {fmt(data.amount)}</span>
+                      <span className="font-bold text-slate-800">฿ {fmt(amount)}</span>
                     </div>
                   </div>
                   <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
@@ -190,8 +192,8 @@ export default function LiffSalesPage() {
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">ยอดขายรายช่องทาง/อีเว้นท์</h3>
           
           <div className="divide-y divide-slate-100">
-            {Object.values(summary.byChannel).map((ch: any) => (
-              <div key={ch.name} className="flex justify-between items-center py-3 first:pt-0 last:pb-0">
+            {(summary.byChannel || []).map((ch: any) => (
+              <div key={ch.name} className="flex justify-between items-center py-3 first:pt-0 last:pb-0 font-sans">
                 <div>
                   <div className="text-xs font-bold text-slate-800">{ch.name}</div>
                   <div className="text-[10px] text-slate-400 mt-0.5">{ch.count} บิล</div>
@@ -201,8 +203,8 @@ export default function LiffSalesPage() {
                 </div>
               </div>
             ))}
-            {Object.keys(summary.byChannel).length === 0 && (
-              <div className="text-center text-xs text-slate-400 py-4">ไม่มีข้อมูลยอดขายแยกสาขา</div>
+            {(summary.byChannel || []).length === 0 && (
+              <div className="text-center text-xs text-slate-400 py-4 font-sans">ไม่มีข้อมูลยอดขายแยกสาขา</div>
             )}
           </div>
         </div>
