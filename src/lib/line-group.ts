@@ -18,7 +18,8 @@ export async function registerGroup(groupId: string, invitedByUserId?: string) {
   try {
     const summary = await lineClient.getGroupSummary(groupId)
     groupName = summary.groupName || null
-    memberCount = await lineClient.getGroupMembersCount(groupId)
+    const membersRes = await lineClient.getGroupMembersCount(groupId)
+    memberCount = typeof membersRes === 'number' ? membersRes : (membersRes as any)?.count ?? null
   } catch (err) {
     console.error('[LineGroup] Failed to get group info:', err)
   }
