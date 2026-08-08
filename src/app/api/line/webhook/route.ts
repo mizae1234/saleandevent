@@ -618,7 +618,7 @@ function getActiveEventsFlexMessage(channels: any[], keyword?: string) {
   const bubbles = channels.slice(0, 10).map((ch: any) => {
     return {
       type: 'bubble',
-      size: 'micro',
+      size: 'kilo',
       header: {
         type: 'box',
         layout: 'vertical',
