@@ -863,3 +863,43 @@ model StockTransferItem {
   @@index([stockTransferId])
   @@map("stock_transfer_items")
 }
+
+// ============ LINE BOT CHAT LOG ============
+// บันทึกประวัติการสนทนากับ Line OA Bot (DM เท่านั้น)
+
+model ChatLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  sourceType    String   @map("source_type") @db.VarChar(20) // user, group, room
+  sourceId      String?  @map("source_id") @db.VarChar(100) // LINE userId or groupId
+  userName      String?  @map("user_name") @db.VarChar(255)
+  userMessage   String   @map("user_message") @db.Text
+  botReply      String?  @map("bot_reply") @db.Text
+  inputTokens   Int?     @default(0) @map("input_tokens")
+  outputTokens  Int?     @default(0) @map("output_tokens")
+  modelName     String?  @map("model_name") @db.VarChar(100)
+  responseTimeMs Int?    @map("response_time_ms")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([sourceId])
+  @@index([createdAt(sort: Desc)])
+  @@map("chat_logs")
+}
+
+// ============ LINE USER (ผู้ใช้ Line OA Bot) ============
+// เก็บข้อมูล Line user + role เพื่อกำหนดสิทธิ์การเข้าถึง
+
+model LineUser {
+  id            String   @id @default(uuid()) @db.Uuid
+  lineUserId    String   @unique @map("line_user_id") @db.VarChar(100) // LINE User ID
+  displayName   String?  @map("display_name") @db.VarChar(255)
+  pictureUrl    String?  @map("picture_url") @db.VarChar(500)
+  role          String   @default("USER") @db.VarChar(20) // ADMIN, USER, BLOCKED
+  isActive      Boolean  @default(true) @map("is_active")
+  lastActiveAt  DateTime @default(now()) @map("last_active_at") @db.Timestamptz(6)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([role])
+  @@index([isActive])
+  @@map("line_users")
+}
