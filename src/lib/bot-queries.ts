@@ -498,11 +498,23 @@ export async function runReadOnlyQuery(args: { sqlQuery: string }) {
     const results = await db.$queryRawUnsafe(sanitized) as any[]
     // จำกัดผลลัพธ์ไม่เกิน 50 rows
     const limited = results.slice(0, 50)
-    // แปลง BigInt → Number (PostgreSQL SUM/COUNT คืน BigInt ที่ JSON.stringify ไม่รองรับ)
+
+    // คอลัมน์ที่ต้อง mask ตาม PDPA
+    const NAME_FIELDS = ['name', 'staff_name', 'customer_name', 'responsible_person_name', 'responsiblepersonname']
+    const HIDDEN_FIELDS = ['phone', 'salary', 'commission', 'bank_account', 'bank_account_number', 'tax_id', 'address', 'id_card']
+
+    // แปลง BigInt → Number + PDPA masking
     const serializable = limited.map(row => {
       const obj: Record<string, any> = {}
       for (const [key, value] of Object.entries(row)) {
-        obj[key] = typeof value === 'bigint' ? Number(value) : value
+        const keyLower = key.toLowerCase()
+        if (HIDDEN_FIELDS.some(f => keyLower.includes(f))) {
+          obj[key] = '***เป็นความลับ***'
+        } else if (NAME_FIELDS.some(f => keyLower === f) && typeof value === 'string') {
+          obj[key] = maskLastName(value)
+        } else {
+          obj[key] = typeof value === 'bigint' ? Number(value) : value
+        }
       }
       return obj
     })
