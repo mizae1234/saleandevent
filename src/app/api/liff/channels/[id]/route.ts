@@ -9,7 +9,7 @@ async function verifyAuth(req: NextRequest) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null
 
   const idToken = authHeader.substring(7)
-  const liffId = process.env.NEXT_PUBLIC_LIFF_ID
+  const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || process.env.NEXT_PUBLIC_LIFF_ID
   if (!liffId) return null
 
   try {

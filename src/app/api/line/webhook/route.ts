@@ -449,7 +449,7 @@ function menuButton(label: string, desc: string, actionText: string) {
 }
 
 function getSalesSummaryFlexMessage(summary: any) {
-  const liffId = process.env.NEXT_PUBLIC_LIFF_ID || ''
+  const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || process.env.NEXT_PUBLIC_LIFF_ID || ''
   
   const paymentItems = (summary.byPaymentMethod || []).map((data: any) => {
     const method = data.method
@@ -611,7 +611,7 @@ function getSalesSummaryFlexMessage(summary: any) {
 }
 
 function getActiveEventsFlexMessage(channels: any[], keyword?: string) {
-  const liffId = process.env.NEXT_PUBLIC_LIFF_ID || ''
+  const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || process.env.NEXT_PUBLIC_LIFF_ID || ''
   
   const bubbles = channels.slice(0, 10).map((ch: any) => {
     return {

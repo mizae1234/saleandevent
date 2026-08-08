@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ID Token is required' }, { status: 400 })
     }
 
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID
+    const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || process.env.NEXT_PUBLIC_LIFF_ID
     if (!liffId) {
       return NextResponse.json({ error: 'LIFF ID is not configured' }, { status: 500 })
     }

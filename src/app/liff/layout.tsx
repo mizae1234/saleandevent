@@ -35,9 +35,9 @@ export default function LiffLayout({ children }: { children: React.ReactNode }) 
     import('@line/liff')
       .then(async ({ default: liff }) => {
         try {
-          const liffId = process.env.NEXT_PUBLIC_LIFF_ID
+          const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || process.env.NEXT_PUBLIC_LIFF_ID
           if (!liffId) {
-            throw new Error('NEXT_PUBLIC_LIFF_ID is not configured in environment variables.')
+            throw new Error('NEXT_PUBLIC_LINE_LIFF_ID is not configured in environment variables.')
           }
 
           await liff.init({ liffId })
