@@ -156,9 +156,10 @@ async function handleEvent(event: WebhookEvent) {
 
     const bypassKeywords = [
       'ยอดขายวันนี้', 'สรุปสต็อกคลัง', 'งานอีเว้นท์ที่เปิดอยู่',
-      'สินค้าขายดีเดือนนี้', 'เมนู',
+      'สินค้าขายดีเดือนนี้', 'เมนู', 'อีเว้นท์', 'สาขา',
+      'event', 'events', 'store', 'stores', 'ยอดขาย',
     ]
-    const isBypass = bypassKeywords.includes(rawLower)
+    const isBypass = bypassKeywords.some(kw => rawLower === kw || rawLower.startsWith(kw + ' '))
 
     let strippedText = rawText
     let triggerFound = false
