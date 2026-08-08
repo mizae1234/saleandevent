@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 // ─── Constants ─────────────────────────────────────────────────────
 
 const BOT_NAME = 'Saran'
-const BOT_TRIGGERS = ['saran', 'ซาร้าน', 'สาร้าน']
+const BOT_TRIGGERS = ['@saran assistant', '@saran', 'saran', 'ซาร้าน', 'สาร้าน']
 
 const QUICK_REPLY_ITEMS = {
   items: [
