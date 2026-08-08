@@ -286,7 +286,7 @@ export interface SaranResponse {
 const MAX_RETRIES = 3
 const RETRY_DELAYS = [10000, 20000, 45000]
 
-const GEMINI_MODEL = 'gemini-2.5-flash'
+const GEMINI_MODEL = 'gemini-3-flash-preview'
 
 export async function askSaran(
   userMessage: string,
