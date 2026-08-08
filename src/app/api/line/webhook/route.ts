@@ -116,8 +116,10 @@ async function handleEvent(event: WebhookEvent) {
   const rawLower = rawText.toLowerCase()
 
   // Register/update user & check permission
+  let userRole = 'USER'
   if (userId) {
     const user = await getOrCreateLineUser(userId)
+    userRole = user.role
 
     if (!isUserAllowed(user)) {
       await replyText(
@@ -160,7 +162,7 @@ async function handleEvent(event: WebhookEvent) {
       return
     }
 
-    await handleChat(strippedText, userId!, event.replyToken, sourceType, getSourceId(event))
+    await handleChat(strippedText, userId!, event.replyToken, sourceType, getSourceId(event), userRole)
     return
   }
 
@@ -171,7 +173,7 @@ async function handleEvent(event: WebhookEvent) {
     text = rawText.substring(dmTrigger.length).trim()
   }
 
-  await handleChat(text, userId!, event.replyToken, sourceType, getSourceId(event))
+  await handleChat(text, userId!, event.replyToken, sourceType, getSourceId(event), userRole)
 }
 
 // ─── Chat Handler ──────────────────────────────────────────────────
@@ -182,6 +184,7 @@ async function handleChat(
   replyToken: string,
   sourceType: string,
   sourceId: string | null,
+  userRole: string = 'USER',
 ) {
   const lower = text.toLowerCase()
 
@@ -211,8 +214,8 @@ async function handleChat(
     userName = profile.displayName
   } catch { /* ignore */ }
 
-  // ส่งคำถามให้ Gemini
-  const response = await askSaran(text, history)
+  // ส่งคำถามให้ Gemini (พร้อม userRole สำหรับ privacy control)
+  const response = await askSaran(text, history, userRole)
   const responseTimeMs = Date.now() - startTime
 
   // ตอบกลับผู้ใช้
