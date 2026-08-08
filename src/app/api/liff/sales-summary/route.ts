@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
 import { getSalesSummary } from '@/lib/bot-queries'
 
 export const dynamic = 'force-dynamic'
@@ -24,17 +23,10 @@ async function verifyAuth(req: NextRequest) {
 
     if (!res.ok) return null
     const data = await res.json()
-    const lineUserId = data.sub
+    if (!data.sub) return null
 
-    const user = await db.lineUser.findUnique({
-      where: { lineUserId }
-    })
-
-    if (!user || !user.isActive) return null
-    const allowedRoles = ['SUPER_ADMIN', 'ADMIN']
-    if (!allowedRoles.includes(user.role)) return null
-
-    return user
+    // แค่ verify LIFF token ผ่านก็ OK (ไม่ต้อง check user ใน DB)
+    return { lineUserId: data.sub, displayName: data.name }
   } catch {
     return null
   }

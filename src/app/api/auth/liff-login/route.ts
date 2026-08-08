@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,35 +33,19 @@ export async function POST(req: NextRequest) {
     }
 
     const lineData = await res.json()
-    const lineUserId = lineData.sub
 
-    if (!lineUserId) {
+    if (!lineData.sub) {
       return NextResponse.json({ error: 'ไม่พบ LINE User ID' }, { status: 401 })
     }
 
-    const user = await db.lineUser.findUnique({
-      where: { lineUserId }
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: 'ไม่พบบัญชีผู้ใช้ LINE นี้ในระบบ กรุณาติดต่อผู้ดูแลระบบเพื่อเปิดสิทธิ์' }, { status: 403 })
-    }
-
-    if (!user.isActive) {
-      return NextResponse.json({ error: 'บัญชีผู้ใช้นี้ถูกระงับการใช้งานชั่วคราว' }, { status: 403 })
-    }
-
-    const allowedRoles = ['SUPER_ADMIN', 'ADMIN']
-    if (!allowedRoles.includes(user.role)) {
-      return NextResponse.json({ error: 'คุณไม่มีสิทธิ์เข้าใช้งานหน้ารายงานสรุป' }, { status: 403 })
-    }
-
+    // ตอนนี้แค่ verify LIFF token ผ่านก็ให้เข้าได้เลย (ไม่ต้อง check user ใน DB)
+    // TODO: ในอนาคตจะ map LINE user กับ user ในระบบ
     return NextResponse.json({
       success: true,
       user: {
-        displayName: user.displayName,
-        pictureUrl: user.pictureUrl,
-        role: user.role
+        displayName: lineData.name || 'LINE User',
+        pictureUrl: lineData.picture || null,
+        role: 'USER'
       }
     })
   } catch (err: any) {
