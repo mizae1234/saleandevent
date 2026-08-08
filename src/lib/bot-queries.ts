@@ -1,5 +1,16 @@
 import { db } from '@/lib/db'
 
+// ─── PDPA Helper: Mask last name ────────────────────────────────────
+/** Mask นามสกุลตาม PDPA: "จุฬาลักษณ์ สมไพร" → "จุฬาลักษณ์ ส***" */
+function maskLastName(fullName: string): string {
+  if (!fullName) return fullName
+  const parts = fullName.trim().split(/\s+/)
+  if (parts.length <= 1) return fullName
+  const firstName = parts.slice(0, -1).join(' ')
+  const lastName = parts[parts.length - 1]
+  return `${firstName} ${lastName.charAt(0)}***`
+}
+
 // ─── SQL Sanitizer (DB Command Prevention) ─────────────────────────
 // ห้าม INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE, EXEC เด็ดขาด
 
@@ -327,7 +338,7 @@ export async function getStaffInfo(args: {
     totalStaff: staffList.length,
     staff: staffList.map(s => ({
       code: s.code,
-      name: s.name,
+      name: maskLastName(s.name),
       role: s.role,
       position: s.position || null,
       employeeType: s.employeeType || null,
