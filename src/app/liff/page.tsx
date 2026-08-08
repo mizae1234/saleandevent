@@ -18,17 +18,20 @@ export default function LiffRedirectPage() {
     if (liffState) {
       // Redirect to /liff{liff.state} e.g. /liff/channels/{id}
       router.replace(`/liff${liffState}`)
+    } else {
+      // ไม่มี liff.state → redirect ไป sales page
+      router.replace('/liff/sales')
     }
   }, [searchParams, router])
 
   const liffState = searchParams.get('liff.state')
 
-  // ถ้าไม่มี liff.state → แสดง sales page link
+  // ถ้าไม่มี liff.state → redirect ไป sales page
   if (!liffState) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white p-6">
-        <h1 className="text-xl font-bold mb-4">👖 Saran Jeans</h1>
-        <p className="text-slate-400 text-sm">กรุณาเปิดผ่านแอป LINE</p>
+        <Loader2 className="h-10 w-10 text-indigo-400 animate-spin mb-4" />
+        <p className="text-slate-400 text-sm">กำลังเปลี่ยนหน้า...</p>
       </div>
     )
   }
