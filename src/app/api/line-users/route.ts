@@ -16,12 +16,17 @@ export async function GET(req: NextRequest) {
       ]
     }
 
-    const users = await db.lineUser.findMany({
-      where,
-      orderBy: { lastActiveAt: 'desc' },
-    })
+    const [users, groups] = await Promise.all([
+      db.lineUser.findMany({
+        where,
+        orderBy: { lastActiveAt: 'desc' },
+      }),
+      db.lineGroup.findMany({
+        orderBy: { lastActiveAt: 'desc' },
+      }),
+    ])
 
-    return NextResponse.json({ users })
+    return NextResponse.json({ users, groups })
   } catch (error: any) {
     console.error('[LineUsers API Error]', error)
     return NextResponse.json({ error: error.message }, { status: 500 })

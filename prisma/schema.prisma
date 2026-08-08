@@ -903,3 +903,21 @@ model LineUser {
   @@index([isActive])
   @@map("line_users")
 }
+
+// ============ LINE GROUP (กลุ่มที่ Bot ถูก add เข้าไป) ============
+
+model LineGroup {
+  id            String   @id @default(uuid()) @db.Uuid
+  groupId       String   @unique @map("group_id") @db.VarChar(100) // LINE Group ID
+  groupName     String?  @map("group_name") @db.VarChar(255)
+  memberCount   Int?     @map("member_count")
+  invitedBy     String?  @map("invited_by") @db.VarChar(100) // userId ของคนที่ add bot
+  isActive      Boolean  @default(true) @map("is_active")
+  joinedAt      DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+  leftAt        DateTime? @map("left_at") @db.Timestamptz(6)
+  lastActiveAt  DateTime @default(now()) @map("last_active_at") @db.Timestamptz(6)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([isActive])
+  @@map("line_groups")
+}

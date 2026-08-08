@@ -3,6 +3,7 @@ import { lineClient, verifySignature } from '@/lib/line-bot'
 import { askSaran } from '@/lib/gemini-bot'
 import { logChatToDb, getRecentChatHistory } from '@/lib/chat-log'
 import { getOrCreateLineUser, isUserAllowed, isAdmin } from '@/lib/line-user'
+import { registerGroup, markGroupLeft, updateGroupActivity } from '@/lib/line-group'
 import type { WebhookEvent } from '@line/bot-sdk'
 
 export const dynamic = 'force-dynamic'
@@ -92,10 +93,23 @@ async function handleEvent(event: WebhookEvent) {
 
   // ─── Join Event (bot added to group) ───────────────────────────
   if (event.type === 'join') {
+    const groupId = (event.source as any).groupId
+    if (groupId) {
+      registerGroup(groupId).catch(err => console.error('[Webhook] Group register error:', err))
+    }
     await replyText(
       event.replyToken,
       `สวัสดีค่ะ~ ${BOT_NAME} มาแล้วนะ 👖✨\n\nเรียก ${BOT_NAME} ได้โดยพิมพ์ชื่อนำหน้า เช่น:\n💬 "saran ยอดขายวันนี้"\n💬 "saran สต็อกเหลือเท่าไหร่"\n\nพิมพ์ "saran เมนู" เพื่อดูคำสั่งทั้งหมดค่ะ 💙`
     )
+    return
+  }
+
+  // ─── Leave Event (bot removed from group) ──────────────────────
+  if (event.type === 'leave') {
+    const groupId = (event.source as any).groupId
+    if (groupId) {
+      markGroupLeft(groupId).catch(err => console.error('[Webhook] Group leave error:', err))
+    }
     return
   }
 
@@ -132,6 +146,12 @@ async function handleEvent(event: WebhookEvent) {
 
   // ─── Group Mode: require bot trigger prefix ────────────────────
   if (isGroup) {
+    // อัพเดท group activity (async)
+    const groupId = (event.source as any).groupId || (event.source as any).roomId
+    if (groupId) {
+      updateGroupActivity(groupId).catch(() => {})
+    }
+
     const bypassKeywords = [
       'ยอดขายวันนี้', 'สรุปสต็อกคลัง', 'งานอีเว้นท์ที่เปิดอยู่',
       'สินค้าขายดีเดือนนี้', 'เมนู',
