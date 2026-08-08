@@ -20,6 +20,7 @@ async function getData(searchParams: Promise<{ [key: string]: string | string[] 
     const q = typeof params.q === 'string' ? params.q : undefined;
     const startDate = typeof params.startDate === 'string' ? params.startDate : undefined;
     const endDate = typeof params.endDate === 'string' ? params.endDate : undefined;
+    const status = typeof params.status === 'string' ? params.status : undefined;
     const page = typeof params.page === 'string' ? Math.max(1, parseInt(params.page) || 1) : 1;
 
     const where: Prisma.SalesChannelWhereInput = { AND: [] };
@@ -32,6 +33,10 @@ async function getData(searchParams: Promise<{ [key: string]: string | string[] 
                 { location: { contains: q, mode: 'insensitive' } },
             ]
         });
+    }
+
+    if (status) {
+        (where.AND as Prisma.SalesChannelWhereInput[]).push({ status });
     }
 
     if (startDate) {
@@ -80,6 +85,7 @@ export default async function ExpensesEventListPage({ searchParams }: { searchPa
         if (params.q) p.set('q', String(params.q));
         if (params.startDate) p.set('startDate', String(params.startDate));
         if (params.endDate) p.set('endDate', String(params.endDate));
+        if (params.status) p.set('status', String(params.status));
         if (page > 1) p.set('page', String(page));
         const qs = p.toString();
         return `/channels/expenses${qs ? `?${qs}` : ''}`;
