@@ -339,8 +339,8 @@ async function replyText(replyToken: string, text: string) {
 async function replyFlex(replyToken: string, flexMessage: any) {
   try {
     await lineClient.replyMessage(replyToken, flexMessage)
-  } catch (err) {
-    console.error('[replyFlex Error]', err)
+  } catch (err: any) {
+    console.error('[replyFlex Error]', JSON.stringify(err?.response?.data || err?.message || err, null, 2))
   }
 }
 
