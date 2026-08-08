@@ -265,8 +265,57 @@ async function handleChat(
         return
       }
 
-      const flexMsg = getActiveEventsFlexMessage(activeChannels, searchKeyword)
-      await replyFlex(replyToken, flexMsg)
+      // ถ้าระบุชื่อ → แสดง Flex ให้กดดูรายละเอียด
+      if (searchKeyword && activeChannels.length <= 3) {
+        const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || process.env.NEXT_PUBLIC_LIFF_ID || ''
+        const flexMsg = {
+          type: 'flex' as const,
+          altText: `🏪 ค้นหาบูธ: ${searchKeyword}`,
+          contents: {
+            type: 'bubble',
+            body: {
+              type: 'box',
+              layout: 'vertical',
+              spacing: 'md',
+              contents: activeChannels.map((ch: any) => ({
+                type: 'box',
+                layout: 'vertical',
+                spacing: 'sm',
+                contents: [
+                  { type: 'text', text: `${ch.type === 'EVENT' ? '📍' : '🏬'} ${ch.name}`, weight: 'bold', size: 'sm', wrap: true },
+                  { type: 'text', text: `📌 ${ch.location || '-'} | ${ch.code}`, size: 'xs', color: '#888888', wrap: true },
+                  {
+                    type: 'button',
+                    action: { type: 'uri', label: 'ดูรายละเอียด', uri: `https://liff.line.me/${liffId}/channels/${ch.id}` },
+                    style: 'primary',
+                    color: '#0d9488',
+                    height: 'sm',
+                    margin: 'sm'
+                  },
+                  { type: 'separator', margin: 'md' }
+                ].slice(0, activeChannels.length > 1 ? 4 : 3)
+              })).flat()
+            }
+          },
+          quickReply: QUICK_REPLY_ITEMS
+        }
+        await replyFlex(replyToken, flexMsg)
+        return
+      }
+
+      // ไม่ระบุชื่อ หรือผลลัพธ์เยอะ → แสดง text list
+      const header = searchKeyword
+        ? `🔍 ค้นหา "${searchKeyword}" — พบ ${activeChannels.length} รายการ\n`
+        : `🏪 งานอีเว้นท์/สาขาที่เปิดอยู่ (${activeChannels.length} รายการ)\n`
+
+      const list = activeChannels.slice(0, 15).map((ch: any) => {
+        const icon = ch.type === 'EVENT' ? '📍' : '🏬'
+        return `${icon} ${ch.name}\n   📌 ${ch.location || '-'} | ${ch.code}`
+      }).join('\n\n')
+
+      const footer = activeChannels.length > 15 ? `\n\n... และอีก ${activeChannels.length - 15} รายการ` : ''
+
+      await replyText(replyToken, `${header}\n${list}${footer}`)
       return
     } catch (err) {
       console.error('[Webhook Active Events Error]', err)
@@ -675,7 +724,7 @@ function getActiveEventsFlexMessage(channels: any[], keyword?: string) {
             },
             style: 'primary',
             color: '#0d9488',
-            size: 'xs'
+            height: 'sm'
           }
         ],
         paddingAll: 'sm'
