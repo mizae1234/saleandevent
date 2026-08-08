@@ -237,17 +237,34 @@ async function handleChat(
   }
 
   // ─── Active Events Command ──────────────────────────────────────
-  if (matchAny(lower, ['งานอีเว้นท์ที่เปิดอยู่', 'อีเว้นท์'])) {
+  if (matchAny(lower, ['งานอีเว้นท์ที่เปิดอยู่', 'อีเว้นท์', 'สาขา'])) {
     try {
+      const searchKeyword = text.replace(/^(งานอีเว้นท์ที่เปิดอยู่|อีเว้นท์|สาขา)\s*/i, '').trim()
+      
+      const where: any = { status: 'active', isActive: true }
+      if (searchKeyword) {
+        where.OR = [
+          { name: { contains: searchKeyword, mode: 'insensitive' } },
+          { code: { contains: searchKeyword, mode: 'insensitive' } },
+          { location: { contains: searchKeyword, mode: 'insensitive' } }
+        ]
+      }
+
       const activeChannels = await db.salesChannel.findMany({
-        where: { status: 'active', isActive: true },
+        where,
         orderBy: { startDate: 'desc' }
       })
+
       if (activeChannels.length === 0) {
-        await replyText(replyToken, 'ช่วงนี้ไม่มีงานอีเว้นท์หรือสาขาที่เปิดอยู่ค่ะ 🏪')
+        if (searchKeyword) {
+          await replyText(replyToken, `ไม่พบบูธหรือสาขาที่ตรงกับ "${searchKeyword}" ที่เปิดอยู่ตอนนี้ค่ะ 🏪`)
+        } else {
+          await replyText(replyToken, 'ช่วงนี้ไม่มีงานอีเว้นท์หรือสาขาที่เปิดอยู่ค่ะ 🏪')
+        }
         return
       }
-      const flexMsg = getActiveEventsFlexMessage(activeChannels)
+
+      const flexMsg = getActiveEventsFlexMessage(activeChannels, searchKeyword)
       await replyFlex(replyToken, flexMsg)
       return
     } catch (err) {
@@ -588,7 +605,7 @@ function getSalesSummaryFlexMessage(summary: any) {
   }
 }
 
-function getActiveEventsFlexMessage(channels: any[]) {
+function getActiveEventsFlexMessage(channels: any[], keyword?: string) {
   const liffId = process.env.NEXT_PUBLIC_LIFF_ID || ''
   
   const bubbles = channels.slice(0, 10).map((ch: any) => {
@@ -661,7 +678,7 @@ function getActiveEventsFlexMessage(channels: any[]) {
 
   return {
     type: 'flex' as const,
-    altText: '🏪 งานอีเว้นท์ที่เปิดอยู่',
+    altText: keyword ? `🏪 ค้นหาบูธ: ${keyword}` : '🏪 งานอีเว้นท์ที่เปิดอยู่',
     contents: {
       type: 'carousel',
       contents: bubbles
