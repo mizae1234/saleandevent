@@ -238,7 +238,10 @@ async function handleChat(
   }
 
   // ─── Active Events Command ──────────────────────────────────────
-  if (matchAny(lower, ['งานอีเว้นท์ที่เปิดอยู่', 'อีเว้นท์', 'สาขา', 'event', 'events', 'store', 'stores'])) {
+  const eventKeywords = ['งานอีเว้นท์ที่เปิดอยู่', 'อีเว้นท์', 'event', 'events', 'store', 'stores']
+  const isEventCommand = eventKeywords.some(kw => lower === kw || lower.startsWith(kw + ' ')) 
+    || lower === 'สาขา' || lower.startsWith('สาขา ')
+  if (isEventCommand) {
     try {
       const searchKeyword = text.replace(/^(งานอีเว้นท์ที่เปิดอยู่|อีเว้นท์|สาขา|events?|stores?)\s*/i, '').trim()
       
