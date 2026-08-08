@@ -10,7 +10,7 @@ import { lineClient } from '@/lib/line-bot'
  * - ตรวจสอบ role (ADMIN / USER / BLOCKED)
  */
 
-export type LineUserRole = 'ADMIN' | 'USER' | 'BLOCKED'
+export type LineUserRole = 'SUPER_ADMIN' | 'ADMIN' | 'USER' | 'BLOCKED'
 
 export interface LineUserInfo {
   lineUserId: string
@@ -73,10 +73,17 @@ export function isUserAllowed(user: LineUserInfo): boolean {
 }
 
 /**
- * ตรวจสอบว่า user เป็น Admin หรือไม่
+ * ตรวจสอบว่า user เป็น Admin หรือ Super Admin หรือไม่
  */
 export function isAdmin(user: LineUserInfo): boolean {
-  return user.isActive && user.role === 'ADMIN'
+  return user.isActive && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')
+}
+
+/**
+ * ตรวจสอบว่า user เป็น Super Admin หรือไม่
+ */
+export function isSuperAdmin(user: LineUserInfo): boolean {
+  return user.isActive && user.role === 'SUPER_ADMIN'
 }
 
 /**

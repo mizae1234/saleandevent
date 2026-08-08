@@ -13,6 +13,7 @@
     "@fontsource/sarabun": "^5.2.8",
     "@google/generative-ai": "^0.24.1",
     "@line/bot-sdk": "^9.9.0",
+    "@line/liff": "^2.29.2",
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",

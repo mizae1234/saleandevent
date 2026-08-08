@@ -5,6 +5,8 @@ import { logChatToDb, getRecentChatHistory } from '@/lib/chat-log'
 import { getOrCreateLineUser, isUserAllowed, isAdmin } from '@/lib/line-user'
 import { registerGroup, markGroupLeft, updateGroupActivity } from '@/lib/line-group'
 import type { WebhookEvent } from '@line/bot-sdk'
+import { db } from '@/lib/db'
+import { getSalesSummary } from '@/lib/bot-queries'
 
 export const dynamic = 'force-dynamic'
 
@@ -220,6 +222,41 @@ async function handleChat(
     return
   }
 
+  // ─── Sales Summary Command ──────────────────────────────────────
+  if (matchAny(lower, ['ยอดขายวันนี้', 'ยอดขาย'])) {
+    try {
+      const summary = await getSalesSummary({})
+      const flexMsg = getSalesSummaryFlexMessage(summary)
+      await replyFlex(replyToken, flexMsg)
+      return
+    } catch (err) {
+      console.error('[Webhook Sales Summary Error]', err)
+      await replyText(replyToken, 'ขออภัยค่ะ 😢 เกิดข้อผิดพลาดในการดึงข้อมูลยอดขาย')
+      return
+    }
+  }
+
+  // ─── Active Events Command ──────────────────────────────────────
+  if (matchAny(lower, ['งานอีเว้นท์ที่เปิดอยู่', 'อีเว้นท์'])) {
+    try {
+      const activeChannels = await db.salesChannel.findMany({
+        where: { status: 'active', isActive: true },
+        orderBy: { startDate: 'desc' }
+      })
+      if (activeChannels.length === 0) {
+        await replyText(replyToken, 'ช่วงนี้ไม่มีงานอีเว้นท์หรือสาขาที่เปิดอยู่ค่ะ 🏪')
+        return
+      }
+      const flexMsg = getActiveEventsFlexMessage(activeChannels)
+      await replyFlex(replyToken, flexMsg)
+      return
+    } catch (err) {
+      console.error('[Webhook Active Events Error]', err)
+      await replyText(replyToken, 'ขออภัยค่ะ 😢 เกิดข้อผิดพลาดในการดึงข้อมูลสาขา')
+      return
+    }
+  }
+
   // ─── AI Chat ───────────────────────────────────────────────────
   const startTime = Date.now()
 
@@ -391,5 +428,244 @@ function menuButton(label: string, desc: string, actionText: string) {
       { type: 'text', text: label, size: 'xs', weight: 'bold', color: '#1565C0', flex: 4 },
       { type: 'text', text: desc, size: 'xs', color: '#666666', flex: 6 },
     ],
+  }
+}
+
+function getSalesSummaryFlexMessage(summary: any) {
+  const liffId = process.env.NEXT_PUBLIC_LIFF_ID || ''
+  
+  const paymentItems = Object.entries(summary.byPayment).map(([method, data]: any) => {
+    const methodName = method === 'cash' ? '💵 เงินสด' : method === 'transfer' ? '📱 โอนเงิน' : '💳 บัตรเครดิต'
+    return {
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        { type: 'text', text: methodName, size: 'xs', color: '#475569' },
+        { type: 'text', text: `฿ ${data.amount.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`, size: 'xs', weight: 'bold', color: '#334155', align: 'end' }
+      ]
+    }
+  })
+
+  return {
+    type: 'flex' as const,
+    altText: '📊 สรุปยอดขายวันนี้',
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'text',
+            text: '📊 สรุปยอดขายวันนี้',
+            weight: 'bold',
+            size: 'md',
+            color: '#ffffff'
+          }
+        ],
+        backgroundColor: '#0284c7',
+        paddingAll: 'lg'
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'lg',
+        contents: [
+          {
+            type: 'box',
+            layout: 'vertical',
+            contents: [
+              {
+                type: 'text',
+                text: 'ยอดขายรวม',
+                size: 'xs',
+                color: '#64748b',
+                textTransform: 'uppercase'
+              },
+              {
+                type: 'text',
+                text: '฿ ' + summary.totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                weight: 'bold',
+                size: 'xxl',
+                color: '#0f172a',
+                margin: 'xs'
+              }
+            ]
+          },
+          {
+            type: 'separator'
+          },
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              {
+                type: 'box',
+                layout: 'vertical',
+                contents: [
+                  {
+                    type: 'text',
+                    text: 'จำนวนบิล',
+                    size: 'xs',
+                    color: '#64748b'
+                  },
+                  {
+                    type: 'text',
+                    text: summary.totalSales + ' บิล',
+                    weight: 'bold',
+                    size: 'sm',
+                    color: '#334155',
+                    margin: 'xs'
+                  }
+                ],
+                flex: 1
+              },
+              {
+                type: 'box',
+                layout: 'vertical',
+                contents: [
+                  {
+                    type: 'text',
+                    text: 'เฉลี่ย/บิล',
+                    size: 'xs',
+                    color: '#64748b'
+                  },
+                  {
+                    type: 'text',
+                    text: '฿ ' + (summary.totalAmount / (summary.totalSales || 1)).toLocaleString('th-TH', { maximumFractionDigits: 0 }),
+                    weight: 'bold',
+                    size: 'sm',
+                    color: '#334155',
+                    margin: 'xs'
+                  }
+                ],
+                flex: 1
+              }
+            ]
+          },
+          {
+            type: 'separator'
+          },
+          {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'sm',
+            contents: [
+              {
+                type: 'text',
+                text: 'ช่องทางชำระเงิน',
+                size: 'xs',
+                color: '#64748b',
+                weight: 'bold',
+                margin: 'none'
+              },
+              ...paymentItems
+            ]
+          }
+        ],
+        paddingAll: 'lg'
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: 'ดูรายละเอียดเพิ่มเติม (LIFF)',
+              uri: `https://liff.line.me/${liffId}/sales`
+            },
+            style: "primary",
+            color: "#0284c7"
+          }
+        ],
+        paddingAll: 'lg'
+      }
+    },
+    quickReply: QUICK_REPLY_ITEMS
+  }
+}
+
+function getActiveEventsFlexMessage(channels: any[]) {
+  const liffId = process.env.NEXT_PUBLIC_LIFF_ID || ''
+  
+  const bubbles = channels.slice(0, 10).map((ch: any) => {
+    return {
+      type: 'bubble',
+      size: 'micro',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'text',
+            text: '🏪 ' + ch.name,
+            weight: 'bold',
+            size: 'sm',
+            color: '#ffffff',
+            wrap: true
+          }
+        ],
+        backgroundColor: '#0d9488',
+        paddingAll: 'sm'
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'xs',
+        contents: [
+          {
+            type: 'text',
+            text: 'รหัส: ' + ch.code,
+            size: 'xxs',
+            color: '#64748b'
+          },
+          {
+            type: 'text',
+            text: 'สถานที่: ' + (ch.location || '-'),
+            size: 'xxs',
+            color: '#475569',
+            wrap: true
+          },
+          {
+            type: 'text',
+            text: 'เป้าขาย: ฿' + (ch.salesTarget ? Number(ch.salesTarget).toLocaleString() : '-'),
+            size: 'xxs',
+            color: '#475569'
+          }
+        ],
+        paddingAll: 'sm'
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: 'ดูรายละเอียด',
+              uri: `https://liff.line.me/${liffId}/channels/${ch.id}`
+            },
+            style: 'primary',
+            color: '#0d9488',
+            size: 'xs'
+          }
+        ],
+        paddingAll: 'sm'
+      }
+    }
+  })
+
+  return {
+    type: 'flex' as const,
+    altText: '🏪 งานอีเว้นท์ที่เปิดอยู่',
+    contents: {
+      type: 'carousel',
+      contents: bubbles
+    },
+    quickReply: QUICK_REPLY_ITEMS
   }
 }
