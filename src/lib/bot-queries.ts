@@ -1,5 +1,4 @@
 import { db } from '@/lib/db'
-import { Prisma } from '@prisma/client'
 
 // ─── SQL Sanitizer (DB Command Prevention) ─────────────────────────
 // ห้าม INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE, EXEC เด็ดขาด
@@ -429,7 +428,14 @@ export async function getTopProducts(args: {
   const start = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth(), 1)
   const end = endDate ? new Date(`${endDate}T23:59:59.999Z`) : now
 
-  // Use raw query for aggregation
+  // Use raw query for aggregation — channelId ใช้ parameterized query ป้องกัน SQL injection
+  const params: any[] = [start, end]
+  let channelFilter = ''
+  if (channelId) {
+    params.push(channelId)
+    channelFilter = `AND s.channel_id = $${params.length}::uuid`
+  }
+
   const query = `
     SELECT 
       si.barcode,
@@ -445,14 +451,14 @@ export async function getTopProducts(args: {
     WHERE s.sold_at >= $1 AND s.sold_at <= $2
       AND s.status = 'active'
       AND si.is_freebie = false
-      ${channelId ? `AND s.channel_id = '${channelId}'` : ''}
+      ${channelFilter}
     GROUP BY si.barcode, p.name, p.size, p.category, p.price
     ORDER BY total_quantity DESC
     LIMIT ${Math.min(limit, 50)}
   `
 
   try {
-    const results = await db.$queryRawUnsafe(query, start, end) as any[]
+    const results = await db.$queryRawUnsafe(query, ...params) as any[]
     return {
       period: { start: start.toISOString(), end: end.toISOString() },
       topProducts: results.map((r, i) => ({
