@@ -93,6 +93,71 @@ export async function GET(
       channelId
     })
 
+    // ── ยอดขายรวมทั้งหมดของช่องทางนี้ ──
+    const totalSalesAgg = await db.sale.aggregate({
+      where: { channelId, status: 'active' },
+      _sum: { totalAmount: true },
+      _count: true
+    })
+
+    // ── สต็อกคงเหลือ (summary + detail) ──
+    const channelStockData = await db.channelStock.findMany({
+      where: { channelId },
+      include: {
+        product: { select: { barcode: true, name: true, code: true, size: true, price: true } }
+      },
+      orderBy: { product: { name: 'asc' } }
+    })
+    const totalReceived = channelStockData.reduce((sum: number, s: any) => sum + (s.quantity || 0), 0)
+    const totalSold = channelStockData.reduce((sum: number, s: any) => sum + (s.soldQuantity || 0), 0)
+    const totalReturned = channelStockData.reduce((sum: number, s: any) => sum + (s.returnedQuantity || 0), 0)
+    const stockRemaining = totalReceived - totalSold - totalReturned
+
+    const stockDetail = channelStockData
+      .map((s: any) => ({
+        barcode: s.barcode,
+        name: s.product?.name || s.barcode,
+        code: s.product?.code || '-',
+        size: s.product?.size || '-',
+        received: s.quantity || 0,
+        sold: s.soldQuantity || 0,
+        returned: s.returnedQuantity || 0,
+        remaining: (s.quantity || 0) - (s.soldQuantity || 0) - (s.returnedQuantity || 0)
+      }))
+      .filter((s: any) => s.remaining > 0)
+      .sort((a: any, b: any) => b.remaining - a.remaining)
+
+    // ── สินค้าขายดี Top 5 ──
+    const topProducts = await db.saleItem.groupBy({
+      by: ['barcode'],
+      where: { sale: { channelId, status: 'active' } },
+      _sum: { quantity: true, totalAmount: true },
+      orderBy: { _sum: { quantity: 'desc' } },
+      take: 5
+    })
+
+    let topProductsWithNames: any[] = []
+    if (topProducts.length > 0) {
+      const barcodes = topProducts.map((p: any) => p.barcode)
+      const products = await db.product.findMany({
+        where: { barcode: { in: barcodes } },
+        select: { barcode: true, name: true, code: true, size: true, price: true }
+      })
+      const productMap = new Map(products.map((p: any) => [p.barcode, p]))
+      topProductsWithNames = topProducts.map((p: any) => {
+        const prod = productMap.get(p.barcode)
+        return {
+          barcode: p.barcode,
+          name: prod?.name || p.barcode,
+          code: prod?.code || '-',
+          size: prod?.size || '-',
+          price: prod?.price ? Number(prod.price) : 0,
+          totalQty: p._sum.quantity || 0,
+          totalAmount: p._sum.totalAmount ? Number(p._sum.totalAmount) : 0
+        }
+      })
+    }
+
     return NextResponse.json({
       channel: {
         id: channel.id,
@@ -108,7 +173,19 @@ export async function GET(
         phone: channel.phone
       },
       staff: staffList,
-      sales: salesSummary
+      sales: salesSummary,
+      totalSales: {
+        amount: totalSalesAgg._sum.totalAmount ? Number(totalSalesAgg._sum.totalAmount) : 0,
+        billCount: totalSalesAgg._count || 0
+      },
+      stock: {
+        received: totalReceived,
+        sold: totalSold,
+        returned: totalReturned,
+        remaining: stockRemaining,
+        detail: stockDetail.slice(0, 20)
+      },
+      topProducts: topProductsWithNames
     })
   } catch (error: any) {
     console.error('[LIFF Channel Details API Error]', error)
