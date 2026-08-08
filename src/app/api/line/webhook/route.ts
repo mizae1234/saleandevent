@@ -502,8 +502,7 @@ function getSalesSummaryFlexMessage(summary: any) {
                 type: 'text',
                 text: 'ยอดขายรวม',
                 size: 'xs',
-                color: '#64748b',
-                textTransform: 'uppercase'
+                color: '#64748b'
               },
               {
                 type: 'text',

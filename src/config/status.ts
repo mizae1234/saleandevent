@@ -13,7 +13,6 @@ export const CHANNEL_STATUS: Record<string, StatusConfig> = {
     submitted: { label: "รออนุมัติ", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-100" },
     approved: { label: "อนุมัติ", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100" },
     active: { label: "กำลังขาย", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-100" },
-    selling: { label: "กำลังขาย", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-100" },
     packing: { label: "กำลังแพ็ค", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-100" },
     shipped: { label: "จัดส่งแล้ว", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-100" },
     received: { label: "รับสินค้าแล้ว", bg: "bg-teal-50", text: "text-teal-700", border: "border-teal-100" },
