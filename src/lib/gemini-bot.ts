@@ -324,7 +324,11 @@ export async function askSaran(
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      return await _askSaranOnce(userMessage, history, userRole, modelToUse)
+      const res = await _askSaranOnce(userMessage, history, userRole, modelToUse)
+      if (!res.text.startsWith('Saran:')) {
+        res.text = `Saran: ${res.text}`
+      }
+      return res
     } catch (error) {
       lastError = error
       const message = error instanceof Error ? error.message : String(error)
@@ -346,13 +350,13 @@ export async function askSaran(
   const message = lastError instanceof Error ? lastError.message : String(lastError)
 
   if (message.includes('API key') || message.includes('API_KEY_INVALID')) {
-    return { text: 'Saran ยังไม่พร้อมใช้งาน AI ค่ะ — กรุณาตรวจสอบ Gemini API Key 🔑', inputTokens: 0, outputTokens: 0, modelName: modelToUse }
+    return { text: 'Saran: Saran ยังไม่พร้อมใช้งาน AI ค่ะ — กรุณาตรวจสอบ Gemini API Key 🔑', inputTokens: 0, outputTokens: 0, modelName: modelToUse }
   }
   if (message.includes('quota') || message.includes('429') || message.includes('RESOURCE_EXHAUSTED')) {
-    return { text: 'ขออภัยค่ะ 👖 ตอนนี้ Saran ใช้ Token เกินโควต้าแล้วค่ะ กรุณารอสักครู่แล้วลองใหม่นะคะ 💙', inputTokens: 0, outputTokens: 0, modelName: modelToUse }
+    return { text: 'Saran: ขออภัยค่ะ 👖 ตอนนี้ Saran ใช้ Token เกินโควต้าแล้วค่ะ กรุณารอสักครู่แล้วลองใหม่นะคะ 💙', inputTokens: 0, outputTokens: 0, modelName: modelToUse }
   }
 
-  return { text: 'ขออภัยค่ะ 👖 Saran มีปัญหาเล็กน้อย กรุณาลองใหม่อีกสักครู่นะคะ 💙', inputTokens: 0, outputTokens: 0, modelName: modelToUse }
+  return { text: 'Saran: ขออภัยค่ะ 👖 Saran มีปัญหาเล็กน้อย กรุณาลองใหม่อีกสักครู่นะคะ 💙', inputTokens: 0, outputTokens: 0, modelName: modelToUse }
 }
 
 // ─── Single attempt ────────────────────────────────────────────────
