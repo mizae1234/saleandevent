@@ -6,7 +6,7 @@ import { getOrCreateLineUser, isUserAllowed, isAdmin } from '@/lib/line-user'
 import { registerGroup, markGroupLeft, updateGroupActivity } from '@/lib/line-group'
 import type { WebhookEvent } from '@line/bot-sdk'
 import { db } from '@/lib/db'
-import { getSalesSummary } from '@/lib/bot-queries'
+import { getSalesSummary, getOverviewReport, getOperationsReport } from '@/lib/bot-queries'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,15 +29,19 @@ const QUICK_REPLY_ITEMS = {
     },
     {
       type: 'action',
+      action: { type: 'message', label: '📈 สรุปภาพรวม', text: 'สรุปภาพรวม' },
+    },
+    {
+      type: 'action',
+      action: { type: 'message', label: '🚚 รายงานดำเนินงาน', text: 'รายงานการดำเนินงาน' },
+    },
+    {
+      type: 'action',
       action: { type: 'message', label: '📦 สต็อกคลัง', text: 'สรุปสต็อกคลัง' },
     },
     {
       type: 'action',
       action: { type: 'message', label: '🏪 งานอีเว้นท์ที่เปิดอยู่', text: 'งานอีเว้นท์ที่เปิดอยู่' },
-    },
-    {
-      type: 'action',
-      action: { type: 'message', label: '🏆 สินค้าขายดี', text: 'สินค้าขายดีเดือนนี้' },
     },
     {
       type: 'action',
@@ -230,7 +234,7 @@ async function handleChat(
   }
 
   // ─── Sales Summary Command ──────────────────────────────────────
-  if (matchAny(lower, ['ยอดขายวันนี้', 'ยอดขาย'])) {
+  if (lower === 'ยอดขายวันนี้' || lower === 'สรุปยอดขายวันนี้' || lower === 'ยอดขาย') {
     try {
       const summary = await getSalesSummary({})
       const flexMsg = getSalesSummaryFlexMessage(summary)
@@ -239,6 +243,40 @@ async function handleChat(
     } catch (err) {
       console.error('[Webhook Sales Summary Error]', err)
       await replyText(replyToken, 'ขออภัยค่ะ 😢 เกิดข้อผิดพลาดในการดึงข้อมูลยอดขาย')
+      return
+    }
+  }
+
+  // ─── Overview Report Command ────────────────────────────────────
+  if (matchAny(lower, ['ภาพรวม', 'สรุปภาพรวม', 'overview'])) {
+    try {
+      const summary = await getOverviewReport()
+      if ('error' in summary) {
+        throw new Error(summary.error)
+      }
+      const flexMsg = getOverviewReportFlexMessage(summary)
+      await replyFlex(replyToken, flexMsg)
+      return
+    } catch (err) {
+      console.error('[Webhook Overview Report Error]', err)
+      await replyText(replyToken, 'ขออภัยค่ะ 😢 เกิดข้อผิดพลาดในการดึงข้อมูลรายงานภาพรวม')
+      return
+    }
+  }
+
+  // ─── Operations Report Command ──────────────────────────────────
+  if (matchAny(lower, ['ดำเนินงาน', 'รายงานการดำเนินงาน', 'operations'])) {
+    try {
+      const reportData = await getOperationsReport()
+      if ('error' in reportData) {
+        throw new Error(reportData.error)
+      }
+      const flexMsg = getOperationsReportFlexMessage(reportData)
+      await replyFlex(replyToken, flexMsg)
+      return
+    } catch (err) {
+      console.error('[Webhook Operations Report Error]', err)
+      await replyText(replyToken, 'ขออภัยค่ะ 😢 เกิดข้อผิดพลาดในการดึงข้อมูลรายงานการดำเนินงาน')
       return
     }
   }
@@ -765,6 +803,359 @@ function getActiveEventsFlexMessage(channels: any[], keyword?: string) {
     contents: {
       type: 'carousel',
       contents: bubbles
+    },
+    quickReply: QUICK_REPLY_ITEMS
+  }
+}
+
+// ─── Overview & Operations Report Flex Builders ────────────────────
+
+function getOverviewReportFlexMessage(report: any) {
+  const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || process.env.NEXT_PUBLIC_LIFF_ID || ''
+  const fmt = (val: number) => val.toLocaleString('th-TH', { maximumFractionDigits: 0 })
+
+  const topBranches = (report.topBranches || []).slice(0, 3).map((br: any, i: number) => {
+    return {
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        { type: 'text', text: `${i + 1}. ${br.code} : ${br.name}`, size: 'xs', color: '#475569', flex: 7, wrap: true },
+        { type: 'text', text: `฿${fmt(br.salesAmount)}`, size: 'xs', weight: 'bold', color: '#334155', align: 'end', flex: 3 }
+      ]
+    }
+  })
+
+  return {
+    type: 'flex' as const,
+    altText: '📈 สรุปภาพรวมธุรกิจ',
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'text',
+            text: '📈 สรุปภาพรวมธุรกิจ',
+            weight: 'bold',
+            size: 'md',
+            color: '#ffffff'
+          }
+        ],
+        backgroundColor: '#1d4ed8',
+        paddingAll: 'lg'
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'lg',
+        contents: [
+          {
+            type: 'box',
+            layout: 'vertical',
+            contents: [
+              { type: 'text', text: 'ยอดขายรวมสะสมระบบ', size: 'xs', color: '#64748b' },
+              {
+                type: 'text',
+                text: `฿ ${report.totalSales.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                weight: 'bold',
+                size: 'xxl',
+                color: '#0f172a',
+                margin: 'xs'
+              }
+            ]
+          },
+          { type: 'separator' },
+          {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'sm',
+            contents: [
+              {
+                type: 'box',
+                layout: 'horizontal',
+                contents: [
+                  { type: 'text', text: '🧾 จำนวนบิลทั้งหมด', size: 'xs', color: '#475569' },
+                  { type: 'text', text: `${report.totalBills.toLocaleString()} บิล`, size: 'xs', weight: 'bold', color: '#1e293b', align: 'end' }
+                ]
+              },
+              {
+                type: 'box',
+                layout: 'horizontal',
+                contents: [
+                  { type: 'text', text: '🎪 งานกำลังดำเนินการ (Ongoing)', size: 'xs', color: '#475569' },
+                  { type: 'text', text: `${report.ongoingEvents.length} งาน`, size: 'xs', weight: 'bold', color: '#1e293b', align: 'end' }
+                ]
+              },
+              {
+                type: 'box',
+                layout: 'horizontal',
+                contents: [
+                  { type: 'text', text: '⚠️ งานเลยกำหนด (Past Due)', size: 'xs', color: '#475569' },
+                  { type: 'text', text: `${report.pastDueEvents.length} งาน`, size: 'xs', weight: 'bold', color: '#b91c1c', align: 'end' }
+                ]
+              }
+            ]
+          },
+          { type: 'separator' },
+          {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'sm',
+            contents: [
+              { type: 'text', text: '🏆 สาขาทำยอดขายสูงสุด (Top 3)', size: 'xs', weight: 'bold', color: '#64748b' },
+              ...topBranches
+            ]
+          }
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#1d4ed8',
+            action: {
+              type: 'uri',
+              label: 'ดูรายละเอียดภาพรวม (LIFF)',
+              uri: `https://liff.line.me/${liffId}/overview`
+            }
+          }
+        ],
+        paddingAll: 'lg'
+      }
+    },
+    quickReply: QUICK_REPLY_ITEMS,
+  }
+}
+
+function getOperationsReportFlexMessage(report: any) {
+  const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || process.env.NEXT_PUBLIC_LIFF_ID || ''
+  const fmt = (val: number) => val.toLocaleString('th-TH', { maximumFractionDigits: 0 })
+
+  // Bubble 1: การส่งสินค้า
+  const recentShipments = (report.shipments || []).slice(0, 3).map((ship: any) => {
+    const statusText = ship.status === 'received' ? '✅ Received' : '🚚 Shipped'
+    const statusColor = ship.status === 'received' ? '#16a34a' : '#2563eb'
+    return {
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        { type: 'text', text: `${ship.channelCode} : ${ship.channelName}`, size: 'xs', color: '#475569', flex: 7, wrap: true },
+        { type: 'text', text: statusText, size: 'xs', weight: 'bold', color: statusColor, align: 'end', flex: 3 }
+      ]
+    }
+  })
+
+  const bubble1 = {
+    type: 'bubble',
+    size: 'mega',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: '🚚 การส่งสินค้า (Shipments)', weight: 'bold', size: 'md', color: '#ffffff' }
+      ],
+      backgroundColor: '#0d9488',
+      paddingAll: 'lg'
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      spacing: 'lg',
+      contents: [
+        {
+          type: 'box',
+          layout: 'vertical',
+          contents: [
+            { type: 'text', text: 'จำนวนจุดขายที่มีการส่งของออก', size: 'xs', color: '#64748b' },
+            { type: 'text', text: `${report.shipmentStats.totalChannelsWithShipments} จุดขาย`, weight: 'bold', size: 'xl', color: '#0f172a', margin: 'xs' }
+          ]
+        },
+        { type: 'separator' },
+        {
+          type: 'box',
+          layout: 'vertical',
+          spacing: 'sm',
+          contents: [
+            { type: 'text', text: 'รายการส่งของล่าสุด', size: 'xs', weight: 'bold', color: '#64748b' },
+            ...recentShipments
+          ]
+        }
+      ]
+    },
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'button',
+          style: 'primary',
+          color: '#0d9488',
+          action: {
+            type: 'uri',
+            label: 'ดูรายละเอียดการส่งสินค้า (LIFF)',
+            uri: `https://liff.line.me/${liffId}/operations`
+          }
+        }
+      ],
+      paddingAll: 'lg'
+    }
+  }
+
+  // Bubble 2: การเบิกสินค้า
+  const topRequests = (report.restockingRequests || []).slice(0, 3).map((req: any) => {
+    const prefix = req.priorityGroup === 'EVENT' ? '🎪' : '🏢'
+    return {
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        { type: 'text', text: `${prefix} ${req.channelCode} : ${req.channelName}`, size: 'xs', color: '#475569', flex: 7, wrap: true },
+        { type: 'text', text: `${req.requestedQty.toLocaleString()} ชิ้น`, size: 'xs', weight: 'bold', color: '#334155', align: 'end', flex: 3 }
+      ]
+    }
+  })
+
+  const bubble2 = {
+    type: 'bubble',
+    size: 'mega',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: '📦 การเบิกสินค้า/Top-up', weight: 'bold', size: 'md', color: '#ffffff' }
+      ],
+      backgroundColor: '#ea580c',
+      paddingAll: 'lg'
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      spacing: 'lg',
+      contents: [
+        {
+          type: 'box',
+          layout: 'vertical',
+          contents: [
+            { type: 'text', text: 'คำขอเบิกสินค้าค้างส่งรวม', size: 'xs', color: '#64748b' },
+            { type: 'text', text: `${report.restockingRequests.length} รายการ`, weight: 'bold', size: 'xl', color: '#0f172a', margin: 'xs' }
+          ]
+        },
+        { type: 'separator' },
+        {
+          type: 'box',
+          layout: 'vertical',
+          spacing: 'sm',
+          contents: [
+            { type: 'text', text: 'รายการคิวเบิกจ่ายตามลำดับ (Priority)', size: 'xs', weight: 'bold', color: '#64748b' },
+            ...topRequests
+          ]
+        }
+      ]
+    },
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'button',
+          style: 'primary',
+          color: '#ea580c',
+          action: {
+            type: 'uri',
+            label: 'จัดเรียงคิวเบิกสินค้า (LIFF)',
+            uri: `https://liff.line.me/${liffId}/operations`
+          }
+        }
+      ],
+      paddingAll: 'lg'
+    }
+  }
+
+  // Bubble 3: สรุปจุดขาย
+  const bubble3 = {
+    type: 'bubble',
+    size: 'mega',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: '🏪 จุดขายในระบบ (Active)', weight: 'bold', size: 'md', color: '#ffffff' }
+      ],
+      backgroundColor: '#4f46e5',
+      paddingAll: 'lg'
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      spacing: 'lg',
+      contents: [
+        {
+          type: 'box',
+          layout: 'vertical',
+          contents: [
+            { type: 'text', text: 'จุดขายที่มีสถานะเป็น Active ทั้งหมด', size: 'xs', color: '#64748b' },
+            { type: 'text', text: `${report.activeChannelsCount.totalActive} จุดขาย`, weight: 'bold', size: 'xl', color: '#0f172a', margin: 'xs' }
+          ]
+        },
+        { type: 'separator' },
+        {
+          type: 'box',
+          layout: 'vertical',
+          spacing: 'md',
+          contents: [
+            {
+              type: 'box',
+              layout: 'horizontal',
+              contents: [
+                { type: 'text', text: '🎪 งานอีเว้นท์ (Event)', size: 'xs', color: '#475569' },
+                { type: 'text', text: `${report.activeChannelsCount.totalEvents} จุด`, size: 'xs', weight: 'bold', color: '#1e293b', align: 'end' }
+              ]
+            },
+            {
+              type: 'box',
+              layout: 'horizontal',
+              contents: [
+                { type: 'text', text: '🏢 สาขาหลัก (Branch)', size: 'xs', color: '#475569' },
+                { type: 'text', text: `${report.activeChannelsCount.totalBranches} จุด`, size: 'xs', weight: 'bold', color: '#1e293b', align: 'end' }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'button',
+          style: 'primary',
+          color: '#4f46e5',
+          action: {
+            type: 'uri',
+            label: 'ดูข้อมูลจุดขาย (LIFF)',
+            uri: `https://liff.line.me/${liffId}/operations`
+          }
+        }
+      ],
+      paddingAll: 'lg'
+    }
+  }
+
+  return {
+    type: 'flex' as const,
+    altText: '🚚 รายงานการดำเนินงาน',
+    contents: {
+      type: 'carousel',
+      contents: [
+        bubble1,
+        bubble2,
+        bubble3
+      ]
     },
     quickReply: QUICK_REPLY_ITEMS
   }

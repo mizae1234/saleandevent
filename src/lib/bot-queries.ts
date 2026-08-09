@@ -521,7 +521,15 @@ export async function runReadOnlyQuery(args: { sqlQuery: string }) {
         if (HIDDEN_FIELDS.some(f => keyLower.includes(f))) {
           obj[key] = '***เป็นความลับ***'
         } else if (NAME_FIELDS.some(f => keyLower === f) && typeof value === 'string') {
-          obj[key] = maskLastName(value)
+          const isGenericName = keyLower === 'name'
+          const queryLower = sanitized.toLowerCase()
+          const targetsPeople = queryLower.includes('staff') || queryLower.includes('customer') || queryLower.includes('employee')
+          
+          if (!isGenericName || targetsPeople) {
+            obj[key] = maskLastName(value)
+          } else {
+            obj[key] = value
+          }
         } else {
           obj[key] = typeof value === 'bigint' ? Number(value) : value
         }
@@ -538,6 +546,267 @@ export async function runReadOnlyQuery(args: { sqlQuery: string }) {
   }
 }
 
+// ─── Overview & Operations Reports ──────────────────────────────────
+
+/** สรุปภาพรวมยอดขายและข้อมูลงานอีเว้นท์/สาขา */
+export async function getOverviewReport() {
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+  try {
+    // 1. ยอดขายรวม และจำนวนบิล ทั้งหมดในระบบ
+    const salesAgg = await db.sale.aggregate({
+      where: { status: 'active' },
+      _sum: { totalAmount: true },
+      _count: { id: true }
+    })
+    const totalSales = Number(salesAgg._sum.totalAmount || 0)
+    const totalBills = salesAgg._count.id
+
+    // 2. Ongoing: รายชื่องานที่กำลังดำเนินการ (EVENT)
+    const ongoingChannels = await db.salesChannel.findMany({
+      where: {
+        type: 'EVENT',
+        status: 'active',
+        isActive: true,
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        startDate: true,
+        endDate: true,
+      },
+      orderBy: { startDate: 'desc' },
+    })
+
+    const ongoingEvents = await Promise.all(
+      ongoingChannels.map(async (ch) => {
+        const salesSum = await db.sale.aggregate({
+          where: { channelId: ch.id, status: 'active' },
+          _sum: { totalAmount: true },
+        })
+        return {
+          id: ch.id,
+          code: ch.code,
+          name: ch.name,
+          startDate: ch.startDate?.toISOString().split('T')[0] || null,
+          endDate: ch.endDate?.toISOString().split('T')[0] || null,
+          salesAmount: Number(salesSum._sum.totalAmount || 0),
+        }
+      })
+    )
+
+    // 3. Past Due: งานที่เลยกำหนดแต่ยังไม่ปิดงาน (EVENT ที่ endDate < todayStart)
+    const pastDueChannels = await db.salesChannel.findMany({
+      where: {
+        type: 'EVENT',
+        status: 'active',
+        isActive: true,
+        endDate: { lt: todayStart },
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        startDate: true,
+        endDate: true,
+      },
+      orderBy: { endDate: 'asc' },
+    })
+
+    const pastDueEvents = await Promise.all(
+      pastDueChannels.map(async (ch) => {
+        const salesSum = await db.sale.aggregate({
+          where: { channelId: ch.id, status: 'active' },
+          _sum: { totalAmount: true },
+        })
+        return {
+          id: ch.id,
+          code: ch.code,
+          name: ch.name,
+          startDate: ch.startDate?.toISOString().split('T')[0] || null,
+          endDate: ch.endDate?.toISOString().split('T')[0] || null,
+          salesAmount: Number(salesSum._sum.totalAmount || 0),
+        }
+      })
+    )
+
+    // 4. Top 5 Branches (BRANCH เรียงลำดับจากยอดขายสูงสุด)
+    const branches = await db.salesChannel.findMany({
+      where: {
+        type: 'BRANCH',
+        status: 'active',
+        isActive: true,
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+      },
+    })
+
+    const topBranches = await Promise.all(
+      branches.map(async (ch) => {
+        const salesSum = await db.sale.aggregate({
+          where: { channelId: ch.id, status: 'active' },
+          _sum: { totalAmount: true },
+        })
+        return {
+          id: ch.id,
+          code: ch.code,
+          name: ch.name,
+          salesAmount: Number(salesSum._sum.totalAmount || 0),
+        }
+      })
+    )
+
+    topBranches.sort((a, b) => b.salesAmount - a.salesAmount)
+    const top5Branches = topBranches.slice(0, 5)
+
+    return {
+      totalSales,
+      totalBills,
+      ongoingEvents,
+      pastDueEvents,
+      topBranches: top5Branches,
+    }
+  } catch (err: any) {
+    return { error: `Overview report failed: ${err.message}` }
+  }
+}
+
+/** รายงานการดำเนินงาน (การส่งของ / คำขอเบิกจ่ายสินค้า / สถิติจุดขาย Active) */
+export async function getOperationsReport() {
+  try {
+    // 1. การส่งสินค้า: รายการคำขอที่ส่งออกล่าสุด (shipped / received)
+    const shipments = await db.stockRequest.findMany({
+      where: {
+        status: { in: ['shipped', 'received'] },
+        channel: { isActive: true, status: 'active' }
+      },
+      include: {
+        channel: {
+          select: {
+            code: true,
+            name: true,
+          }
+        }
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 20,
+    })
+
+    const uniqueChannelIdsWithShipments = new Set(shipments.map(s => s.channelId))
+    const totalChannelsWithShipments = uniqueChannelIdsWithShipments.size
+
+    const formattedShipments = shipments.map(req => ({
+      id: req.id,
+      channelCode: req.channel.code,
+      channelName: req.channel.name,
+      requestType: req.requestType,
+      status: req.status,
+      updatedAt: req.updatedAt.toISOString(),
+    }))
+
+    // 2. การเบิกสินค้า/Top-up: คำขอเบิกสินค้าที่กำลังดำเนินการ (submitted, approved, allocated, packed)
+    const pendingRequests = await db.stockRequest.findMany({
+      where: {
+        status: { in: ['submitted', 'approved', 'allocated', 'packed'] },
+        channel: { isActive: true, status: 'active' }
+      },
+      include: {
+        channel: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            type: true,
+          }
+        }
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    const branchChannelIds = Array.from(new Set(
+      pendingRequests
+        .filter(req => req.channel.type === 'BRANCH')
+        .map(req => req.channel.id)
+    ))
+
+    const branchSales: Record<string, number> = {}
+    await Promise.all(
+      branchChannelIds.map(async (cId) => {
+        const salesSum = await db.sale.aggregate({
+          where: { channelId: cId, status: 'active' },
+          _sum: { totalAmount: true },
+        })
+        branchSales[cId] = Number(salesSum._sum.totalAmount || 0)
+      })
+    )
+
+    const eventRequests = pendingRequests.filter(req => req.channel.type === 'EVENT')
+    const branchRequests = pendingRequests.filter(req => req.channel.type === 'BRANCH')
+
+    branchRequests.sort((a, b) => {
+      const salesA = branchSales[a.channel.id] || 0
+      const salesB = branchSales[b.channel.id] || 0
+      return salesB - salesA
+    })
+
+    const sortedRequests = [
+      ...eventRequests.map(req => ({
+        id: req.id,
+        channelCode: req.channel.code,
+        channelName: req.channel.name,
+        channelType: req.channel.type,
+        requestType: req.requestType,
+        requestedQty: req.requestedTotalQuantity,
+        status: req.status,
+        createdAt: req.createdAt.toISOString(),
+        priorityGroup: 'EVENT'
+      })),
+      ...branchRequests.map(req => ({
+        id: req.id,
+        channelCode: req.channel.code,
+        channelName: req.channel.name,
+        channelType: req.channel.type,
+        requestType: req.requestType,
+        requestedQty: req.requestedTotalQuantity,
+        status: req.status,
+        createdAt: req.createdAt.toISOString(),
+        salesAmount: branchSales[req.channel.id] || 0,
+        priorityGroup: 'BRANCH'
+      }))
+    ]
+
+    // 3. จุดขายในระบบ: จุดขายที่มีสถานะเป็น Active ทั้งหมดในระบบ
+    const activeChannels = await db.salesChannel.findMany({
+      where: { status: 'active', isActive: true },
+      select: { type: true }
+    })
+    
+    const totalActive = activeChannels.length
+    const totalEvents = activeChannels.filter(c => c.type === 'EVENT').length
+    const totalBranches = activeChannels.filter(c => c.type === 'BRANCH').length
+
+    return {
+      shipmentStats: {
+        totalChannelsWithShipments,
+      },
+      shipments: formattedShipments,
+      restockingRequests: sortedRequests,
+      activeChannelsCount: {
+        totalActive,
+        totalEvents,
+        totalBranches,
+      }
+    }
+  } catch (err: any) {
+    return { error: `Operations report failed: ${err.message}` }
+  }
+}
+
 // ─── Export function map for Gemini ────────────────────────────────
 
 export const botFunctions: Record<string, (args: any) => Promise<any>> = {
@@ -549,4 +818,6 @@ export const botFunctions: Record<string, (args: any) => Promise<any>> = {
   getInvoiceInfo,
   getTopProducts,
   runReadOnlyQuery,
+  getOverviewReport,
+  getOperationsReport,
 }
