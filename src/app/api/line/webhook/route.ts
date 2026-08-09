@@ -149,6 +149,7 @@ async function handleEvent(event: WebhookEvent) {
       'ยอดขายวันนี้', 'สรุปสต็อกคลัง', 'งานอีเว้นท์ที่เปิดอยู่',
       'สินค้าขายดีเดือนนี้', 'เมนู', 'อีเว้นท์', 'สาขา',
       'event', 'events', 'store', 'stores', 'ยอดขาย',
+      'สรุปภาพรวม', 'ภาพรวม', 'รายงานการดำเนินงาน', 'ดำเนินงาน',
     ]
     const isBypass = bypassKeywords.some(kw => rawLower === kw || rawLower.startsWith(kw + ' '))
 
