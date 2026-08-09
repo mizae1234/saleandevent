@@ -12,6 +12,7 @@ export default function LiffOverviewPage() {
   const [loading, setLoading] = useState(true)
   const [report, setReport] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -55,6 +56,16 @@ export default function LiffOverviewPage() {
     return val.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
 
+  const filteredOngoing = (report.ongoingEvents || []).filter((ev: any) =>
+    ev.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    ev.code.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const filteredPastDue = (report.pastDueEvents || []).filter((ev: any) =>
+    ev.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    ev.code.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   return (
     <div className="bg-slate-50 min-h-screen pb-12 font-sans">
       {/* Header Profile */}
@@ -67,6 +78,27 @@ export default function LiffOverviewPage() {
       {/* Main Content Cards */}
       <div className="px-4 -mt-6 relative z-20 space-y-5">
         
+        {/* Search Bar */}
+        <div className="bg-white p-2.5 rounded-2xl border border-slate-100 shadow-sm relative z-30">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="🔍 ค้นหาชื่องาน หรือรหัสงานอีเว้นท์..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-3 pr-8 py-2 text-xs bg-slate-50 border border-slate-200/60 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/25 focus:border-indigo-500 font-medium font-sans"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs px-1 font-sans"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Sales Overview Card */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-4">
           <div className="flex items-center justify-between">
@@ -109,12 +141,12 @@ export default function LiffOverviewPage() {
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Store className="h-4 w-4 text-sky-500" /> งานที่กำลังดำเนินการ ({report.ongoingEvents.length})
+              <Store className="h-4 w-4 text-sky-500" /> งานที่กำลังดำเนินการ ({filteredOngoing.length})
             </h3>
           </div>
           
           <div className="divide-y divide-slate-100">
-            {report.ongoingEvents.map((ev: any) => (
+            {filteredOngoing.map((ev: any) => (
               <div key={ev.id} className="py-3 first:pt-0 last:pb-0 space-y-1.5 font-sans">
                 <div className="flex justify-between items-start">
                   <div>
@@ -133,8 +165,8 @@ export default function LiffOverviewPage() {
                 </div>
               </div>
             ))}
-            {report.ongoingEvents.length === 0 && (
-              <div className="text-center text-xs text-slate-400 py-4 font-sans">ไม่มีงานอีเว้นท์ที่กำลังจัดรายการอยู่ในขณะนี้</div>
+            {filteredOngoing.length === 0 && (
+              <div className="text-center text-xs text-slate-400 py-4 font-sans">ไม่มีงานอีเว้นท์ตรงตามที่ระบุ</div>
             )}
           </div>
         </div>
@@ -143,12 +175,12 @@ export default function LiffOverviewPage() {
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1.5">
-              <AlertTriangle className="h-4 w-4 text-amber-500 animate-pulse" /> งานที่เลยกำหนดแต่ยังไม่ปิดงาน ({report.pastDueEvents.length})
+              <AlertTriangle className="h-4 w-4 text-amber-500 animate-pulse" /> งานที่เลยกำหนดแต่ยังไม่ปิดงาน ({filteredPastDue.length})
             </h3>
           </div>
           
           <div className="divide-y divide-slate-100">
-            {report.pastDueEvents.map((ev: any) => (
+            {filteredPastDue.map((ev: any) => (
               <div key={ev.id} className="py-3 first:pt-0 last:pb-0 space-y-1.5 font-sans">
                 <div className="flex justify-between items-start">
                   <div>
@@ -167,8 +199,8 @@ export default function LiffOverviewPage() {
                 </div>
               </div>
             ))}
-            {report.pastDueEvents.length === 0 && (
-              <div className="text-center text-xs text-slate-400 py-4 font-sans">ไม่มีงานอีเว้นท์ที่เลยกำหนดค้างปิดงาน</div>
+            {filteredPastDue.length === 0 && (
+              <div className="text-center text-xs text-slate-400 py-4 font-sans">ไม่มีงานอีเว้นท์เลยกำหนดตรงตามที่ระบุ</div>
             )}
           </div>
         </div>

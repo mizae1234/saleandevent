@@ -783,7 +783,17 @@ export async function getOperationsReport() {
     // 3. จุดขายในระบบ: จุดขายที่มีสถานะเป็น Active ทั้งหมดในระบบ
     const activeChannels = await db.salesChannel.findMany({
       where: { status: 'active', isActive: true },
-      select: { type: true }
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        type: true,
+        location: true,
+        responsiblePersonName: true,
+        startDate: true,
+        endDate: true
+      },
+      orderBy: { name: 'asc' }
     })
     
     const totalActive = activeChannels.length
@@ -800,6 +810,16 @@ export async function getOperationsReport() {
         totalActive,
         totalEvents,
         totalBranches,
+        list: activeChannels.map(c => ({
+          id: c.id,
+          code: c.code,
+          name: c.name,
+          type: c.type,
+          location: c.location,
+          responsiblePersonName: c.responsiblePersonName,
+          startDate: c.startDate ? c.startDate.toISOString() : null,
+          endDate: c.endDate ? c.endDate.toISOString() : null,
+        }))
       }
     }
   } catch (err: any) {

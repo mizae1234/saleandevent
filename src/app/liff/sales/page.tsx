@@ -13,6 +13,7 @@ export default function LiffSalesPage() {
   const [summary, setSummary] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState<'today' | 'yesterday' | 'week'>('today')
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     const fetchData = async () => {
@@ -72,6 +73,10 @@ export default function LiffSalesPage() {
   const fmt = (val: number) => {
     return val.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
+
+  const filteredChannels = (summary.byChannel || []).filter((ch: any) => 
+    ch.name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   return (
     <div className="bg-slate-50 min-h-screen pb-12 font-sans">
@@ -164,10 +169,31 @@ export default function LiffSalesPage() {
         </div>
 
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-4">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">ยอดขายรายช่องทาง/อีเว้นท์</h3>
+          <div className="flex justify-between items-center">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">ยอดขายรายช่องทาง/อีเว้นท์</h3>
+            <span className="text-[10px] font-semibold text-slate-400">พบ {filteredChannels.length} รายการ</span>
+          </div>
+
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="🔍 ค้นหาช่องทาง หรืออีเว้นท์..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-3 pr-8 py-2 text-xs bg-slate-50 border border-slate-200/60 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/25 focus:border-indigo-500 font-medium font-sans"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs px-1 font-sans"
+              >
+                ✕
+              </button>
+            )}
+          </div>
           
           <div className="divide-y divide-slate-100">
-            {(summary.byChannel || []).map((ch: any) => (
+            {filteredChannels.map((ch: any) => (
               <div key={ch.name} className="flex justify-between items-center py-3 first:pt-0 last:pb-0 font-sans">
                 <div>
                   <div className="text-xs font-bold text-slate-800">{ch.name}</div>
@@ -178,8 +204,8 @@ export default function LiffSalesPage() {
                 </div>
               </div>
             ))}
-            {(summary.byChannel || []).length === 0 && (
-              <div className="text-center text-xs text-slate-400 py-4 font-sans">ไม่มีข้อมูลยอดขายแยกสาขา</div>
+            {filteredChannels.length === 0 && (
+              <div className="text-center text-xs text-slate-400 py-4 font-sans">ไม่มีข้อมูลยอดขายตรงตามเงื่อนไขค้นหา</div>
             )}
           </div>
         </div>

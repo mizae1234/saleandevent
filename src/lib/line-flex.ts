@@ -575,7 +575,7 @@ export function getOperationsReportFlexMessage(report: any) {
           action: {
             type: 'uri',
             label: 'ดูรายละเอียดการส่งสินค้า',
-            uri: `https://liff.line.me/${liffId}/operations`
+            uri: `https://liff.line.me/${liffId}/operations?tab=shipments`
           }
         }
       ],
@@ -644,7 +644,7 @@ export function getOperationsReportFlexMessage(report: any) {
           action: {
             type: 'uri',
             label: 'จัดเรียงคิวเบิกสินค้า',
-            uri: `https://liff.line.me/${liffId}/operations`
+            uri: `https://liff.line.me/${liffId}/operations?tab=restocking`
           }
         }
       ],
@@ -715,7 +715,7 @@ export function getOperationsReportFlexMessage(report: any) {
           action: {
             type: 'uri',
             label: 'ดูข้อมูลจุดขาย',
-            uri: `https://liff.line.me/${liffId}/operations`
+            uri: `https://liff.line.me/${liffId}/operations?tab=channels`
           }
         }
       ],
