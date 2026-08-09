@@ -374,6 +374,62 @@ export function getActiveEventsFlexMessage(channels: any[], keyword?: string) {
     }
   })
 
+  if (channels.length > 0) {
+    bubbles.push({
+      type: 'bubble',
+      size: 'kilo',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'text',
+            text: '📂 ดูบูธทั้งหมด',
+            weight: 'bold',
+            size: 'sm',
+            color: '#ffffff',
+            wrap: true
+          }
+        ],
+        backgroundColor: '#4f46e5',
+        paddingAll: 'sm'
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'xs',
+        contents: [
+          {
+            type: 'text',
+            text: 'ค้นหาและกรองบูธ/สาขาหลักทั้งหมดที่มีการเปิดดำเนินการอยู่ขณะนี้',
+            size: 'xxs',
+            color: '#475569',
+            wrap: true
+          }
+        ],
+        paddingAll: 'sm'
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: 'ดูรายการบูธทั้งหมด',
+              uri: `https://liff.line.me/${liffId}/channels`
+            },
+            style: 'primary',
+            color: '#4f46e5',
+            height: 'sm'
+          }
+        ],
+        paddingAll: 'sm'
+      }
+    })
+  }
+
   return {
     type: 'flex' as const,
     altText: keyword ? `🏪 ค้นหาบูธ: ${keyword}` : '🏪 งานอีเว้นท์ที่เปิดอยู่',
@@ -381,6 +437,96 @@ export function getActiveEventsFlexMessage(channels: any[], keyword?: string) {
       type: 'carousel',
       contents: bubbles
     },
+    quickReply: QUICK_REPLY_ITEMS
+  }
+}
+
+export function getStockStatusFlexMessage(stockData: any) {
+  const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || process.env.NEXT_PUBLIC_LIFF_ID || ''
+
+  const bubble = {
+    type: 'bubble',
+    size: 'mega',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: '📦 สรุปสต็อกคลังและหน้าร้าน', weight: 'bold', size: 'md', color: '#ffffff' }
+      ],
+      backgroundColor: '#4f46e5',
+      paddingAll: 'lg'
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      spacing: 'lg',
+      contents: [
+        {
+          type: 'box',
+          layout: 'vertical',
+          contents: [
+            { type: 'text', text: 'สต็อกคงเหลือรวมหน้าร้านทุกจุด', size: 'xs', color: '#64748b' },
+            { type: 'text', text: `${stockData.channelSummary.totalRemaining.toLocaleString()} ชิ้น`, weight: 'bold', size: 'xl', color: '#4f46e5', margin: 'xs' },
+            { type: 'text', text: `ครอบคลุมสินค้า ${stockData.channelSummary.totalSKUs.toLocaleString()} แบบ`, size: 'xxs', color: '#94a3b8' }
+          ]
+        },
+        { type: 'separator' },
+        {
+          type: 'box',
+          layout: 'vertical',
+          spacing: 'md',
+          contents: [
+            {
+              type: 'box',
+              layout: 'horizontal',
+              contents: [
+                { type: 'text', text: '🏢 คลังสินค้าหลัก (ส่วนกลาง)', size: 'xs', weight: 'bold', color: '#334155', flex: 7 },
+                { type: 'text', text: `${stockData.warehouseSummary.totalAvailable.toLocaleString()} ชิ้น`, size: 'xs', weight: 'bold', color: '#0f172a', align: 'end', flex: 3 }
+              ]
+            },
+            {
+              type: 'box',
+              layout: 'horizontal',
+              contents: [
+                { type: 'text', text: '• สต็อกที่พร้อมขายได้ทันที', size: 'xxs', color: '#64748b', flex: 7 },
+                { type: 'text', text: `${stockData.warehouseSummary.totalAvailable.toLocaleString()} ชิ้น`, size: 'xxs', color: '#64748b', align: 'end', flex: 3 }
+              ]
+            },
+            {
+              type: 'box',
+              layout: 'horizontal',
+              contents: [
+                { type: 'text', text: '• สต็อกสำรอง (จองออเดอร์)', size: 'xxs', color: '#64748b', flex: 7 },
+                { type: 'text', text: `${stockData.warehouseSummary.totalReserved.toLocaleString()} ชิ้น`, size: 'xxs', color: '#64748b', align: 'end', flex: 3 }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'button',
+          style: 'primary',
+          color: '#4f46e5',
+          action: {
+            type: 'uri',
+            label: 'ค้นหาและเช็คสต็อกสินค้า',
+            uri: `https://liff.line.me/${liffId}/stock`
+          }
+        }
+      ],
+      paddingAll: 'lg'
+    }
+  }
+
+  return {
+    type: 'flex' as const,
+    altText: '📦 สรุปสต็อกคลังและหน้าร้าน',
+    contents: bubble,
     quickReply: QUICK_REPLY_ITEMS
   }
 }

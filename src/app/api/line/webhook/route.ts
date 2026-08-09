@@ -6,14 +6,15 @@ import { getOrCreateLineUser, isUserAllowed, isAdmin } from '@/lib/line-user'
 import { registerGroup, markGroupLeft, updateGroupActivity } from '@/lib/line-group'
 import type { WebhookEvent } from '@line/bot-sdk'
 import { db } from '@/lib/db'
-import { getSalesSummary, getOverviewReport, getOperationsReport } from '@/lib/bot-queries'
+import { getSalesSummary, getOverviewReport, getOperationsReport, getStockStatus } from '@/lib/bot-queries'
 import {
   QUICK_REPLY_ITEMS,
   getMenuFlexMessage,
   getSalesSummaryFlexMessage,
   getActiveEventsFlexMessage,
   getOverviewReportFlexMessage,
-  getOperationsReportFlexMessage
+  getOperationsReportFlexMessage,
+  getStockStatusFlexMessage
 } from '@/lib/line-flex'
 
 export const dynamic = 'force-dynamic'
@@ -225,6 +226,20 @@ async function handleChat(
     }
   }
 
+  // ─── Stock Summary Command ──────────────────────────────────────
+  if (matchAny(lower, ['สต็อก', 'สต็อกคลัง', 'สรุปสต็อกคลัง', 'stock', 'stocks'])) {
+    try {
+      const stockData = await getStockStatus({})
+      const flexMsg = getStockStatusFlexMessage(stockData)
+      await replyFlex(replyToken, flexMsg)
+      return
+    } catch (err) {
+      console.error('[Webhook Stock Status Error]', err)
+      await replyText(replyToken, 'ขออภัยค่ะ 😢 เกิดข้อผิดพลาดในการดึงข้อมูลสต็อกสินค้า')
+      return
+    }
+  }
+
   // ─── Overview Report Command ────────────────────────────────────
   if (matchAny(lower, ['ภาพรวม', 'สรุปภาพรวม', 'overview'])) {
     try {
@@ -290,75 +305,8 @@ async function handleChat(
         return
       }
 
-      // ถ้าระบุชื่อ → แสดง Flex ให้กดดูรายละเอียด
-      if (searchKeyword && activeChannels.length <= 3) {
-        const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || process.env.NEXT_PUBLIC_LIFF_ID || ''
-        
-        const buildChannelBox = (ch: any) => {
-          const fmt = (d: any) => d ? new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) : '-'
-          const target = ch.salesTarget ? `฿${Number(ch.salesTarget).toLocaleString()}` : '-'
-          
-          const contents: any[] = [
-            { type: 'text', text: `${ch.type === 'EVENT' ? '📍' : '🏬'} ${ch.name}`, weight: 'bold', size: 'md', wrap: true },
-            { type: 'text', text: `${ch.code}`, size: 'xxs', color: '#aaaaaa', margin: 'xs' },
-            { type: 'separator', margin: 'md' },
-            { type: 'text', text: `📌 สถานที่: ${ch.location || '-'}`, size: 'xs', color: '#555555', wrap: true, margin: 'md' },
-            { type: 'text', text: `📅 วันที่: ${fmt(ch.startDate)} - ${fmt(ch.endDate)}`, size: 'xs', color: '#555555', margin: 'sm' },
-            { type: 'text', text: `🎯 เป้ายอดขาย: ${target}`, size: 'xs', color: '#555555', margin: 'sm' },
-          ]
-
-          if (ch.responsiblePersonName) {
-            contents.push({ type: 'text', text: `👤 ผู้รับผิดชอบ: ${ch.responsiblePersonName}`, size: 'xs', color: '#555555', margin: 'sm' })
-          }
-
-          contents.push({
-            type: 'button',
-            action: { type: 'uri', label: '📊 ดูรายละเอียดเพิ่มเติม', uri: `https://liff.line.me/${liffId}/channels/${ch.id}` },
-            style: 'primary',
-            color: '#0d9488',
-            height: 'sm',
-            margin: 'lg'
-          })
-
-          return contents
-        }
-
-        const flexMsg = {
-          type: 'flex' as const,
-          altText: `🏪 ค้นหาบูธ: ${searchKeyword}`,
-          contents: {
-            type: 'bubble',
-            body: {
-              type: 'box',
-              layout: 'vertical',
-              spacing: 'sm',
-              contents: activeChannels.length === 1
-                ? buildChannelBox(activeChannels[0])
-                : activeChannels.flatMap((ch: any, i: number) => [
-                    ...buildChannelBox(ch),
-                    ...(i < activeChannels.length - 1 ? [{ type: 'separator', margin: 'lg' }] : [])
-                  ])
-            }
-          },
-          quickReply: QUICK_REPLY_ITEMS
-        }
-        await replyFlex(replyToken, flexMsg)
-        return
-      }
-
-      // ไม่ระบุชื่อ หรือผลลัพธ์เยอะ → แสดง text list
-      const header = searchKeyword
-        ? `🔍 ค้นหา "${searchKeyword}" — พบ ${activeChannels.length} รายการ\n`
-        : `🏪 งานอีเว้นท์/สาขาที่เปิดอยู่ (${activeChannels.length} รายการ)\n`
-
-      const list = activeChannels.slice(0, 15).map((ch: any) => {
-        const icon = ch.type === 'EVENT' ? '📍' : '🏬'
-        return `${icon} ${ch.name}\n   📌 ${ch.location || '-'} | ${ch.code}`
-      }).join('\n\n')
-
-      const footer = activeChannels.length > 15 ? `\n\n... และอีก ${activeChannels.length - 15} รายการ` : ''
-
-      await replyText(replyToken, `${header}\n${list}${footer}`)
+      const flexMsg = getActiveEventsFlexMessage(activeChannels, searchKeyword || undefined)
+      await replyFlex(replyToken, flexMsg)
       return
     } catch (err) {
       console.error('[Webhook Active Events Error]', err)

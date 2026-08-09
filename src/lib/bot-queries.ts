@@ -248,12 +248,25 @@ export async function getStockStatus(args: {
   ` as any[]
   const row = warehouseTotalRaw[0] || { count: 0, quantity: 0, reserved_quantity: 0 }
 
+  const channelTotalRaw = await db.$queryRaw`
+    SELECT COUNT(DISTINCT cs.barcode)::int as skus,
+           SUM(CASE WHEN cs.quantity - cs.sold_quantity - cs.returned_quantity > 0 THEN cs.quantity - cs.sold_quantity - cs.returned_quantity ELSE 0 END)::int as remaining
+    FROM channel_stock cs
+    JOIN sales_channels sc ON sc.id = cs.channel_id
+    WHERE sc.status = 'active' AND sc.is_active = true
+  ` as any[]
+  const chRow = channelTotalRaw[0] || { skus: 0, remaining: 0 }
+
   return {
     warehouseSummary: {
       totalSKUs: row.count,
       totalQuantity: row.quantity || 0,
       totalReserved: row.reserved_quantity || 0,
       totalAvailable: Math.max(0, (row.quantity || 0) - (row.reserved_quantity || 0)),
+    },
+    channelSummary: {
+      totalSKUs: chRow.skus || 0,
+      totalRemaining: chRow.remaining || 0,
     }
   }
 }
