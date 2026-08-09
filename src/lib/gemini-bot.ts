@@ -308,9 +308,23 @@ export async function askSaran(
 ): Promise<SaranResponse> {
   let lastError: unknown = null
 
+  // Check if it is a simple name call or generic greeting
+  const trimmed = userMessage.toLowerCase().trim().replace(/[👖\s]+/g, ' ')
+  const nameCalls = [
+    'saran', 'ซารัน', 'saran Jeans', 'saranjeans', 
+    'สวัสดี', 'หวัดดี', 'hi', 'hello', 'hey', 'ทักทาย',
+    'สวัสดีค่ะ', 'สวัสดีครับ', 'หวัดดีค่ะ', 'หวัดดีครับ'
+  ]
+  const isNameCall = nameCalls.some(nc => {
+    const ncLower = nc.toLowerCase()
+    return trimmed === ncLower || trimmed === `saran ${ncLower}` || trimmed === `${ncLower} saran`
+  })
+
+  const modelToUse = isNameCall ? 'gemini-3.1-flash-lite' : GEMINI_MODEL
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      return await _askSaranOnce(userMessage, history, userRole)
+      return await _askSaranOnce(userMessage, history, userRole, modelToUse)
     } catch (error) {
       lastError = error
       const message = error instanceof Error ? error.message : String(error)
@@ -332,13 +346,13 @@ export async function askSaran(
   const message = lastError instanceof Error ? lastError.message : String(lastError)
 
   if (message.includes('API key') || message.includes('API_KEY_INVALID')) {
-    return { text: 'Saran ยังไม่พร้อมใช้งาน AI ค่ะ — กรุณาตรวจสอบ Gemini API Key 🔑', inputTokens: 0, outputTokens: 0, modelName: GEMINI_MODEL }
+    return { text: 'Saran ยังไม่พร้อมใช้งาน AI ค่ะ — กรุณาตรวจสอบ Gemini API Key 🔑', inputTokens: 0, outputTokens: 0, modelName: modelToUse }
   }
   if (message.includes('quota') || message.includes('429') || message.includes('RESOURCE_EXHAUSTED')) {
-    return { text: 'ขออภัยค่ะ 👖 ตอนนี้ Saran ใช้ Token เกินโควต้าแล้วค่ะ กรุณารอสักครู่แล้วลองใหม่นะคะ 💙', inputTokens: 0, outputTokens: 0, modelName: GEMINI_MODEL }
+    return { text: 'ขออภัยค่ะ 👖 ตอนนี้ Saran ใช้ Token เกินโควต้าแล้วค่ะ กรุณารอสักครู่แล้วลองใหม่นะคะ 💙', inputTokens: 0, outputTokens: 0, modelName: modelToUse }
   }
 
-  return { text: 'ขออภัยค่ะ 👖 Saran มีปัญหาเล็กน้อย กรุณาลองใหม่อีกสักครู่นะคะ 💙', inputTokens: 0, outputTokens: 0, modelName: GEMINI_MODEL }
+  return { text: 'ขออภัยค่ะ 👖 Saran มีปัญหาเล็กน้อย กรุณาลองใหม่อีกสักครู่นะคะ 💙', inputTokens: 0, outputTokens: 0, modelName: modelToUse }
 }
 
 // ─── Single attempt ────────────────────────────────────────────────
@@ -347,6 +361,7 @@ async function _askSaranOnce(
   userMessage: string,
   history: any[] = [],
   userRole: string = 'USER',
+  modelName: string = GEMINI_MODEL,
 ): Promise<SaranResponse> {
   const now = new Date()
   const bkkDateStr = new Intl.DateTimeFormat('en-CA', {
@@ -382,7 +397,7 @@ async function _askSaranOnce(
 เมื่อผู้ใช้งานพูดกำหนดเวลา เช่น "พรุ่งนี้", "เมื่อวาน", "เดือนนี้" ให้แปลงเป็นวันที่จริงโดยอ้างอิงจากวันที่ปัจจุบัน ${bkkDateStr}`
 
   const model = genAI.getGenerativeModel({
-    model: GEMINI_MODEL,
+    model: modelName,
     systemInstruction: dynamicSystemInstruction,
     tools: [{ functionDeclarations }],
   })
@@ -460,5 +475,5 @@ async function _askSaranOnce(
   }
 
   const finalText = text || 'ขออภัยค่ะ 👖 Saran ดึงข้อมูลมาแล้วแต่ยังสรุปไม่ได้ค่ะ ลองถามใหม่แบบเจาะจงขึ้นนะคะ 💙'
-  return { text: finalText, inputTokens, outputTokens, modelName: GEMINI_MODEL }
+  return { text: finalText, inputTokens, outputTokens, modelName }
 }

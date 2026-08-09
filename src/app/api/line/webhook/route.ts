@@ -170,11 +170,7 @@ async function handleEvent(event: WebhookEvent) {
     if (!triggerFound) return
 
     if (!isBypass && !strippedText) {
-      await replyText(
-        event.replyToken,
-        `ว่าไงคะ~ 👖✨ ${BOT_NAME} พร้อมช่วยเหลือแล้วค่ะ!\n\nลองถาม เช่น:\n💬 "saran ยอดขายวันนี้"\n💬 "saran เมนู" 💙`
-      )
-      return
+      strippedText = rawText
     }
 
     await handleChat(strippedText, userId!, event.replyToken, sourceType, getSourceId(event), userRole)
