@@ -305,138 +305,163 @@ export function getSalesSummaryFlexMessage(summary: any) {
 
 export function getActiveEventsFlexMessage(channels: any[], keyword?: string) {
   const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || process.env.NEXT_PUBLIC_LIFF_ID || ''
-  
-  const bubbles = channels.slice(0, 10).map((ch: any) => {
-    return {
-      type: 'bubble',
-      size: 'kilo',
-      header: {
-        type: 'box',
-        layout: 'vertical',
-        contents: [
-          {
-            type: 'text',
-            text: '🏪 ' + ch.name,
-            weight: 'bold',
-            size: 'sm',
-            color: '#ffffff',
-            wrap: true
-          }
-        ],
-        backgroundColor: '#0d9488',
-        paddingAll: 'sm'
-      },
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'xs',
-        contents: [
-          {
-            type: 'text',
-            text: 'รหัส: ' + ch.code,
-            size: 'xxs',
-            color: '#64748b'
-          },
-          {
-            type: 'text',
-            text: 'สถานที่: ' + (ch.location || '-'),
-            size: 'xxs',
-            color: '#475569',
-            wrap: true
-          },
-          {
-            type: 'text',
-            text: 'เป้าขาย: ฿' + (ch.salesTarget ? Number(ch.salesTarget).toLocaleString() : '-'),
-            size: 'xxs',
-            color: '#475569'
-          }
-        ],
-        paddingAll: 'sm'
-      },
-      footer: {
-        type: 'box',
-        layout: 'vertical',
-        contents: [
-          {
-            type: 'button',
-            action: {
-              type: 'uri',
-              label: 'ดูรายละเอียด',
-              uri: `https://liff.line.me/${liffId}/channels/${ch.id}`
+
+  const itemsToShow = channels.slice(0, 5)
+
+  const itemsContents = itemsToShow.flatMap((ch: any, index: number) => {
+    const isEvent = ch.type === 'EVENT'
+    const targetText = ch.salesTarget ? `เป้า: ฿${Number(ch.salesTarget).toLocaleString()}` : 'ไม่มีเป้า'
+    const locationText = ch.location || '-'
+    const dateText = ch.startDate ? new Date(ch.startDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : ''
+    const dateRangeText = ch.endDate && isEvent ? ` - ${new Date(ch.endDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}` : ''
+
+    const itemRow = {
+      type: 'box',
+      layout: 'vertical',
+      spacing: 'xs',
+      margin: index > 0 ? 'md' : 'none',
+      contents: [
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            {
+              type: 'text',
+              text: `${isEvent ? '📍' : '🏬'} ${ch.name}`,
+              weight: 'bold',
+              size: 'sm',
+              color: '#1e293b',
+              flex: 8,
+              wrap: true
             },
-            style: 'primary',
-            color: '#0d9488',
-            height: 'sm'
-          }
-        ],
-        paddingAll: 'sm'
-      }
+            {
+              type: 'text',
+              text: ch.code,
+              size: 'xxs',
+              color: '#64748b',
+              align: 'end',
+              flex: 4
+            }
+          ]
+        },
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            {
+              type: 'text',
+              text: `📍 ${locationText}`,
+              size: 'xxs',
+              color: '#475569',
+              flex: 6,
+              wrap: true
+            },
+            {
+              type: 'text',
+              text: targetText,
+              size: 'xxs',
+              color: '#0d9488',
+              weight: 'bold',
+              align: 'end',
+              flex: 6
+            }
+          ]
+        },
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            {
+              type: 'text',
+              text: `📅 ${dateText}${dateRangeText}`,
+              size: 'xxs',
+              color: '#64748b',
+              flex: 7
+            },
+            {
+              type: 'text',
+              text: 'ดูรายละเอียด >',
+              size: 'xxs',
+              color: '#4f46e5',
+              weight: 'bold',
+              align: 'end',
+              flex: 5,
+              action: {
+                type: 'uri',
+                label: 'ดูรายละเอียด',
+                uri: `https://liff.line.me/${liffId}/channels/${ch.id}`
+              }
+            }
+          ]
+        }
+      ]
     }
+
+    if (index < itemsToShow.length - 1) {
+      return [itemRow, { type: 'separator', margin: 'md' } as any]
+    }
+    return [itemRow]
   })
 
-  if (channels.length > 0) {
-    bubbles.push({
-      type: 'bubble',
-      size: 'kilo',
-      header: {
-        type: 'box',
-        layout: 'vertical',
-        contents: [
-          {
-            type: 'text',
-            text: '📂 ดูบูธทั้งหมด',
-            weight: 'bold',
-            size: 'sm',
-            color: '#ffffff',
-            wrap: true
+  const bubble = {
+    type: 'bubble',
+    size: 'mega',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'text',
+          text: keyword ? `🔍 ค้นหาบูธ: ${keyword}` : '🏪 งานอีเว้นท์/สาขาที่เปิดอยู่',
+          weight: 'bold',
+          size: 'md',
+          color: '#ffffff',
+          wrap: true
+        }
+      ],
+      backgroundColor: '#0d9488',
+      paddingAll: 'lg'
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      spacing: 'md',
+      contents: [
+        {
+          type: 'text',
+          text: `รายการบูธที่กำลังเปิดดำเนินการล่าสุด (แสดงสูงสุด 5 บูธ)`,
+          size: 'xs',
+          color: '#64748b',
+          margin: 'none',
+          wrap: true
+        },
+        { type: 'separator', margin: 'sm' } as any,
+        ...itemsContents
+      ]
+    },
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'button',
+          style: 'primary',
+          color: '#0d9488',
+          action: {
+            type: 'uri',
+            label: '📂 ดูรายชื่อบูธทั้งหมด',
+            uri: `https://liff.line.me/${liffId}/channels`
           }
-        ],
-        backgroundColor: '#4f46e5',
-        paddingAll: 'sm'
-      },
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'xs',
-        contents: [
-          {
-            type: 'text',
-            text: 'ค้นหาและกรองบูธ/สาขาหลักทั้งหมดที่มีการเปิดดำเนินการอยู่ขณะนี้',
-            size: 'xxs',
-            color: '#475569',
-            wrap: true
-          }
-        ],
-        paddingAll: 'sm'
-      },
-      footer: {
-        type: 'box',
-        layout: 'vertical',
-        contents: [
-          {
-            type: 'button',
-            action: {
-              type: 'uri',
-              label: 'ดูรายการบูธทั้งหมด',
-              uri: `https://liff.line.me/${liffId}/channels`
-            },
-            style: 'primary',
-            color: '#4f46e5',
-            height: 'sm'
-          }
-        ],
-        paddingAll: 'sm'
-      }
-    })
+        }
+      ],
+      paddingAll: 'lg'
+    }
   }
 
   return {
     type: 'flex' as const,
     altText: keyword ? `🏪 ค้นหาบูธ: ${keyword}` : '🏪 งานอีเว้นท์ที่เปิดอยู่',
-    contents: {
-      type: 'carousel',
-      contents: bubbles
-    },
+    contents: bubble,
     quickReply: QUICK_REPLY_ITEMS
   }
 }

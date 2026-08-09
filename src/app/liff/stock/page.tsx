@@ -214,13 +214,13 @@ export default function LiffStockPage() {
 
           {categories.length > 2 && (
             <div className="flex items-center justify-between gap-2.5 pt-1.5 border-t border-slate-100">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">หมวดหมู่:</span>
-              <div className="flex gap-1.5 overflow-x-auto pb-1 flex-1 justify-end scrollbar-none">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">หมวดหมู่:</span>
+              <div className="flex gap-1.5 overflow-x-auto pb-1 flex-1 scrollbar-none whitespace-nowrap">
                 {categories.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setCategoryFilter(cat)}
-                    className={`px-2.5 py-1 text-[10px] font-bold rounded-full transition-all border ${
+                    className={`shrink-0 px-2.5 py-1 text-[10px] font-bold rounded-full transition-all border ${
                       categoryFilter === cat
                         ? 'bg-indigo-50 border-indigo-200 text-indigo-600'
                         : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
