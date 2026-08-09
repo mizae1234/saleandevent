@@ -65,6 +65,12 @@ export default function LiffLayout({ children }: { children: React.ReactNode }) 
 
           const data = await res.json()
           if (!res.ok) {
+            if (res.status === 401 && !liff.isInClient()) {
+              console.log('[LIFF Layout] Token verification failed on external browser. Logging out and logging in again...')
+              liff.logout()
+              liff.login()
+              return
+            }
             throw new Error(data.error || 'Authentication failed')
           }
 
