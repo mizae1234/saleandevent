@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useLiff } from '../layout'
 import { Truck, RefreshCw, ClipboardList, CheckCircle2, AlertCircle, Calendar, Store, ArrowUpRight } from 'lucide-react'
+import { LiffLoading } from '@/components/liff/LiffLoading'
+import { LiffError } from '@/components/liff/LiffError'
+import { LiffHeader } from '@/components/liff/LiffHeader'
 
 export default function LiffOperationsPage() {
   const { user } = useLiff()
@@ -41,27 +44,11 @@ export default function LiffOperationsPage() {
   }, [])
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] space-y-4">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
-        <p className="text-sm text-slate-500 font-medium font-sans">กำลังดึงข้อมูลรายงาน...</p>
-      </div>
-    )
+    return <LiffLoading />
   }
 
   if (error || !report) {
-    return (
-      <div className="p-6 text-center space-y-4">
-        <div className="text-red-500 text-5xl">⚠️</div>
-        <p className="text-slate-700 font-semibold font-sans">{error || 'เกิดข้อผิดพลาด'}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium font-sans hover:bg-emerald-700 transition-colors"
-        >
-          โหลดใหม่
-        </button>
-      </div>
-    )
+    return <LiffError error={error} />
   }
 
   const formatDateTime = (dateStr: string) => {
@@ -82,19 +69,7 @@ export default function LiffOperationsPage() {
       <div className="bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-700 text-white px-5 pt-8 pb-10 rounded-b-[2rem] shadow-lg relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.08)_0,transparent_60%)]"></div>
         
-        <div className="flex items-center gap-3 relative z-10 mb-6">
-          {user?.pictureUrl ? (
-            <img src={user.pictureUrl} alt="" className="w-10 h-10 rounded-full border-2 border-white/20" />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm">👤</div>
-          )}
-          <div>
-            <div className="text-xs text-white/70">สวัสดีคุณ</div>
-            <div className="font-semibold text-sm">{user?.displayName || 'พนักงาน'} 👋</div>
-          </div>
-        </div>
-
-        <h1 className="text-2xl font-bold tracking-wide mb-5 relative z-10">รายงานการดำเนินงาน</h1>
+        <LiffHeader user={user} title="รายงานการดำเนินงาน" />
       </div>
 
       {/* Main Content Cards */}
