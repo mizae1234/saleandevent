@@ -287,7 +287,7 @@ export function getSalesSummaryFlexMessage(summary: any) {
             type: 'button',
             action: {
               type: 'uri',
-              label: 'ดูรายละเอียดเพิ่มเติม (LIFF)',
+              label: 'ดูรายละเอียดเพิ่มเติม',
               uri: `https://liff.line.me/${liffId}/sales`
             },
             style: 'primary',
@@ -497,7 +497,7 @@ export function getOverviewReportFlexMessage(report: any) {
             color: '#1d4ed8',
             action: {
               type: 'uri',
-              label: 'ดูรายละเอียดภาพรวม (LIFF)',
+              label: 'ดูรายละเอียดภาพรวม',
               uri: `https://liff.line.me/${liffId}/overview`
             }
           }
@@ -574,7 +574,7 @@ export function getOperationsReportFlexMessage(report: any) {
           color: '#0d9488',
           action: {
             type: 'uri',
-            label: 'ดูรายละเอียดการส่งสินค้า (LIFF)',
+            label: 'ดูรายละเอียดการส่งสินค้า',
             uri: `https://liff.line.me/${liffId}/operations`
           }
         }
@@ -643,7 +643,7 @@ export function getOperationsReportFlexMessage(report: any) {
           color: '#ea580c',
           action: {
             type: 'uri',
-            label: 'จัดเรียงคิวเบิกสินค้า (LIFF)',
+            label: 'จัดเรียงคิวเบิกสินค้า',
             uri: `https://liff.line.me/${liffId}/operations`
           }
         }
@@ -714,7 +714,7 @@ export function getOperationsReportFlexMessage(report: any) {
           color: '#4f46e5',
           action: {
             type: 'uri',
-            label: 'ดูข้อมูลจุดขาย (LIFF)',
+            label: 'ดูข้อมูลจุดขาย',
             uri: `https://liff.line.me/${liffId}/operations`
           }
         }
