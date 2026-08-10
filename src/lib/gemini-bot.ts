@@ -73,6 +73,9 @@ status (pending→shipped→received|cancelled)
 ### ตาราง: credit_notes (ใบลดหนี้)
 คอลัมน์: id, cn_number, invoice_id, date, type (VALUE/ITEM), total_amount, reason, status
 
+### ตาราง: channel_staff (การมอบหมายพนักงานประจำช่องทาง/บูธ)
+คอลัมน์: id, channel_id, staff_id, assigned_at, role, is_main (Boolean)
+
 ## ความสัมพันธ์ระหว่างตาราง
 - sales.channel_id → sales_channels.id
 - sale_items.sale_id → sales.id
@@ -86,6 +89,11 @@ status (pending→shipped→received|cancelled)
 - attendance.channel_id → sales_channels.id
 - attendance.staff_id → staff.id
 - credit_notes.invoice_id → invoices.id
+
+- channel_staff.channel_id → sales_channels.id
+- channel_staff.staff_id → staff.id
+- sales_channels.created_by → staff.id (UUID)
+- sales_channels.updated_by → staff.id (UUID)
 
 ## กฎสำคัญ
 - ใช้ฟังก์ชันที่มีให้ก่อนเสมอ (getSalesSummary, getStockStatus, searchProduct, etc.)
@@ -409,9 +417,9 @@ async function _askSaranOnce(
   const chat = model.startChat({ history })
   let response = await chat.sendMessage(userMessage)
 
-  // Handle function calling loop (max 8 iterations)
+  // Handle function calling loop (max 12 iterations)
   let iterations = 0
-  const maxIterations = 8
+  const maxIterations = 12
 
   while (iterations < maxIterations) {
     const candidate = response.response.candidates?.[0]
@@ -459,6 +467,8 @@ async function _askSaranOnce(
   if (iterations >= maxIterations) {
     console.warn(`[askSaran] Hit max iterations (${maxIterations})`)
   }
+
+  console.log('[askSaran] Response candidates:', JSON.stringify(response.response.candidates, null, 2))
 
   // Extract token usage
   const usage = response.response.usageMetadata
