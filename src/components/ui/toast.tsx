@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from "react";
 import { X, CheckCircle2, AlertTriangle, XCircle, Info } from "lucide-react";
 
 // ─── Types ───
@@ -41,12 +41,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         setTimeout(() => removeToast(id), 4000);
     }, [removeToast]);
 
-    const value: ToastContextValue = {
+    const toastSuccess = useCallback((msg: string) => addToast(msg, "success"), [addToast]);
+    const toastError = useCallback((msg: string) => addToast(msg, "error"), [addToast]);
+    const toastWarning = useCallback((msg: string) => addToast(msg, "warning"), [addToast]);
+
+    const value: ToastContextValue = useMemo(() => ({
         toast: addToast,
-        toastSuccess: (msg) => addToast(msg, "success"),
-        toastError: (msg) => addToast(msg, "error"),
-        toastWarning: (msg) => addToast(msg, "warning"),
-    };
+        toastSuccess,
+        toastError,
+        toastWarning,
+    }), [addToast, toastSuccess, toastError, toastWarning]);
 
     return (
         <ToastContext.Provider value={value}>

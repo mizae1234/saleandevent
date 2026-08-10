@@ -75,7 +75,8 @@ export function NewTransferClient({ channels }: Props) {
             const stock = await getAvailableStock(channelId);
             setAvailableStock(stock);
             setSelectedItems([]);
-        } catch {
+        } catch (err) {
+            console.error('Failed to load stock for channel:', channelId, err);
             toastError('ไม่สามารถโหลด Stock ได้');
         } finally {
             setStockLoading(false);
