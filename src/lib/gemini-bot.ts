@@ -76,6 +76,33 @@ status (pending→shipped→received|cancelled)
 ### ตาราง: channel_staff (การมอบหมายพนักงานประจำช่องทาง/บูธ)
 คอลัมน์: id, channel_id, staff_id, assigned_at, role, is_main (Boolean)
 
+### ตาราง: channel_expenses (ค่าใช้จ่ายประจำช่องทาง/บูธ)
+คอลัมน์: id, channel_id, category, amount, description, status
+
+### ตาราง: stock_request_items (รายการสินค้าในใบเบิก)
+คอลัมน์: id, stock_request_id, barcode, quantity
+
+### ตาราง: receivings (การกดรับของใบเบิก)
+คอลัมน์: id, stock_request_id, received_total_quantity, received_at, received_by
+
+### ตาราง: receiving_items (รายการสินค้าที่กดรับจริง)
+คอลัมน์: id, receiving_id, barcode, allocated_quantity, received_quantity, difference_quantity, remarks
+
+### ตาราง: return_summaries (การคืนสต็อกเมื่อจบงาน)
+คอลัมน์: id, channel_id, submitted_at, confirmed_at, confirmed_by
+
+### ตาราง: return_items (รายการสินค้าที่ส่งคืนกลับ)
+คอลัมน์: id, return_summary_id, barcode, quantity
+
+### ตาราง: stock_transfer_items (รายการโอนย้ายสินค้าระหว่างสาขา)
+คอลัมน์: id, transfer_id, barcode, quantity
+
+### ตาราง: invoice_items (รายการสินค้าในใบแจ้งหนี้)
+คอลัมน์: id, invoice_id, barcode, quantity, unit_price, total_amount
+
+### ตาราง: credit_note_items (รายการลดหนี้สินค้ารายชิ้น)
+คอลัมน์: id, credit_note_id, barcode, quantity, total_amount
+
 ## ความสัมพันธ์ระหว่างตาราง
 - sales.channel_id → sales_channels.id
 - sale_items.sale_id → sales.id
@@ -94,6 +121,22 @@ status (pending→shipped→received|cancelled)
 - channel_staff.staff_id → staff.id
 - sales_channels.created_by → staff.id (UUID)
 - sales_channels.updated_by → staff.id (UUID)
+
+- channel_expenses.channel_id → sales_channels.id
+- stock_request_items.stock_request_id → stock_requests.id
+- stock_request_items.barcode → products.barcode
+- receivings.stock_request_id → stock_requests.id
+- receiving_items.receiving_id → receivings.id
+- receiving_items.barcode → products.barcode
+- return_summaries.channel_id → sales_channels.id
+- return_items.return_summary_id → return_summaries.id
+- return_items.barcode → products.barcode
+- stock_transfer_items.transfer_id → stock_transfers.id
+- stock_transfer_items.barcode → products.barcode
+- invoice_items.invoice_id → invoices.id
+- invoice_items.barcode → products.barcode
+- credit_note_items.credit_note_id → credit_notes.id
+- credit_note_items.barcode → products.barcode
 
 ## กฎสำคัญ
 - ใช้ฟังก์ชันที่มีให้ก่อนเสมอ (getSalesSummary, getStockStatus, searchProduct, etc.)
