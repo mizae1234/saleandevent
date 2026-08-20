@@ -112,14 +112,25 @@ export default async function PaymentReviewPage({ params }: { params: Promise<{ 
                     <EventExpenses
                         channelId={channel.id}
                         categories={channel.expenseCategories}
-                        expenses={channel.expenses.map(e => ({
-                            id: e.id,
-                            category: e.category,
-                            amount: Number(e.amount),
-                            description: e.description || '',
-                            status: e.status,
-                            createdAt: e.createdAt.toISOString(),
+                        staffList={channel.staff.map(cs => ({
+                            id: cs.staff.id,
+                            name: cs.staff.name,
+                            role: cs.staff.role || null,
+                            position: cs.staff.position || null,
                         }))}
+                        expenses={channel.expenses.map(e => {
+                            const foundStaff = channel.staff.find(cs => cs.staff.id === e.createdBy);
+                            return {
+                                id: e.id,
+                                category: e.category,
+                                amount: Number(e.amount),
+                                description: e.description || '',
+                                status: e.status,
+                                createdAt: e.createdAt.toISOString(),
+                                createdBy: e.createdBy,
+                                createdByName: foundStaff ? foundStaff.staff.name : null,
+                            };
+                        })}
                         readonly={true}
                     />
                 </div>

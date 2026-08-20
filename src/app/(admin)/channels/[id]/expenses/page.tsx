@@ -58,6 +58,25 @@ export default async function EventExpensePage({ params }: { params: Promise<{ i
 
     const isPendingOrApproved = ['pending_payment', 'payment_approved'].includes(event.status);
 
+    const staffList = (event.staff || []).map(cs => ({
+        id: cs.staff.id,
+        name: cs.staff.name,
+        role: cs.staff.role,
+        position: cs.staff.position,
+    }));
+    const staffMap = new Map(staffList.map(s => [s.id, s.name]));
+
+    const mappedExpenses = (event.expenses || []).map(e => ({
+        id: e.id,
+        category: e.category,
+        amount: Number(e.amount),
+        description: e.description || '',
+        status: e.status,
+        createdAt: e.createdAt.toISOString(),
+        createdBy: e.createdBy,
+        createdByName: e.createdBy ? staffMap.get(e.createdBy) || null : null,
+    }));
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -102,7 +121,12 @@ export default async function EventExpensePage({ params }: { params: Promise<{ i
                         <Receipt className="h-5 w-5 text-slate-500" />
                         บันทึกค่าใช้จ่าย
                     </div>
-                    <EventExpenses channelId={event.id} categories={categories} expenses={(event.expenses || []).map(e => ({ id: e.id, category: e.category, amount: Number(e.amount), description: e.description || '', status: e.status, createdAt: e.createdAt.toISOString() }))} />
+                    <EventExpenses
+                        channelId={event.id}
+                        categories={categories}
+                        staffList={staffList}
+                        expenses={mappedExpenses}
+                    />
                 </div>
 
                 {/* Right Column: Compensation */}
