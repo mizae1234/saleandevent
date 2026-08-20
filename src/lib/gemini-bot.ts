@@ -27,7 +27,7 @@ status (draft/active/completed/cancelled), responsible_person_name, phone, is_ca
 
 
 ### ตาราง: products (สินค้า)
-คอลัมน์: barcode (PK), code, name (ชื่อสินค้า), size (ไซส์), price (ราคา),
+คอลัมน์: barcode (PK), sku (รหัส SKU), code, name (ชื่อสินค้า), size (ไซส์), price (ราคา),
 category (หมวดหมู่), producttype (ประเภท), color (สี), status (active/inactive)
 
 

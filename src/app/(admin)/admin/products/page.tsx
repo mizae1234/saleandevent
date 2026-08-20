@@ -22,6 +22,8 @@ async function getProductList(searchParams: Promise<{ [key: string]: string | st
 
     if (q) {
         where.OR = [
+            { barcode: { contains: q, mode: 'insensitive' } },
+            { sku: { contains: q, mode: 'insensitive' } },
             { code: { contains: q, mode: 'insensitive' } },
             { name: { contains: q, mode: 'insensitive' } },
         ];
@@ -100,6 +102,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         <thead>
                             <tr className="border-b border-slate-100 bg-slate-50/50">
                                 <th className="text-left font-semibold text-slate-600 px-6 py-4">บาร์โค้ด</th>
+                                <th className="text-left font-semibold text-slate-600 px-6 py-4">SKU</th>
                                 <th className="text-left font-semibold text-slate-600 px-6 py-4">รหัส</th>
                                 <th className="text-left font-semibold text-slate-600 px-6 py-4">ชื่อสินค้า</th>
                                 <th className="text-left font-semibold text-slate-600 px-6 py-4">ไซส์</th>
@@ -118,6 +121,15 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                                         <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-md font-medium">
                                             {product.barcode}
                                         </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {product.sku ? (
+                                            <span className="font-mono text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md font-medium">
+                                                {product.sku}
+                                            </span>
+                                        ) : (
+                                            <span className="text-slate-300">-</span>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4">
                                         {product.code ? (

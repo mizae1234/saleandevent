@@ -24,6 +24,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ ba
             categories={categoryRes.data || []}
             product={{
                 barcode: product.barcode,
+                sku: product.sku,
                 code: product.code,
                 name: product.name,
                 size: product.size,

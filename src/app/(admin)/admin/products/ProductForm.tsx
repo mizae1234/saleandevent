@@ -10,6 +10,7 @@ interface ProductFormProps {
     mode: "create" | "edit";
     product?: {
         barcode: string;
+        sku?: string | null;
         code: string | null;
         name: string;
         size: string | null;
@@ -52,20 +53,28 @@ export function ProductForm({ mode, product, categories }: ProductFormProps) {
 
             <form action={formAction}>
                 <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] border border-slate-100 p-6 space-y-5">
-                    {/* Barcode */}
-                    <div>
+                    {/* Barcode & SKU */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <FormInput
+                                label="บาร์โค้ด *"
+                                name="barcode"
+                                defaultValue={product?.barcode || ""}
+                                readOnly={isEdit}
+                                required
+                                placeholder="สแกนหรือกรอกบาร์โค้ด"
+                                disabled={isEdit}
+                            />
+                            {isEdit && (
+                                <p className="text-xs text-slate-400 mt-1">บาร์โค้ดไม่สามารถแก้ไขได้</p>
+                            )}
+                        </div>
                         <FormInput
-                            label="บาร์โค้ด *"
-                            name="barcode"
-                            defaultValue={product?.barcode || ""}
-                            readOnly={isEdit}
-                            required
-                            placeholder="สแกนหรือกรอกบาร์โค้ด"
-                            disabled={isEdit}
+                            label="SKU"
+                            name="sku"
+                            defaultValue={product?.sku || ""}
+                            placeholder="เช่น SR01-Black, SP019-Dark-L"
                         />
-                        {isEdit && (
-                            <p className="text-xs text-slate-400 mt-1">บาร์โค้ดไม่สามารถแก้ไขได้</p>
-                        )}
                     </div>
 
                     {/* Code & Name row */}

@@ -37,6 +37,7 @@ export function ExportProductsButton() {
             const rows = products.map((p: any, i: number) => ({
                 "ลำดับ": i + 1,
                 "บาร์โค้ด": p.barcode,
+                "SKU": p.sku || '',
                 "รหัสสินค้า": p.code,
                 "ชื่อสินค้า": p.name,
                 "ประเภทสินค้า": p.producttype,
@@ -52,6 +53,7 @@ export function ExportProductsButton() {
             ws["!cols"] = [
                 { wch: 6 },   // ลำดับ
                 { wch: 18 },  // บาร์โค้ด
+                { wch: 20 },  // SKU
                 { wch: 12 },  // รหัสสินค้า
                 { wch: 30 },  // ชื่อสินค้า
                 { wch: 15 },  // ประเภทสินค้า

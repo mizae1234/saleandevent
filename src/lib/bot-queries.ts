@@ -206,10 +206,12 @@ export async function getStockStatus(args: {
           { name: { contains: productName, mode: 'insensitive' } },
           { code: { contains: productName, mode: 'insensitive' } },
           { barcode: { contains: productName, mode: 'insensitive' } },
+          { sku: { contains: productName, mode: 'insensitive' } },
         ]
       },
       select: {
         barcode: true,
+        sku: true,
         name: true,
         size: true,
         price: true,
@@ -228,6 +230,7 @@ export async function getStockStatus(args: {
         const rsv = p.warehouseStock ? Math.max(0, p.warehouseStock.reservedQuantity) : 0
         return {
           barcode: p.barcode,
+          sku: p.sku,
           name: p.name,
           size: p.size,
           price: p.price ? Number(p.price) : null,

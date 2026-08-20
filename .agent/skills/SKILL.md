@@ -85,7 +85,7 @@ description: Full codebase reference for the unified sales channel & stock manag
 |---|---|---|
 | `SalesChannel` | UUID | EVENT or BRANCH — central hub for all operations |
 | `ChannelLog` | UUID | Audit log per channel (action, details JSON, changedBy) |
-| `Product` | `barcode` (VarChar) | Products keyed by barcode, code/color/size as secondary identifiers |
+| `Product` | `barcode` (VarChar) | Products keyed by barcode, with `sku` (nullable VarChar(100)), code/color/size as identifiers |
 | `WarehouseStock` | `barcode` | Central warehouse stock (quantity, reservedQuantity) ⚠️ ข้อมูลติดลบ ห้าม AI หรือ Dashboard ใช้ตรรกะผลรวมตารางนี้ตรงๆ ให้เลี่ยงใช้ ChannelStock หรือครอบ clamp |
 | `ChannelStock` | UUID | Stock at a channel (quantity, soldQuantity, returnedQuantity) — unique on `[channelId, barcode]` |
 | `StockMovement` | UUID | All movement records (RECEIVING, RETURN, etc.) |

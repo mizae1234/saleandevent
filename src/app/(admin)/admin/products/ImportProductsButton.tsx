@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/toast";
 
 interface ParsedRow {
     barcode: string;
+    sku?: string;
     code: string;
     name: string;
     size: string;
@@ -39,6 +40,7 @@ export function ImportProductsButton() {
             const rows = samples.length > 0
                 ? samples.map((p: Record<string, unknown>) => ({
                     "บาร์โค้ด": p.barcode,
+                    "SKU": p.sku || "",
                     "รหัสสินค้า": p.code || "",
                     "ชื่อสินค้า": p.name,
                     "ไซส์": p.size || "",
@@ -47,11 +49,11 @@ export function ImportProductsButton() {
                     "ประเภท": p.producttype || "",
                     "ราคาขาย": p.price || 0,
                 }))
-                : [{ "บาร์โค้ด": "", "รหัสสินค้า": "", "ชื่อสินค้า": "", "ไซส์": "", "สี": "", "หมวดหมู่": "", "ประเภท": "", "ราคาขาย": "" }];
+                : [{ "บาร์โค้ด": "", "SKU": "", "รหัสสินค้า": "", "ชื่อสินค้า": "", "ไซส์": "", "สี": "", "หมวดหมู่": "", "ประเภท": "", "ราคาขาย": "" }];
 
             const ws = XLSX.utils.json_to_sheet(rows);
             ws["!cols"] = [
-                { wch: 18 }, { wch: 12 }, { wch: 30 }, { wch: 8 },
+                { wch: 18 }, { wch: 20 }, { wch: 12 }, { wch: 30 }, { wch: 8 },
                 { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 12 },
             ];
 
@@ -83,6 +85,8 @@ export function ImportProductsButton() {
 
             const headerMap: Record<string, string> = {
                 "บาร์โค้ด": "barcode",
+                "SKU": "sku",
+                "รหัสSKU": "sku",
                 "รหัสสินค้า": "code",
                 "ชื่อสินค้า": "name",
                 "ไซส์": "size",
@@ -197,6 +201,7 @@ export function ImportProductsButton() {
                                     <tr className="border-b border-slate-100 bg-slate-50/50">
                                         <th className="text-left font-semibold text-slate-600 px-3 py-2">#</th>
                                         <th className="text-left font-semibold text-slate-600 px-3 py-2">บาร์โค้ด</th>
+                                        <th className="text-left font-semibold text-slate-600 px-3 py-2">SKU</th>
                                         <th className="text-left font-semibold text-slate-600 px-3 py-2">รหัส</th>
                                         <th className="text-left font-semibold text-slate-600 px-3 py-2">ชื่อสินค้า</th>
                                         <th className="text-left font-semibold text-slate-600 px-3 py-2">ไซส์</th>
@@ -212,6 +217,7 @@ export function ImportProductsButton() {
                                             <td className="px-3 py-2">
                                                 <span className="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded">{row.barcode || <span className="text-red-500">ว่าง</span>}</span>
                                             </td>
+                                            <td className="px-3 py-2 text-slate-600">{row.sku || "-"}</td>
                                             <td className="px-3 py-2 text-slate-600">{row.code || "-"}</td>
                                             <td className="px-3 py-2 font-medium text-slate-800">{row.name || <span className="text-red-500">ไม่มีชื่อ</span>}</td>
                                             <td className="px-3 py-2 text-slate-600">{row.size || "-"}</td>

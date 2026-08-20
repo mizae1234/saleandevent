@@ -19,6 +19,7 @@ export async function GET(request: Request) {
         if (q) {
             where.OR = [
                 { barcode: { contains: q, mode: 'insensitive' } },
+                { sku: { contains: q, mode: 'insensitive' } },
                 { code: { contains: q, mode: 'insensitive' } },
                 { name: { contains: q, mode: 'insensitive' } },
             ];
@@ -59,6 +60,7 @@ export async function GET(request: Request) {
 
     const data = products.map((p) => ({
         barcode: p.barcode,
+        sku: p.sku || '',
         code: p.code || '',
         name: p.name,
         size: p.size || '',

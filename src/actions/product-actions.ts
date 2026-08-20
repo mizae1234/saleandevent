@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 export async function createProduct(formData: FormData) {
     try {
         const barcode = (formData.get('barcode') as string)?.trim();
+        const sku = (formData.get('sku') as string)?.trim() || null;
         const code = (formData.get('code') as string)?.trim() || null;
         const name = (formData.get('name') as string)?.trim();
         const size = (formData.get('size') as string)?.trim() || null;
@@ -33,6 +34,7 @@ export async function createProduct(formData: FormData) {
         await db.product.create({
             data: {
                 barcode,
+                sku,
                 code,
                 name,
                 size,
@@ -64,6 +66,7 @@ export async function createProduct(formData: FormData) {
 
 export async function updateProduct(barcode: string, formData: FormData) {
     try {
+        const sku = (formData.get('sku') as string)?.trim() || null;
         const code = (formData.get('code') as string)?.trim() || null;
         const name = (formData.get('name') as string)?.trim();
         const size = (formData.get('size') as string)?.trim() || null;
@@ -79,6 +82,7 @@ export async function updateProduct(barcode: string, formData: FormData) {
         await db.product.update({
             where: { barcode },
             data: {
+                sku,
                 code,
                 name,
                 size,

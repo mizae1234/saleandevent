@@ -43,6 +43,7 @@ export async function POST(request: Request) {
                 await db.product.create({
                     data: {
                         barcode,
+                        sku: row.sku ? String(row.sku).trim() : null,
                         name: String(row.name).trim(),
                         code: row.code ? String(row.code).trim() : null,
                         size: row.size ? String(row.size).trim() : null,
