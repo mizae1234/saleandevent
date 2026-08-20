@@ -31,6 +31,9 @@ type Sale = {
     billCode: string | null;
     totalAmount: number;
     discount: number;
+    paymentMethod: string | null;
+    receivedAmount?: number | null;
+    changeAmount?: number | null;
     status: string;
     soldAt: string;
     items: SaleItem[];
@@ -42,6 +45,7 @@ type Props = {
         name: string;
         code: string;
         location: string;
+        isCashBooth?: boolean;
         stock: number;
         sold: number;
         remaining: number;
@@ -52,6 +56,17 @@ type Props = {
 
 const PAGE_SIZE = 20;
 
+const PAYMENT_INFO: Record<string, { label: string; bg: string; text: string; icon: string }> = {
+    cash: { label: "เงินสด", bg: "bg-emerald-50 text-emerald-700 border-emerald-200", text: "text-emerald-700", icon: "💵" },
+    transfer: { label: "โอนเงิน", bg: "bg-blue-50 text-blue-700 border-blue-200", text: "text-blue-700", icon: "📱" },
+    credit: { label: "บัตรเครดิต", bg: "bg-purple-50 text-purple-700 border-purple-200", text: "text-purple-700", icon: "💳" },
+};
+
+function getPaymentInfo(method: string | null | undefined) {
+    const key = (method || 'cash').toLowerCase();
+    return PAYMENT_INFO[key] || { label: method || 'เงินสด', bg: "bg-slate-100 text-slate-700 border-slate-200", text: "text-slate-700", icon: "💰" };
+}
+
 export function EventSalesClient({ event, sales, backHref }: Props) {
     const router = useRouter();
     const { toastSuccess, toastError } = useToast();
@@ -59,6 +74,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'cancelled'>('all');
+    const [paymentFilter, setPaymentFilter] = useState<'all' | 'cash' | 'transfer' | 'credit'>('all');
     const [cancellingId, setCancellingId] = useState<string | null>(null);
     const [cancelReason, setCancelReason] = useState("");
     const [isPending, startTransition] = useTransition();
@@ -68,6 +84,11 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
 
     const filtered = useMemo(() => sales.filter(sale => {
         if (statusFilter !== 'all' && sale.status !== statusFilter) return false;
+
+        if (paymentFilter !== 'all') {
+            const pm = (sale.paymentMethod || 'cash').toLowerCase();
+            if (pm !== paymentFilter) return false;
+        }
 
         if (startDate || endDate) {
             const saleDateStr = format(new Date(sale.soldAt), 'yyyy-MM-dd');
@@ -82,16 +103,47 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                 i => i.product.name.toLowerCase().includes(q) || i.barcode.toLowerCase().includes(q)
             );
             const matchAmount = sale.totalAmount.toString().includes(q);
-            if (!matchBill && !matchItem && !matchAmount) return false;
+            const pmLabel = getPaymentInfo(sale.paymentMethod).label.toLowerCase();
+            const matchPm = pmLabel.includes(q) || (sale.paymentMethod || '').toLowerCase().includes(q);
+            if (!matchBill && !matchItem && !matchAmount && !matchPm) return false;
         }
         return true;
-    }), [sales, statusFilter, search, startDate, endDate]);
+    }), [sales, statusFilter, paymentFilter, search, startDate, endDate]);
 
     const visible = filtered.slice(0, visibleCount);
     const hasMore = visibleCount < filtered.length;
 
-    const activeCount = useMemo(() => filtered.filter(s => s.status === 'active').length, [filtered]);
-    const activeAmount = useMemo(() => filtered.filter(s => s.status === 'active').reduce((sum, s) => sum + Number(s.totalAmount), 0), [filtered]);
+    const activeSales = useMemo(() => filtered.filter(s => s.status === 'active'), [filtered]);
+    const activeCount = activeSales.length;
+    const activeAmount = useMemo(() => activeSales.reduce((sum, s) => sum + Number(s.totalAmount), 0), [activeSales]);
+
+    // Payment breakdown for active sales
+    const paymentBreakdown = useMemo(() => {
+        let cashCount = 0, cashAmount = 0;
+        let transferCount = 0, transferAmount = 0;
+        let creditCount = 0, creditAmount = 0;
+
+        activeSales.forEach(s => {
+            const pm = (s.paymentMethod || 'cash').toLowerCase();
+            const amt = Number(s.totalAmount) || 0;
+            if (pm === 'transfer') {
+                transferCount++;
+                transferAmount += amt;
+            } else if (pm === 'credit') {
+                creditCount++;
+                creditAmount += amt;
+            } else {
+                cashCount++;
+                cashAmount += amt;
+            }
+        });
+
+        return {
+            cash: { count: cashCount, amount: cashAmount },
+            transfer: { count: transferCount, amount: transferAmount },
+            credit: { count: creditCount, amount: creditAmount },
+        };
+    }, [activeSales]);
 
     const toggleExpand = (id: string) => {
         setExpandedId(prev => prev === id ? null : id);
@@ -104,21 +156,31 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
             const XLSX = await import("xlsx");
 
             // Sheet 1: สรุปรายการขาย (Bill Summary)
-            const summaryRows = filtered.map((sale, idx) => ({
-                "#": idx + 1,
-                "เลขบิล": sale.billCode || sale.id.slice(0, 8),
-                "วันที่": format(new Date(sale.soldAt), "d/MM/yyyy HH:mm", { locale: th }),
-                "จำนวนรายการ": sale.items.length,
-                "ส่วนลด": Number(sale.discount),
-                "ยอดรวม": Number(sale.totalAmount),
-                "สถานะ": sale.status === 'active' ? 'สำเร็จ' : 'ยกเลิก',
-            }));
+            const summaryRows = filtered.map((sale, idx) => {
+                const pInfo = getPaymentInfo(sale.paymentMethod);
+                const isCash = (sale.paymentMethod || 'cash').toLowerCase() === 'cash';
+                return {
+                    "#": idx + 1,
+                    "เลขบิล": sale.billCode || sale.id.slice(0, 8),
+                    "วันที่": format(new Date(sale.soldAt), "d/MM/yyyy HH:mm", { locale: th }),
+                    "วิธีชำระเงิน": pInfo.label,
+                    "ยอดรับ (บาท)": sale.receivedAmount ? Number(sale.receivedAmount) : (isCash ? Number(sale.totalAmount) : "-"),
+                    "เงินทอน (บาท)": sale.changeAmount !== undefined && sale.changeAmount !== null ? Number(sale.changeAmount) : (isCash ? 0 : "-"),
+                    "จำนวนรายการ": sale.items.length,
+                    "ส่วนลด": Number(sale.discount),
+                    "ยอดรวม": Number(sale.totalAmount),
+                    "สถานะ": sale.status === 'active' ? 'สำเร็จ' : 'ยกเลิก',
+                };
+            });
 
             const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
             wsSummary["!cols"] = [
                 { wch: 5 },  // #
                 { wch: 24 }, // เลขบิล
                 { wch: 18 }, // วันที่
+                { wch: 15 }, // วิธีชำระเงิน
+                { wch: 14 }, // ยอดรับ
+                { wch: 14 }, // เงินทอน
                 { wch: 12 }, // จำนวนรายการ
                 { wch: 10 }, // ส่วนลด
                 { wch: 12 }, // ยอดรวม
@@ -128,6 +190,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
             // Sheet 2: รายละเอียดสินค้า (Item Details)
             const detailRows: Record<string, string | number>[] = [];
             filtered.forEach(sale => {
+                const pInfo = getPaymentInfo(sale.paymentMethod);
                 let itemsSum = 0;
                 sale.items.forEach(item => {
                     const itemTotal = Number(item.totalAmount);
@@ -135,6 +198,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                     detailRows.push({
                         "เลขบิล": sale.billCode || sale.id.slice(0, 8),
                         "วันที่": format(new Date(sale.soldAt), "d/MM/yyyy HH:mm", { locale: th }),
+                        "วิธีชำระเงิน": pInfo.label,
                         "รหัสสินค้า": item.product.code || "-",
                         "Barcode": item.barcode,
                         "ชื่อสินค้า": item.product.name,
@@ -154,6 +218,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                     detailRows.push({
                         "เลขบิล": sale.billCode || sale.id.slice(0, 8),
                         "วันที่": format(new Date(sale.soldAt), "d/MM/yyyy HH:mm", { locale: th }),
+                        "วิธีชำระเงิน": pInfo.label,
                         "รหัสสินค้า": "SPECIAL",
                         "Barcode": "-",
                         "ชื่อสินค้า": "รายการพิเศษ (Adjustment)",
@@ -172,6 +237,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                     detailRows.push({
                         "เลขบิล": sale.billCode || sale.id.slice(0, 8),
                         "วันที่": format(new Date(sale.soldAt), "d/MM/yyyy HH:mm", { locale: th }),
+                        "วิธีชำระเงิน": pInfo.label,
                         "รหัสสินค้า": "DISCOUNT",
                         "Barcode": "-",
                         "ชื่อสินค้า": "ส่วนลดท้ายบิล (Bill Discount)",
@@ -190,6 +256,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
             wsDetail["!cols"] = [
                 { wch: 24 }, // เลขบิล
                 { wch: 18 }, // วันที่
+                { wch: 15 }, // วิธีชำระเงิน
                 { wch: 14 }, // รหัสสินค้า
                 { wch: 16 }, // Barcode
                 { wch: 30 }, // ชื่อสินค้า
@@ -237,16 +304,71 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
             <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white border border-slate-200 rounded-xl p-4 text-center">
                     <p className="text-xs text-slate-500 mb-1">
-                        จำนวนบิล{(startDate || endDate || search || statusFilter !== 'all') ? ' (กรองแล้ว)' : ''}
+                        จำนวนบิล{(startDate || endDate || search || statusFilter !== 'all' || paymentFilter !== 'all') ? ' (กรองแล้ว)' : ''}
                     </p>
                     <p className="text-2xl font-bold text-slate-900">{activeCount}</p>
                 </div>
                 <div className="bg-white border border-slate-200 rounded-xl p-4 text-center">
                     <p className="text-xs text-emerald-600 mb-1">
-                        ยอดขายรวม{(startDate || endDate || search || statusFilter !== 'all') ? ' (กรองแล้ว)' : ''}
+                        ยอดขายรวม{(startDate || endDate || search || statusFilter !== 'all' || paymentFilter !== 'all') ? ' (กรองแล้ว)' : ''}
                     </p>
                     <p className="text-2xl font-bold text-emerald-700">฿{activeAmount.toLocaleString()}</p>
                 </div>
+            </div>
+
+            {/* Payment Method Breakdown Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="bg-emerald-50/80 border border-emerald-100 rounded-xl p-3 flex items-center justify-between shadow-xs">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xl">💵</span>
+                        <div>
+                            <p className="text-[11px] text-emerald-600 font-medium">เงินสด (Cash)</p>
+                            <p className="text-sm sm:text-base font-bold text-emerald-800">฿{paymentBreakdown.cash.amount.toLocaleString()}</p>
+                        </div>
+                    </div>
+                    <span className="text-xs font-semibold text-emerald-700 bg-white/80 px-2 py-0.5 rounded-full border border-emerald-200">
+                        {paymentBreakdown.cash.count} บิล
+                    </span>
+                </div>
+                <div className="bg-blue-50/80 border border-blue-100 rounded-xl p-3 flex items-center justify-between shadow-xs">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xl">📱</span>
+                        <div>
+                            <p className="text-[11px] text-blue-600 font-medium">โอนเงิน (Transfer)</p>
+                            <p className="text-sm sm:text-base font-bold text-blue-800">฿{paymentBreakdown.transfer.amount.toLocaleString()}</p>
+                        </div>
+                    </div>
+                    <span className="text-xs font-semibold text-blue-700 bg-white/80 px-2 py-0.5 rounded-full border border-blue-200">
+                        {paymentBreakdown.transfer.count} บิล
+                    </span>
+                </div>
+                {paymentBreakdown.credit.count > 0 ? (
+                    <div className="bg-purple-50/80 border border-purple-100 rounded-xl p-3 flex items-center justify-between col-span-2 sm:col-span-1 shadow-xs">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xl">💳</span>
+                            <div>
+                                <p className="text-[11px] text-purple-600 font-medium">บัตรเครดิต</p>
+                                <p className="text-sm sm:text-base font-bold text-purple-800">฿{paymentBreakdown.credit.amount.toLocaleString()}</p>
+                            </div>
+                        </div>
+                        <span className="text-xs font-semibold text-purple-700 bg-white/80 px-2 py-0.5 rounded-full border border-purple-200">
+                            {paymentBreakdown.credit.count} บิล
+                        </span>
+                    </div>
+                ) : (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between col-span-2 sm:col-span-1 shadow-xs">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xl">🧾</span>
+                            <div>
+                                <p className="text-[11px] text-slate-500 font-medium">ยอดเฉลี่ยต่อบิล</p>
+                                <p className="text-sm sm:text-base font-bold text-slate-800">
+                                    ฿{activeCount > 0 ? Math.round(activeAmount / activeCount).toLocaleString() : 0}
+                                </p>
+                            </div>
+                        </div>
+                        <span className="text-xs text-slate-400">/ บิล</span>
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-3 gap-3 sm:gap-4">
@@ -271,7 +393,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                         <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
                             type="text"
-                            placeholder="ค้นหาบิล, สินค้า, ยอดรวม..."
+                            placeholder="ค้นหาเลขบิล, สินค้า, วิธีชำระเงิน, ยอดรวม..."
                             value={search}
                             onChange={e => { setSearch(e.target.value); setVisibleCount(PAGE_SIZE); }}
                             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
@@ -315,6 +437,28 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                         ))}
                     </div>
                 </div>
+
+                {/* Payment Method Filter Pills */}
+                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
+                    <span className="text-xs text-slate-400 font-medium mr-1">วิธีชำระเงิน:</span>
+                    {[
+                        { key: 'all' as const, label: 'ทุกวิธี' },
+                        { key: 'cash' as const, label: '💵 เงินสด' },
+                        { key: 'transfer' as const, label: '📱 โอนเงิน' },
+                        ...(paymentBreakdown.credit.count > 0 ? [{ key: 'credit' as const, label: '💳 บัตรเครดิต' }] : []),
+                    ].map(p => (
+                        <button
+                            key={p.key}
+                            onClick={() => { setPaymentFilter(p.key); setVisibleCount(PAGE_SIZE); }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${paymentFilter === p.key
+                                ? 'bg-slate-900 text-white shadow-xs'
+                                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                                }`}
+                        >
+                            {p.label}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* Result count + Export Button */}
@@ -343,6 +487,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                         {visible.map(sale => {
                             const isExpanded = expandedId === sale.id;
                             const isCancelled = sale.status === 'cancelled';
+                            const pInfo = getPaymentInfo(sale.paymentMethod);
 
                             return (
                                 <div
@@ -361,15 +506,21 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                                         )}
 
                                         <div className="flex-1 min-w-0 text-left">
-                                            <span className="font-semibold text-slate-900 text-sm">
-                                                {sale.billCode || sale.id.slice(0, 8)}
-                                            </span>
-                                            <span className="text-xs text-slate-400 ml-2">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="font-semibold text-slate-900 text-sm">
+                                                    {sale.billCode || sale.id.slice(0, 8)}
+                                                </span>
+                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${pInfo.bg}`}>
+                                                    <span>{pInfo.icon}</span>
+                                                    <span>{pInfo.label}</span>
+                                                </span>
+                                            </div>
+                                            <span className="text-xs text-slate-400 mt-0.5 block">
                                                 {format(new Date(sale.soldAt), "d MMM yy HH:mm", { locale: th })}
                                             </span>
                                         </div>
 
-                                        <span className="text-xs text-slate-400 mr-1">
+                                        <span className="text-xs text-slate-400 mr-1 hidden sm:inline">
                                             {sale.items.length} รายการ
                                         </span>
 
@@ -407,6 +558,26 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                                     {/* Expanded Content */}
                                     {isExpanded && (
                                         <>
+                                            {/* Payment Details Bar */}
+                                            <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-t border-slate-100 text-xs">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-slate-500">วิธีชำระเงิน:</span>
+                                                    <span className={`font-semibold inline-flex items-center gap-1 px-2 py-0.5 rounded border ${pInfo.bg}`}>
+                                                        {pInfo.icon} {pInfo.label}
+                                                    </span>
+                                                </div>
+                                                {(sale.paymentMethod || 'cash').toLowerCase() === 'cash' && (sale.receivedAmount || sale.changeAmount !== undefined) && (
+                                                    <div className="flex items-center gap-3 text-slate-600">
+                                                        {sale.receivedAmount && (
+                                                            <span>รับเงิน: <strong className="text-slate-800">฿{Number(sale.receivedAmount).toLocaleString()}</strong></span>
+                                                        )}
+                                                        {sale.changeAmount !== undefined && sale.changeAmount !== null && (
+                                                            <span>เงินทอน: <strong className="text-slate-800">฿{Number(sale.changeAmount).toLocaleString()}</strong></span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+
                                             {/* Items */}
                                             <div className="px-4 py-2 space-y-1 border-t border-slate-100 bg-slate-50/50">
                                                 {sale.items.map(item => (

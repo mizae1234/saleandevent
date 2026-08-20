@@ -64,11 +64,37 @@ export default async function EmployeeSalesPage({ params }: { params: Promise<{ 
                     name: event.name,
                     code: event.code,
                     location: event.location || '',
+                    isCashBooth: event.isCashBooth,
                     stock: totalSent,
                     sold: totalSold,
                     remaining: totalRemaining
                 }}
-                sales={event.sales as any}
+                sales={event.sales.map(s => ({
+                    id: s.id,
+                    billCode: s.billCode,
+                    totalAmount: Number(s.totalAmount),
+                    discount: Number(s.discount),
+                    paymentMethod: s.paymentMethod,
+                    receivedAmount: s.receivedAmount ? Number(s.receivedAmount) : null,
+                    changeAmount: s.changeAmount ? Number(s.changeAmount) : null,
+                    status: s.status,
+                    soldAt: s.soldAt.toISOString(),
+                    items: s.items.map(i => ({
+                        id: i.id,
+                        barcode: i.barcode,
+                        quantity: i.quantity,
+                        unitPrice: Number(i.unitPrice),
+                        totalAmount: Number(i.totalAmount),
+                        isFreebie: i.isFreebie,
+                        product: {
+                            name: i.product.name,
+                            code: i.product.code,
+                            size: i.product.size,
+                            color: i.product.color,
+                            price: i.product.price ? Number(i.product.price) : null
+                        }
+                    }))
+                }))}
                 backHref={`/channel/${channelId}/pos`}
             />
         </div>

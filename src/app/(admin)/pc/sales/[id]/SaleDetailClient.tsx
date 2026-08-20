@@ -20,10 +20,15 @@ interface SaleItem {
 interface SaleData {
     id: string;
     receiptNo: string | null;
+    billCode?: string | null;
     totalAmount: any;
+    discount?: any;
     paymentMethod: string | null;
+    receivedAmount?: any;
+    changeAmount?: any;
     status: string;
     createdAt: string;
+    soldAt?: string;
     items: SaleItem[];
     channel: {
         id: string;
@@ -31,14 +36,16 @@ interface SaleData {
     };
 }
 
-const PAYMENT_LABELS: Record<string, string> = {
-    cash: "เงินสด",
-    transfer: "โอนเงิน",
-    credit: "บัตรเครดิต",
+const PAYMENT_LABELS: Record<string, { label: string; bg: string; icon: string }> = {
+    cash: { label: "เงินสด", bg: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: "💵" },
+    transfer: { label: "โอนเงิน", bg: "bg-blue-50 text-blue-700 border-blue-200", icon: "📱" },
+    credit: { label: "บัตรเครดิต", bg: "bg-purple-50 text-purple-700 border-purple-200", icon: "💳" },
 };
 
 export function SaleDetailClient({ sale }: { sale: SaleData }) {
     const totalAmount = Number(sale.totalAmount || 0);
+    const pmKey = (sale.paymentMethod || 'cash').toLowerCase();
+    const pmInfo = PAYMENT_LABELS[pmKey] || { label: sale.paymentMethod || 'เงินสด', bg: "bg-slate-100 text-slate-700 border-slate-200", icon: "💰" };
 
     return (
         <div className="max-w-3xl mx-auto space-y-6">
@@ -58,24 +65,45 @@ export function SaleDetailClient({ sale }: { sale: SaleData }) {
 
             {/* Receipt Info */}
             <div className="bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] border border-slate-100 p-6">
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
                         <span className="text-slate-500">เลขที่บิล</span>
-                        <p className="font-mono font-medium text-slate-900 mt-0.5">{sale.receiptNo || sale.id.slice(0, 8)}</p>
+                        <p className="font-mono font-medium text-slate-900 mt-0.5">{sale.billCode || sale.receiptNo || sale.id.slice(0, 8)}</p>
                     </div>
                     <div>
                         <span className="text-slate-500">วันที่</span>
-                        <p className="font-medium text-slate-900 mt-0.5">{format(new Date(sale.createdAt), "d MMM yyyy HH:mm")}</p>
+                        <p className="font-medium text-slate-900 mt-0.5">{format(new Date(sale.soldAt || sale.createdAt), "d MMM yyyy HH:mm")}</p>
                     </div>
                     <div>
                         <span className="text-slate-500">ช่องทางชำระ</span>
-                        <p className="font-medium text-slate-900 mt-0.5">{PAYMENT_LABELS[sale.paymentMethod || ''] || sale.paymentMethod || '-'}</p>
+                        <p className="mt-0.5">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold border ${pmInfo.bg}`}>
+                                {pmInfo.icon} {pmInfo.label}
+                            </span>
+                        </p>
                     </div>
                     <div>
                         <span className="text-slate-500">ยอดรวม</span>
                         <p className="font-bold text-lg text-emerald-600 mt-0.5">฿{totalAmount.toLocaleString()}</p>
                     </div>
                 </div>
+
+                {pmKey === 'cash' && (sale.receivedAmount || sale.changeAmount !== undefined) && (
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-6 text-sm">
+                        {sale.receivedAmount && (
+                            <div>
+                                <span className="text-xs text-slate-500">ยอดรับเงิน: </span>
+                                <span className="font-bold text-slate-800">฿{Number(sale.receivedAmount).toLocaleString()}</span>
+                            </div>
+                        )}
+                        {sale.changeAmount !== undefined && sale.changeAmount !== null && (
+                            <div>
+                                <span className="text-xs text-slate-500">เงินทอน: </span>
+                                <span className="font-bold text-slate-800">฿{Number(sale.changeAmount).toLocaleString()}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Items */}
