@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useTransition, useOptimistic, useMemo } from "react";
 import { Plus, Receipt, Trash2, User, Building2, Filter } from "lucide-react";
 import { Spinner, EmptyState } from "@/components/shared";
