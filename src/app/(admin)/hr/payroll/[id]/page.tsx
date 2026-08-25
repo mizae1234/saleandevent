@@ -3,13 +3,14 @@ import { notFound } from "next/navigation";
 import { getChannelCompensationSummary } from "@/actions/channel";
 import PayrollDetailClient from "./PayrollDetailClient";
 import { getSession } from "@/lib/auth";
+import { calculatePayrollTax } from "@/lib/expense-tax";
 
 export default async function PayrollDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: channelId } = await params;
     const session = await getSession();
     const salaryAccess = session?.salaryAccess || null;
 
-    const [channel, compensation, expenseDetails] = await Promise.all([
+    const [channel, compensation, expenseDetails, categories] = await Promise.all([
         db.salesChannel.findUnique({
             where: { id: channelId },
             select: {
@@ -42,12 +43,17 @@ export default async function PayrollDetailPage({ params }: { params: Promise<{ 
                 description: true,
             },
         }),
+        db.expenseCategory.findMany({
+            select: { name: true, whtType: true },
+        }),
     ]);
 
     if (!channel) notFound();
 
+    const categoryWhtMap = new Map(categories.map(c => [c.name, c.whtType]));
+
     // Build expense map: staffId -> list of expenses
-    const expenseDetailsMap = new Map<string, { category: string; amount: number; description: string | null }[]>();
+    const expenseDetailsMap = new Map<string, { category: string; amount: number; description: string | null; whtType: string }[]>();
     expenseDetails.forEach(e => {
         const staffId = e.createdBy!;
         if (!expenseDetailsMap.has(staffId)) {
@@ -57,6 +63,7 @@ export default async function PayrollDetailPage({ params }: { params: Promise<{ 
             category: e.category,
             amount: Number(e.amount),
             description: e.description,
+            whtType: categoryWhtMap.get(e.category) || 'none',
         });
     });
 
@@ -69,16 +76,19 @@ export default async function PayrollDetailPage({ params }: { params: Promise<{ 
         const expenseAmount = staffExpenses.reduce((sum, e) => sum + e.amount, 0);
 
         const travelExpense = staffExpenses.filter(e => e.category === 'ค่าเดินทาง').reduce((sum, e) => sum + e.amount, 0);
-        const setupExpense = staffExpenses.filter(e => e.category === 'ค่าลงงาน').reduce((sum, e) => sum + e.amount, 0);
-        const teardownExpense = staffExpenses.filter(e => e.category === 'ค่าเก็บงาน').reduce((sum, e) => sum + e.amount, 0);
+        const setupExpense = staffExpenses.filter(e => e.category === 'ค่าลงงาน' || e.category === 'ค่าลงของ').reduce((sum, e) => sum + e.amount, 0);
+        const teardownExpense = staffExpenses.filter(e => e.category === 'ค่าเก็บงาน' || e.category === 'ค่าเก็บของ').reduce((sum, e) => sum + e.amount, 0);
         const targetIncentive = staffExpenses.filter(e => e.category === 'ค่าเป้า').reduce((sum, e) => sum + e.amount, 0);
-        const otherExpense = staffExpenses.filter(e => !['ค่าเดินทาง', 'ค่าลงงาน', 'ค่าเก็บงาน', 'ค่าเป้า'].includes(e.category)).reduce((sum, e) => sum + e.amount, 0);
+        const otherExpense = staffExpenses.filter(e => !['ค่าเดินทาง', 'ค่าลงงาน', 'ค่าเก็บงาน', 'ค่าลงของ', 'ค่าเก็บของ', 'ค่าเป้า'].includes(e.category)).reduce((sum, e) => sum + e.amount, 0);
 
-        const shouldWithhold = s.daysWorked > 10;
-        const totalCommissionForTax = s.totalCommission + targetIncentive;
-        const wageTax = shouldWithhold ? Math.round(s.totalWage * 0.03 * 100) / 100 : 0;
-        const commissionTax = shouldWithhold ? Math.round(totalCommissionForTax * 0.03 * 100) / 100 : 0;
-        const withholdingTax = wageTax + commissionTax;
+        const taxResult = calculatePayrollTax({
+            daysWorked: s.daysWorked,
+            dailyRate: s.dailyRate,
+            commission: s.totalCommission,
+            expenses: staffExpenses,
+        });
+
+        const withholdingTax = taxResult.totalWithholdingTax;
 
         const expenseDetailsStr = staffExpenses.map(e => {
             const descSuffix = e.description && e.description !== e.category ? ` (${e.description})` : '';

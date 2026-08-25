@@ -101,6 +101,7 @@ export const MENU_SECTIONS: MenuSection[] = [
         items: [
             { title: "จัดการสินค้า", href: "/admin/products", icon: Tag },
             { title: "หมวดหมู่สินค้า", href: "/admin/product-categories", icon: LayoutDashboard },
+            { title: "หมวดหมู่ค่าใช้จ่าย", href: "/admin/expense-categories", icon: Receipt },
             { title: "พนักงาน & สิทธิ์", href: "/admin/users", icon: Users },
         ],
     },

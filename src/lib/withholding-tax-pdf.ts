@@ -14,11 +14,16 @@ export interface WithholdingTaxData {
     daysWorked: number;
     dailyRate: number;
     totalWage: number;         // dailyRate × daysWorked
-    commission: number;        // ค่าคอมมิสชั่น
+    setupExpense?: number;     // ค่าลงงาน (ม.40(1))
+    teardownExpense?: number;  // ค่าเก็บงาน (ม.40(1))
+    wage401Total?: number;     // totalWage + setupExpense + teardownExpense
+    commission: number;        // ค่าคอมมิสชั่น (ม.40(2))
+    targetIncentive?: number;  // ค่าเป้า (ม.40(2))
+    commission402Total?: number; // commission + targetIncentive
     taxRate: number;           // 0.03 or 0
-    wageTax: number;           // totalWage × 0.03
-    commissionTax: number;     // commission × 0.03
-    totalIncome: number;       // totalWage + commission
+    wageTax: number;           // wage401Total × 0.03 (when > 10 days)
+    commissionTax: number;     // commission402Total × 0.03
+    totalIncome: number;       // wage401Total + commission402Total
     totalTax: number;          // wageTax + commissionTax
     netPayable: number;        // totalIncome − totalTax
     documentDate: string;      // ISO string
@@ -92,9 +97,13 @@ function numberToThaiText(num: number): string {
 export async function generateWithholdingTaxPdf(data: WithholdingTaxData) {
     const docDate = formatDateBuddhist(data.documentDate);
     const docDateLong = formatDateThaiLong(data.documentDate);
-    const totalText = numberToThaiText(data.totalTax);
-    const hasWage = data.totalWage > 0;
-    const hasCommission = data.commission > 0;
+    const wage401Total = data.wage401Total ?? (data.totalWage + (data.setupExpense || 0) + (data.teardownExpense || 0));
+    const commission402Total = data.commission402Total ?? (data.commission + (data.targetIncentive || 0));
+    const totalIncome = data.totalIncome ?? (wage401Total + commission402Total);
+    const totalTax = data.totalTax ?? (data.wageTax + data.commissionTax);
+    const totalText = numberToThaiText(totalTax);
+    const hasWage = wage401Total > 0;
+    const hasCommission = commission402Total > 0;
 
     const html = `<!DOCTYPE html>
 <html lang="th">
@@ -384,10 +393,15 @@ export async function generateWithholdingTaxPdf(data: WithholdingTaxData) {
     <div class="income-row ${hasWage ? 'active' : 'inactive'}">
       <div class="desc">
         <strong>1.</strong> เงินเดือน ค่าจ้าง เบี้ยเลี้ยง โบนัส ฯลฯ ตาม ม.40(1)<br>
-        <span style="font-size:11px; color:#666; padding-left:16px;">ค่าแรง ${data.dailyRate.toLocaleString()} × ${data.daysWorked} วัน = ${formatMoney(data.totalWage)}</span>
+        <span style="font-size:11px; color:#666; padding-left:16px;">
+          ค่าแรง ฿${data.dailyRate.toLocaleString()} × ${data.daysWorked} วัน (${formatMoney(data.totalWage)})
+          ${data.setupExpense ? ` + ค่าลงงาน ฿${formatMoney(data.setupExpense)}` : ''}
+          ${data.teardownExpense ? ` + ค่าเก็บงาน ฿${formatMoney(data.teardownExpense)}` : ''}
+          ${data.daysWorked > 10 ? ' (เกิน 10 วัน หัก 3%)' : ' (ไม่เกิน 10 วัน ไม่หักภาษี)'}
+        </span>
       </div>
       <div class="date">${hasWage ? docDate : ''}</div>
-      <div class="amount">${hasWage ? formatMoney(data.totalWage) : ''}</div>
+      <div class="amount">${hasWage ? formatMoney(wage401Total) : ''}</div>
       <div class="tax">${hasWage && data.wageTax > 0 ? formatMoney(data.wageTax) : ''}</div>
     </div>
 
@@ -395,10 +409,14 @@ export async function generateWithholdingTaxPdf(data: WithholdingTaxData) {
     <div class="income-row ${hasCommission ? 'active' : 'inactive'}">
       <div class="desc">
         <strong>2.</strong> ค่าธรรมเนียม ค่านายหน้า ฯลฯ ตามมาตรา 40(2)<br>
-        <span style="font-size:11px; color:#666; padding-left:16px;">ค่าคอมมิสชั่น — ${data.channelCode} ${data.channelName}</span>
+        <span style="font-size:11px; color:#666; padding-left:16px;">
+          ค่าคอมมิสชั่น (${formatMoney(data.commission)})
+          ${data.targetIncentive ? ` + ค่าเป้า (${formatMoney(data.targetIncentive)})` : ''}
+          — ${data.channelCode} ${data.channelName} (หัก 3%)
+        </span>
       </div>
       <div class="date">${hasCommission ? docDate : ''}</div>
-      <div class="amount">${hasCommission ? formatMoney(data.commission) : ''}</div>
+      <div class="amount">${hasCommission ? formatMoney(commission402Total) : ''}</div>
       <div class="tax">${hasCommission && data.commissionTax > 0 ? formatMoney(data.commissionTax) : ''}</div>
     </div>
 
@@ -470,8 +488,8 @@ export async function generateWithholdingTaxPdf(data: WithholdingTaxData) {
     <div class="total-row">
       <div style="text-align:left;"><strong>รวมเงินที่จ่ายและภาษีที่หักนำส่ง</strong></div>
       <div></div>
-      <div class="amount"><strong>${formatMoney(data.totalIncome)}</strong></div>
-      <div class="tax"><strong>${formatMoney(data.totalTax)}</strong></div>
+      <div class="amount"><strong>${formatMoney(totalIncome)}</strong></div>
+      <div class="tax"><strong>${formatMoney(totalTax)}</strong></div>
     </div>
   </div>
 

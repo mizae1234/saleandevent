@@ -41,7 +41,7 @@ export default async function StaffPayrollDetailPage({
         db.expenseCategory.findMany({
             where: { isActive: true },
             orderBy: { sortOrder: 'asc' },
-            select: { name: true },
+            select: { name: true, whtType: true },
         }),
         db.payrollAttachment.findMany({
             where: {
@@ -60,10 +60,7 @@ export default async function StaffPayrollDetailPage({
     const commission = Number(assignment.commissionOverride ?? staffRecord.commissionAmount ?? 0);
     const totalWage = dailyRate * daysWorked;
     
-    // Group target incentive (ค่าเป้า) expenses under commission for withholding tax calculation
-    const targetIncentiveExpenses = expenses.filter(e => e.category === 'ค่าเป้า');
-    const targetIncentiveSum = targetIncentiveExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
-
+    const categoryWhtMap = new Map(expenseCategories.map(c => [c.name, c.whtType]));
     const totalExpense = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
     const grandTotal = totalWage + commission + totalExpense;
 
@@ -72,6 +69,7 @@ export default async function StaffPayrollDetailPage({
         category: e.category,
         amount: Number(e.amount),
         description: e.description,
+        whtType: categoryWhtMap.get(e.category) || null,
         createdAt: e.createdAt.toISOString(),
     }));
 
@@ -98,47 +96,31 @@ export default async function StaffPayrollDetailPage({
             <div className="flex flex-wrap gap-2">
                 {assignment.isSubmitted ? (
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
-                        <FileCheck className="h-3.5 w-3.5" />
-                        ส่งเบิกแล้ว
-                        {assignment.submittedAt && (
-                            <span className="text-emerald-500 ml-1">
-                                {format(assignment.submittedAt, 'd MMM yy HH:mm', { locale: th })}
-                            </span>
-                        )}
+                        <CheckCircle2 className="h-3.5 w-3.5" /> ส่งเบิกแล้ว ({assignment.submittedAt ? format(assignment.submittedAt, 'd MMM yyyy HH:mm', { locale: th }) : '-'})
                     </span>
                 ) : (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
                         <Clock className="h-3.5 w-3.5" /> ยังไม่ส่งเบิก
                     </span>
                 )}
+
                 {assignment.isWagePaid ? (
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        โอนค่าแรงแล้ว
-                        {assignment.wagePaidAt && (
-                            <span className="text-emerald-500 ml-1">
-                                {format(assignment.wagePaidAt, 'd MMM yy HH:mm', { locale: th })}
-                            </span>
-                        )}
+                        <Banknote className="h-3.5 w-3.5" /> โอนค่าแรงแล้ว ({assignment.wagePaidAt ? format(assignment.wagePaidAt, 'd MMM yyyy HH:mm', { locale: th }) : '-'})
                     </span>
                 ) : (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
-                        <Clock className="h-3.5 w-3.5" /> ยังไม่โอนค่าแรง
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
+                        <Banknote className="h-3.5 w-3.5" /> ยังไม่โอนค่าแรง
                     </span>
                 )}
+
                 {assignment.isCommissionPaid ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 px-3 py-1.5 rounded-lg">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        โอนคอมแล้ว
-                        {assignment.commissionPaidAt && (
-                            <span className="text-purple-500 ml-1">
-                                {format(assignment.commissionPaidAt, 'd MMM yy HH:mm', { locale: th })}
-                            </span>
-                        )}
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
+                        <Receipt className="h-3.5 w-3.5" /> โอนคอมแล้ว ({assignment.commissionPaidAt ? format(assignment.commissionPaidAt, 'd MMM yyyy HH:mm', { locale: th }) : '-'})
                     </span>
                 ) : (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
-                        <Clock className="h-3.5 w-3.5" /> ยังไม่โอนคอม
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
+                        <Receipt className="h-3.5 w-3.5" /> ยังไม่โอนคอม
                     </span>
                 )}
             </div>
@@ -217,6 +199,7 @@ export default async function StaffPayrollDetailPage({
                 dailyRate={dailyRate}
                 totalWage={totalWage}
                 commission={commission}
+                expenses={expenseData}
             />
         </div>
     );
