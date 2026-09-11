@@ -5,6 +5,7 @@ import { Package, Warehouse, Store, Search, Download, Hash } from "lucide-react"
 
 interface TotalStockItem {
     code: string | null;
+    sku?: string | null;
     name: string;
     color: string | null;
     size: string | null;
@@ -60,6 +61,7 @@ export function TotalStockReport({ data }: Props) {
             data.forEach((item) => {
                 rows.push({
                     "รหัส": item.code || "-",
+                    "SKU": item.sku || "-",
                     "ชื่อสินค้า": item.name,
                     "สี": item.color || "-",
                     "ไซส์": item.size || "-",

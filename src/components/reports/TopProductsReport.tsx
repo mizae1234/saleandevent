@@ -16,6 +16,7 @@ interface Product {
     barcode: string;
     name: string;
     code: string | null;
+    sku?: string | null;
     size: string | null;
     color: string | null;
     qtySold: number;
@@ -74,6 +75,7 @@ export function TopProductsReport({ data }: Props) {
             (p) =>
                 p.name.toLowerCase().includes(q) ||
                 (p.code || "").toLowerCase().includes(q) ||
+                (p.sku || "").toLowerCase().includes(q) ||
                 p.barcode.toLowerCase().includes(q) ||
                 (p.size || "").toLowerCase().includes(q) ||
                 (p.color || "").toLowerCase().includes(q)
@@ -134,6 +136,7 @@ export function TopProductsReport({ data }: Props) {
                 "บาร์โค้ด": p.barcode,
                 "ชื่อสินค้า": p.name,
                 "รหัส": p.code || "-",
+                "SKU": p.sku || "-",
                 "ไซส์": p.size || "-",
                 "สี": p.color || "-",
                 "จำนวนชิ้น": p.qtySold,
@@ -252,6 +255,7 @@ export function TopProductsReport({ data }: Props) {
                                 <th className="border border-slate-200 py-2.5 px-3 text-left bg-slate-50">บาร์โค้ด</th>
                                 <th className="border border-slate-200 py-2.5 px-3 text-left bg-slate-50">ชื่อสินค้า</th>
                                 <th className="border border-slate-200 py-2.5 px-3 text-left bg-slate-50">รหัส</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-left bg-slate-50">SKU</th>
                                 <th className="border border-slate-200 py-2.5 px-3 text-center w-16 bg-slate-50">ไซส์</th>
                                 <th className="border border-slate-200 py-2.5 px-3 text-center w-20 bg-slate-50">สี</th>
                                 <th className="border border-slate-200 py-2.5 px-3 text-right bg-slate-50">จำนวนชิ้น</th>
@@ -268,6 +272,7 @@ export function TopProductsReport({ data }: Props) {
                                         <td className="border border-slate-200 py-2 px-3 font-mono text-slate-600">{p.barcode}</td>
                                         <td className="border border-slate-200 py-2 px-3 font-medium text-slate-900 truncate max-w-[200px]">{p.name}</td>
                                         <td className="border border-slate-200 py-2 px-3 font-mono text-slate-600">{p.code || "-"}</td>
+                                        <td className="border border-slate-200 py-2 px-3 font-mono text-slate-600">{p.sku || "-"}</td>
                                         <td className="border border-slate-200 py-2 px-3 text-center text-slate-600">{p.size || "-"}</td>
                                         <td className="border border-slate-200 py-2 px-3 text-center text-slate-600">{p.color || "-"}</td>
                                         <td className="border border-slate-200 py-2 px-3 text-right font-semibold text-slate-700 font-mono">{fmt(p.qtySold)}</td>
@@ -279,7 +284,7 @@ export function TopProductsReport({ data }: Props) {
 
                             {filteredData.length === 0 && (
                                 <tr>
-                                    <td colSpan={9} className="py-12 text-center text-slate-400 border border-slate-200">
+                                    <td colSpan={10} className="py-12 text-center text-slate-400 border border-slate-200">
                                         <div className="flex flex-col items-center justify-center">
                                             <Hash className="h-8 w-8 text-slate-300 mb-2" />
                                             <p className="text-sm">ไม่พบข้อมูลสินค้าที่ค้นหา</p>

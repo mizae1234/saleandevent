@@ -18,6 +18,7 @@ interface StockItem {
     barcode: string;
     name: string;
     code: string | null;
+    sku?: string | null;
     size: string | null;
     color: string | null;
     sent: number;
@@ -139,6 +140,7 @@ export function ChannelStockReport({ data }: Props) {
                         "บาร์โค้ด": item.barcode,
                         "ชื่อสินค้า": item.name,
                         "รหัส": item.code || "-",
+                        "SKU": item.sku || "-",
                         "ไซส์": item.size || "-",
                         "สี": item.color || "-",
                         "ส่งไป": item.sent,

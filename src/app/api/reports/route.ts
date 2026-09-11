@@ -66,6 +66,7 @@ export async function GET(request: NextRequest) {
                 sc.code as channel_code,
                 sc.type as channel_type,
                 p.code as product_code,
+                p.sku as product_sku,
                 p.name as product_name,
                 p.color as product_color,
                 p.size as product_size,
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
                 ${channelFilter}
                 ${typeFilter}
                 ${closedStatusFilter}
-            GROUP BY sc.id, sc.name, sc.code, sc.type, p.code, p.name, p.color, p.size
+            GROUP BY sc.id, sc.name, sc.code, sc.type, p.code, p.sku, p.name, p.color, p.size
             ORDER BY qty_sold DESC, sc.name ASC
         ` as Promise<any[]>;
     }
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
     if (!tab || tab === "products") {
         // 1. Top products by revenue (exclude inactive channels)
         topProductsPromise = db.$queryRaw`
-            SELECT si.barcode, p.name, p.code, p.size, p.color,
+            SELECT si.barcode, p.name, p.code, p.sku, p.size, p.color,
                    SUM(si.quantity) as qty_sold,
                    SUM(si.total_amount) as revenue,
                    COUNT(DISTINCT s.id) as bill_count
@@ -101,7 +102,7 @@ export async function GET(request: NextRequest) {
             ${channelFilter}
             ${typeFilter}
             ${closedStatusFilter}
-            GROUP BY si.barcode, p.name, p.code, p.size, p.color
+            GROUP BY si.barcode, p.name, p.code, p.sku, p.size, p.color
             ORDER BY revenue DESC
         ` as Promise<any[]>;
     }
@@ -183,6 +184,7 @@ export async function GET(request: NextRequest) {
                             select: {
                                 name: true,
                                 code: true,
+                                sku: true,
                                 size: true,
                                 color: true,
                             },
@@ -221,6 +223,7 @@ export async function GET(request: NextRequest) {
         totalStockPromise = db.$queryRaw`
             SELECT
                 p.code,
+                p.sku,
                 p.name,
                 p.color,
                 p.size,
@@ -271,6 +274,7 @@ export async function GET(request: NextRequest) {
         barcode: p.barcode,
         name: p.name,
         code: p.code,
+        sku: p.sku || "-",
         size: p.size,
         color: p.color,
         qtySold: Number(p.qty_sold),
@@ -325,6 +329,7 @@ export async function GET(request: NextRequest) {
                     barcode: i.barcode,
                     name: i.product.name,
                     code: i.product.code,
+                    sku: i.product.sku || "-",
                     size: i.product.size,
                     color: i.product.color,
                     sent: i.quantity,
@@ -339,6 +344,7 @@ export async function GET(request: NextRequest) {
     // Format total stock summary
     const totalStockSummary = totalStockRaw.map((p) => ({
         code: p.code,
+        sku: p.sku || "-",
         name: p.name,
         color: p.color,
         size: p.size,
@@ -354,6 +360,7 @@ export async function GET(request: NextRequest) {
         channelCode: p.channel_code,
         channelType: p.channel_type,
         productCode: p.product_code,
+        productSku: p.product_sku || "-",
         productName: p.product_name,
         productColor: p.product_color || "-",
         productSize: p.product_size || "-",

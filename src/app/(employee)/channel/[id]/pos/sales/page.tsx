@@ -25,7 +25,7 @@ export default async function EmployeeSalesPage({ params }: { params: Promise<{ 
                     items: {
                         include: {
                             product: {
-                                select: { name: true, code: true, size: true, color: true, price: true }
+                                select: { name: true, code: true, sku: true, size: true, color: true, price: true }
                             }
                         }
                     }
@@ -89,6 +89,7 @@ export default async function EmployeeSalesPage({ params }: { params: Promise<{ 
                         product: {
                             name: i.product.name,
                             code: i.product.code,
+                            sku: i.product.sku,
                             size: i.product.size,
                             color: i.product.color,
                             price: i.product.price ? Number(i.product.price) : null

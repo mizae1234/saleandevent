@@ -9,6 +9,7 @@ interface ModelSaleItem {
     channelCode: string;
     channelType: string;
     productCode: string;
+    productSku?: string;
     productName: string;
     productColor: string;
     productSize: string;
@@ -94,6 +95,7 @@ export function ByModelReport({ data, selectedModel, setSelectedModel }: Props) 
                 "รหัสสาขา": item.channelCode,
                 "ประเภท": item.channelType === "EVENT" ? "Event" : "Branch",
                 "รหัสรุ่น": item.productCode,
+                "SKU": item.productSku || "-",
                 "ชื่อสินค้า": item.productName,
                 "สี": item.productColor,
                 "ไซส์": item.productSize,
@@ -273,6 +275,7 @@ export function ByModelReport({ data, selectedModel, setSelectedModel }: Props) 
                                                                     <table className="w-full text-xs">
                                                                         <thead>
                                                                             <tr className="bg-slate-100/60 text-slate-600 font-medium border-b border-slate-100">
+                                                                                <th className="py-2 px-4 text-left">SKU</th>
                                                                                 <th className="py-2 px-4 text-left">สี</th>
                                                                                 <th className="py-2 px-4 text-left">ไซส์</th>
                                                                                 <th className="py-2 px-4 text-right w-32">จำนวนขาย</th>
@@ -285,6 +288,9 @@ export function ByModelReport({ data, selectedModel, setSelectedModel }: Props) 
                                                                                     key={idx}
                                                                                     className="border-b border-slate-50 last:border-0 hover:bg-slate-50/30 text-slate-700"
                                                                                 >
+                                                                                    <td className="py-2 px-4 font-mono text-slate-500">
+                                                                                        {item.productSku || "-"}
+                                                                                    </td>
                                                                                     <td className="py-2 px-4 font-medium">
                                                                                         {item.productColor}
                                                                                     </td>

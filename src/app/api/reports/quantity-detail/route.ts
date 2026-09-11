@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
             sc.code as channel_code,
             sc.type as channel_type,
             p.code as product_code,
+            p.sku as product_sku,
             p.name as product_name,
             p.color as product_color,
             p.size as product_size,
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
             ${channelFilter}
             ${typeFilter}
             ${closedStatusFilter}
-        GROUP BY sc.name, sc.code, sc.type, p.code, p.name, p.color, p.size
+        GROUP BY sc.name, sc.code, sc.type, p.code, p.sku, p.name, p.color, p.size
         ORDER BY sc.name ASC, SUM(si.quantity) DESC
     `;
 
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
         channelCode: r.channel_code,
         channelType: r.channel_type,
         productCode: r.product_code,
+        productSku: r.product_sku || "-",
         productName: r.product_name,
         productColor: r.product_color || "-",
         productSize: r.product_size || "-",

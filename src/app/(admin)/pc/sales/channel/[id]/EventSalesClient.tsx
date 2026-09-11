@@ -20,6 +20,7 @@ type SaleItem = {
     product: {
         name: string;
         code: string | null;
+        sku?: string | null;
         size: string | null;
         color: string | null;
         price: number | null;
@@ -100,7 +101,10 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
             const q = search.toLowerCase();
             const matchBill = sale.billCode?.toLowerCase().includes(q);
             const matchItem = sale.items.some(
-                i => i.product.name.toLowerCase().includes(q) || i.barcode.toLowerCase().includes(q)
+                i => i.product.name.toLowerCase().includes(q) || 
+                     i.barcode.toLowerCase().includes(q) ||
+                     (i.product.sku && i.product.sku.toLowerCase().includes(q)) ||
+                     (i.product.code && i.product.code.toLowerCase().includes(q))
             );
             const matchAmount = sale.totalAmount.toString().includes(q);
             const pmLabel = getPaymentInfo(sale.paymentMethod).label.toLowerCase();
@@ -200,6 +204,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                         "วันที่": format(new Date(sale.soldAt), "d/MM/yyyy HH:mm", { locale: th }),
                         "วิธีชำระเงิน": pInfo.label,
                         "รหัสสินค้า": item.product.code || "-",
+                        "SKU": item.product.sku || "-",
                         "Barcode": item.barcode,
                         "ชื่อสินค้า": item.product.name,
                         "ไซส์": item.product.size || "-",
@@ -220,6 +225,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                         "วันที่": format(new Date(sale.soldAt), "d/MM/yyyy HH:mm", { locale: th }),
                         "วิธีชำระเงิน": pInfo.label,
                         "รหัสสินค้า": "SPECIAL",
+                        "SKU": "-",
                         "Barcode": "-",
                         "ชื่อสินค้า": "รายการพิเศษ (Adjustment)",
                         "ไซส์": "-",
@@ -239,6 +245,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                         "วันที่": format(new Date(sale.soldAt), "d/MM/yyyy HH:mm", { locale: th }),
                         "วิธีชำระเงิน": pInfo.label,
                         "รหัสสินค้า": "DISCOUNT",
+                        "SKU": "-",
                         "Barcode": "-",
                         "ชื่อสินค้า": "ส่วนลดท้ายบิล (Bill Discount)",
                         "ไซส์": "-",
@@ -258,6 +265,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                 { wch: 18 }, // วันที่
                 { wch: 15 }, // วิธีชำระเงิน
                 { wch: 14 }, // รหัสสินค้า
+                { wch: 18 }, // SKU
                 { wch: 16 }, // Barcode
                 { wch: 30 }, // ชื่อสินค้า
                 { wch: 8 },  // ไซส์
@@ -591,6 +599,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                                                                 <span className="text-slate-500 font-medium text-xs">×{item.quantity}</span>
                                                             </div>
                                                             <div className="text-[11px] text-slate-500 mt-0.5 flex flex-wrap gap-x-2">
+                                                                {item.product.sku && <span className="text-teal-700 font-mono font-medium">SKU: {item.product.sku}</span>}
                                                                 {item.product.code && <span>{item.product.code}</span>}
                                                                 {item.product.size && <span>• ไซส์: {item.product.size}</span>}
                                                                 {item.product.color && <span>• สี: {item.product.color}</span>}

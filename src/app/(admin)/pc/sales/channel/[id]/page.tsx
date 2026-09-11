@@ -25,6 +25,7 @@ async function getEventWithSales(channelId: string) {
                                 select: {
                                     name: true,
                                     code: true,
+                                    sku: true,
                                     size: true,
                                     color: true,
                                     price: true
@@ -85,6 +86,7 @@ export default async function EventSalesPage({ params }: Props) {
                     product: {
                         name: i.product.name,
                         code: i.product.code,
+                        sku: i.product.sku,
                         size: i.product.size,
                         color: i.product.color,
                         price: i.product.price ? Number(i.product.price) : null
