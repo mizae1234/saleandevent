@@ -8,6 +8,6 @@ export { closeChannelStock, createReturnShipment, confirmReturnReceived, closeCh
 export { addChannelExpense, removeChannelExpense, deletePayrollAttachment } from './expense';
 export { getChannelCompensationSummary, saveStaffCompensation, updateEmployeeCompensation } from './compensation';
 export { submitForPaymentApproval, approvePayment } from './payment';
-export { updateStaffDailyRate, toggleWagePaid, toggleCommissionPaid, markAllWagePaid, markAllCommissionPaid, submitPayroll } from './payroll';
+export { updateStaffDailyRate, toggleWagePaid, toggleCommissionPaid, markAllWagePaid, markAllCommissionPaid, submitPayroll, toggleWhtIssued, updateWhtDetails } from './payroll';
 export { addStaffToChannel, removeStaffFromChannel } from './staff';
 export { toggleChannelActive } from './toggle-active';

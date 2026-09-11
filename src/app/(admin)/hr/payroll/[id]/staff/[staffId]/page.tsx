@@ -189,6 +189,7 @@ export default async function StaffPayrollDetailPage({
 
             {/* Withholding Tax Download */}
             <WithholdingTaxButton
+                channelStaffId={assignment.id}
                 staffName={staffRecord.name}
                 staffCode={staffRecord.code || staffId.slice(0, 8)}
                 staffTaxId={staffRecord.taxId || undefined}
@@ -200,6 +201,9 @@ export default async function StaffPayrollDetailPage({
                 totalWage={totalWage}
                 commission={commission}
                 expenses={expenseData}
+                whtIssued={assignment.whtIssued}
+                whtDocNo={assignment.whtDocNo || undefined}
+                whtPaidDate={assignment.whtPaidDate ? assignment.whtPaidDate.toISOString().slice(0, 10) : undefined}
             />
         </div>
     );

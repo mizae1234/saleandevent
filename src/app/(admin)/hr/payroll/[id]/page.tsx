@@ -68,7 +68,7 @@ export default async function PayrollDetailPage({ params }: { params: Promise<{ 
     });
 
     // Merge staff bank data with compensation data
-    const staffMap = new Map(channel.staff.map(cs => [cs.staffId, { ...cs.staff, channelStaffId: cs.id, isWagePaid: cs.isWagePaid, wagePaidAt: cs.wagePaidAt, isCommissionPaid: cs.isCommissionPaid, commissionPaidAt: cs.commissionPaidAt, isSubmitted: cs.isSubmitted, submittedAt: cs.submittedAt }]));
+    const staffMap = new Map(channel.staff.map(cs => [cs.staffId, { ...cs.staff, channelStaffId: cs.id, isWagePaid: cs.isWagePaid, wagePaidAt: cs.wagePaidAt, isCommissionPaid: cs.isCommissionPaid, commissionPaidAt: cs.commissionPaidAt, isSubmitted: cs.isSubmitted, submittedAt: cs.submittedAt, whtIssued: cs.whtIssued, whtDocNo: cs.whtDocNo, whtPaidDate: cs.whtPaidDate }]));
 
     const rows = (compensation?.staffSummary || []).map(s => {
         const staff = staffMap.get(s.staffId);
@@ -116,6 +116,9 @@ export default async function PayrollDetailPage({ params }: { params: Promise<{ 
             otherExpense,
             withholdingTax,
             expenseDetailsStr: expenseDetailsStr || '-',
+            whtIssued: staff?.whtIssued || false,
+            whtDocNo: staff?.whtDocNo || '',
+            whtPaidDate: staff?.whtPaidDate ? staff.whtPaidDate.toISOString().slice(0, 10) : '',
         };
     });
 

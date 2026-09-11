@@ -500,6 +500,11 @@ model ChannelStaff {
   commissionPaidAt       DateTime?    @map("commission_paid_at") @db.Timestamptz(6)
   isSubmitted        Boolean      @default(false) @map("is_submitted")
   submittedAt        DateTime?    @map("submitted_at") @db.Timestamptz(6)
+
+  // WHT (Withholding Tax) fields
+  whtIssued          Boolean      @default(false) @map("wht_issued")
+  whtDocNo           String?      @map("wht_doc_no") @db.VarChar(50)
+  whtPaidDate        DateTime?    @map("wht_paid_date") @db.Date
   
   // Audit fields
   createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)

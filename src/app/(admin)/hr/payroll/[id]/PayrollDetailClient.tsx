@@ -40,6 +40,9 @@ type PayrollRow = {
     otherExpense: number;
     withholdingTax: number;
     expenseDetailsStr: string;
+    whtIssued: boolean;
+    whtDocNo: string;
+    whtPaidDate: string;
 };
 
 interface Props {
@@ -193,6 +196,9 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                 'ค่าคอม': row.totalCommission,
                 'หัก ณ ที่จ่าย 3%': row.withholdingTax,
                 'ยอดโอนรวม': netPay,
+                'ออก WHT': row.whtIssued ? 'ออก' : 'ไม่ออก',
+                'เลขที่ WHT': row.whtDocNo || '',
+                'วันที่จ่าย WHT': row.whtPaidDate || '',
                 'โอนค่าแรง': row.isWagePaid ? 'โอนแล้ว' : 'ยังไม่โอน',
                 'โอนคอม': row.isCommissionPaid ? 'โอนแล้ว' : 'ยังไม่โอน',
                 'สถานะส่งเบิก': row.isSubmitted ? 'ส่งแล้ว' : 'ยังไม่ส่ง',
@@ -222,6 +228,9 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
             'ค่าคอม': totalCommission,
             'หัก ณ ที่จ่าย 3%': totalWithholdingTax,
             'ยอดโอนรวม': totalPay,
+            'ออก WHT': '',
+            'เลขที่ WHT': '',
+            'วันที่จ่าย WHT': '',
             'โอนค่าแรง': '',
             'โอนคอม': '',
             'สถานะส่งเบิก': '',
