@@ -24,6 +24,7 @@ interface StockItem {
     sent: number;
     sold: number;
     returned: number;
+    transferOut: number;
     remaining: number;
 }
 
@@ -37,6 +38,7 @@ interface ChannelStock {
     totalSent: number;
     totalSold: number;
     totalReturned: number;
+    totalTransferOut: number;
     totalRemaining: number;
     soldPercent: number;
     items: StockItem[];
@@ -61,6 +63,7 @@ function CustomTooltip({ active, payload }: any) {
             <div className="mt-1.5 space-y-0.5 text-[10px]">
                 <p className="text-blue-600">ส่งไป: {fmt(d.totalSent)}</p>
                 <p className="text-emerald-600">ขายแล้ว: {fmt(d.totalSold)}</p>
+                {d.totalTransferOut > 0 && <p className="text-rose-600">โอนออก: {fmt(d.totalTransferOut)}</p>}
                 <p className="text-amber-600">คงเหลือ: {fmt(d.totalRemaining)}</p>
                 {d.totalReturned > 0 && <p className="text-purple-600">คืนแล้ว: {fmt(d.totalReturned)}</p>}
             </div>
@@ -116,6 +119,7 @@ export function ChannelStockReport({ data }: Props) {
                     sent: 0,
                     sold: 0,
                     returned: 0,
+                    transferOut: 0,
                     remaining: 0
                 });
             }
@@ -123,6 +127,7 @@ export function ChannelStockReport({ data }: Props) {
             agg.sent += item.sent;
             agg.sold += item.sold;
             agg.returned += item.returned;
+            agg.transferOut += item.transferOut;
             agg.remaining += item.remaining;
         });
     });
@@ -146,6 +151,7 @@ export function ChannelStockReport({ data }: Props) {
                         "ส่งไป": item.sent,
                         "ขายแล้ว": item.sold,
                         "คืนแล้ว": item.returned,
+                        "โอนออก": item.transferOut,
                         "คงเหลือ": item.remaining,
                     });
                 });
@@ -164,7 +170,7 @@ export function ChannelStockReport({ data }: Props) {
     return (
         <div className="space-y-4">
             {/* Summary Cards */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3">
                 <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg">
                     <p className="text-xs text-white/70 flex items-center gap-1"><Truck className="h-3 w-3" /> ส่งไปทั้งหมด</p>
                     <p className="text-xl font-bold mt-1">{fmt(totalSent)}</p>
@@ -172,6 +178,10 @@ export function ChannelStockReport({ data }: Props) {
                 <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-4 text-white shadow-lg">
                     <p className="text-xs text-white/70 flex items-center gap-1"><ShoppingCart className="h-3 w-3" /> ขายแล้ว</p>
                     <p className="text-xl font-bold mt-1">{fmt(totalSold)}</p>
+                </div>
+                <div className="bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl p-4 text-white shadow-lg">
+                    <p className="text-xs text-white/70 flex items-center gap-1"><Truck className="h-3 w-3" /> โอนออก</p>
+                    <p className="text-xl font-bold mt-1">{fmt(filteredData.reduce((s, c) => s + (c.totalTransferOut || 0), 0))}</p>
                 </div>
                 <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl p-4 text-white shadow-lg">
                     <p className="text-xs text-white/70 flex items-center gap-1"><Package className="h-3 w-3" /> คงเหลือ</p>
@@ -294,6 +304,12 @@ export function ChannelStockReport({ data }: Props) {
                                             <span className="text-emerald-500">ขาย</span>{" "}
                                             <span className="font-semibold text-emerald-700">{fmt(channel.totalSold)}</span>
                                         </div>
+                                        {channel.totalTransferOut > 0 && (
+                                            <div className="text-right hidden sm:block">
+                                                <span className="text-rose-500">โอนออก</span>{" "}
+                                                <span className="font-semibold text-rose-700">{fmt(channel.totalTransferOut)}</span>
+                                            </div>
+                                        )}
                                         <div className="text-right">
                                             <span className="text-amber-500">เหลือ</span>{" "}
                                             <span className="font-bold text-amber-700">{fmt(channel.totalRemaining)}</span>
@@ -324,6 +340,7 @@ export function ChannelStockReport({ data }: Props) {
                                                     <th className="border border-slate-200 py-1.5 px-2 text-right w-16 bg-slate-50">ส่งไป</th>
                                                     <th className="border border-slate-200 py-1.5 px-2 text-right w-16 bg-slate-50">ขาย</th>
                                                     <th className="border border-slate-200 py-1.5 px-2 text-right w-16 bg-slate-50">คืน</th>
+                                                    <th className="border border-slate-200 py-1.5 px-2 text-right w-16 bg-rose-50 text-rose-700">โอนออก</th>
                                                     <th className="border border-slate-200 py-1.5 px-2 text-right w-16 bg-slate-50">เหลือ</th>
                                                 </tr>
                                             </thead>
@@ -338,6 +355,7 @@ export function ChannelStockReport({ data }: Props) {
                                                         <td className="border border-slate-200 py-1.5 px-2 text-right text-slate-600 font-mono">{fmt(item.sent)}</td>
                                                         <td className="border border-slate-200 py-1.5 px-2 text-right text-emerald-600 font-semibold font-mono">{fmt(item.sold)}</td>
                                                         <td className="border border-slate-200 py-1.5 px-2 text-right text-purple-600 font-mono">{fmt(item.returned)}</td>
+                                                        <td className="border border-slate-200 py-1.5 px-2 text-right font-mono font-semibold text-rose-600">{item.transferOut > 0 ? fmt(item.transferOut) : "-"}</td>
                                                         <td className="border border-slate-200 py-1.5 px-2 text-right font-bold text-amber-700 font-mono">{fmt(item.remaining)}</td>
                                                     </tr>
                                                 ))}
@@ -369,6 +387,7 @@ export function ChannelStockReport({ data }: Props) {
                                 <th className="border border-slate-200 py-2.5 px-3 text-right bg-slate-50">ส่งไป</th>
                                 <th className="border border-slate-200 py-2.5 px-3 text-right bg-slate-50">ขายแล้ว</th>
                                 <th className="border border-slate-200 py-2.5 px-3 text-right bg-slate-50">คืนแล้ว</th>
+                                <th className="border border-slate-200 py-2.5 px-3 text-right bg-rose-50 text-rose-700">โอนออก</th>
                                 <th className="border border-slate-200 py-2.5 px-3 text-right bg-slate-50 font-bold">คงเหลือ</th>
                             </tr>
                         </thead>
@@ -384,12 +403,13 @@ export function ChannelStockReport({ data }: Props) {
                                     <td className="border border-slate-200 py-2 px-3 text-right text-slate-600 font-mono">{fmt(item.sent)}</td>
                                     <td className="border border-slate-200 py-2 px-3 text-right text-emerald-600 font-semibold font-mono">{fmt(item.sold)}</td>
                                     <td className="border border-slate-200 py-2 px-3 text-right text-purple-600 font-mono">{fmt(item.returned)}</td>
+                                    <td className="border border-slate-200 py-2 px-3 text-right font-semibold text-rose-600 font-mono">{item.transferOut > 0 ? fmt(item.transferOut) : "-"}</td>
                                     <td className="border border-slate-200 py-2 px-3 text-right font-bold text-amber-700 font-mono">{fmt(item.remaining)}</td>
                                 </tr>
                             ))}
                             {aggregatedItems.length === 0 && (
                                 <tr>
-                                    <td colSpan={10} className="py-8 text-center text-slate-400 border border-slate-200">ไม่มีข้อมูลสินค้า</td>
+                                    <td colSpan={11} className="py-8 text-center text-slate-400 border border-slate-200">ไม่มีข้อมูลสินค้า</td>
                                 </tr>
                             )}
                         </tbody>

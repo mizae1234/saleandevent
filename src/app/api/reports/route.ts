@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
     let channelRevenuePromise = Promise.resolve<any[]>([]);
     let channelQuantityPromise = Promise.resolve<any[]>([]);
     let channelStockPromise = Promise.resolve<any[]>([]);
+    let transferOutPromise = Promise.resolve<any[]>([]);
     let totalStockPromise = Promise.resolve<any[]>([]);
     let modelSalesPromise = Promise.resolve<any[]>([]);
 
@@ -150,7 +151,8 @@ export async function GET(request: NextRequest) {
 
     if (!tab || tab === "stock") {
         // 4. Channel stock — real-time (exclude inactive channels, closed channels optional)
-        // Optimization: Filter stock to only retrieve items with quantity > 0 directly from DB
+        // Include items with quantity >= 0 to also show items fully transferred out (quantity decremented to 0)
+        // but that originally had stock allocated
         channelStockPromise = db.salesChannel.findMany({
             where: {
                 isActive: true,
@@ -194,6 +196,17 @@ export async function GET(request: NextRequest) {
             },
             orderBy: { createdAt: 'desc' },
         }) as any;
+
+        // 4b. Fetch transfer out quantities per channel + barcode from stock_movements
+        transferOutPromise = db.$queryRaw`
+            SELECT 
+                sm.channel_id,
+                sm.barcode,
+                SUM(sm.quantity) as transfer_out_qty
+            FROM stock_movements sm
+            WHERE sm.movement_type = 'TRANSFER_OUT'
+            GROUP BY sm.channel_id, sm.barcode
+        ` as Promise<any[]>;
     }
 
     if (!tab || tab === "totalStock") {
@@ -257,6 +270,7 @@ export async function GET(request: NextRequest) {
         channelRevenueRaw,
         channelQuantityRaw,
         channelStockRaw,
+        transferOutRaw,
         totalStockRaw,
         modelSalesRaw,
     ] = await Promise.all([
@@ -265,6 +279,7 @@ export async function GET(request: NextRequest) {
         channelRevenuePromise,
         channelQuantityPromise,
         channelStockPromise,
+        transferOutPromise,
         totalStockPromise,
         modelSalesPromise,
     ]);
@@ -304,12 +319,45 @@ export async function GET(request: NextRequest) {
         billCount: Number(c.bill_count),
     }));
 
+    // Build transfer out lookup: Map<channelId, Map<barcode, qty>>
+    const transferOutMap = new Map<string, Map<string, number>>();
+    for (const row of transferOutRaw) {
+        const chId = row.channel_id;
+        if (!transferOutMap.has(chId)) transferOutMap.set(chId, new Map());
+        transferOutMap.get(chId)!.set(row.barcode, Number(row.transfer_out_qty));
+    }
+
     // Format channel stock
     const channelStock = channelStockRaw.map((c: any) => {
-        const totalSent = c.stock ? c.stock.reduce((s: number, i: any) => s + i.quantity, 0) : 0;
-        const totalSold = c.stock ? c.stock.reduce((s: number, i: any) => s + i.soldQuantity, 0) : 0;
-        const totalReturned = c.stock ? c.stock.reduce((s: number, i: any) => s + i.returnedQuantity, 0) : 0;
-        const totalRemaining = totalSent - totalSold - totalReturned;
+        const chTransferOut = transferOutMap.get(c.id);
+
+        const items = (c.stock || [])
+            .filter((i: any) => i.quantity > 0)
+            .map((i: any) => {
+                const transferOut = chTransferOut?.get(i.barcode) || 0;
+                // sent = current quantity + what was transferred out (restore original allocation)
+                const originalSent = i.quantity + transferOut;
+                return {
+                    barcode: i.barcode,
+                    name: i.product.name,
+                    code: i.product.code,
+                    sku: i.product.sku || "-",
+                    size: i.product.size,
+                    color: i.product.color,
+                    sent: originalSent,
+                    sold: i.soldQuantity,
+                    returned: i.returnedQuantity,
+                    transferOut,
+                    remaining: i.quantity - i.soldQuantity - i.returnedQuantity,
+                };
+            })
+            .sort((a: any, b: any) => b.sold - a.sold);
+
+        const totalSent = items.reduce((s: number, i: any) => s + i.sent, 0);
+        const totalSold = items.reduce((s: number, i: any) => s + i.sold, 0);
+        const totalReturned = items.reduce((s: number, i: any) => s + i.returned, 0);
+        const totalTransferOut = items.reduce((s: number, i: any) => s + i.transferOut, 0);
+        const totalRemaining = items.reduce((s: number, i: any) => s + i.remaining, 0);
 
         return {
             id: c.id,
@@ -321,23 +369,10 @@ export async function GET(request: NextRequest) {
             totalSent,
             totalSold,
             totalReturned,
+            totalTransferOut,
             totalRemaining,
             soldPercent: totalSent > 0 ? Math.round((totalSold / totalSent) * 100) : 0,
-            items: (c.stock || [])
-                .filter((i: any) => i.quantity > 0)
-                .map((i: any) => ({
-                    barcode: i.barcode,
-                    name: i.product.name,
-                    code: i.product.code,
-                    sku: i.product.sku || "-",
-                    size: i.product.size,
-                    color: i.product.color,
-                    sent: i.quantity,
-                    sold: i.soldQuantity,
-                    returned: i.returnedQuantity,
-                    remaining: i.quantity - i.soldQuantity - i.returnedQuantity,
-                }))
-                .sort((a: any, b: any) => b.sold - a.sold),
+            items,
         };
     });
 

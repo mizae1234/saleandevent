@@ -29,6 +29,7 @@ interface TransferItem {
     product: {
         name: string;
         code: string | null;
+        sku: string | null;
         size: string | null;
         color: string | null;
         producttype: string | null;
@@ -185,6 +186,8 @@ export function TransferDetailClient({ transfer }: Props) {
                                 <thead>
                                     <tr className="text-xs text-slate-500 border-b border-slate-100">
                                         <th className="text-left py-2 pr-2">สินค้า</th>
+                                        <th className="text-left py-2 px-2">รหัส</th>
+                                        <th className="text-left py-2 px-2">SKU</th>
                                         <th className="text-center py-2 px-2">ไซส์</th>
                                         <th className="text-center py-2 px-2">สี</th>
                                         <th className="text-right py-2 px-2">จำนวนส่ง</th>
@@ -200,6 +203,8 @@ export function TransferDetailClient({ transfer }: Props) {
                                                 <p className="font-medium text-slate-900">{item.product.name}</p>
                                                 <p className="text-xs text-slate-400">{item.barcode}</p>
                                             </td>
+                                            <td className="py-2.5 px-2 text-slate-600 font-mono text-xs">{item.product.code || '-'}</td>
+                                            <td className="py-2.5 px-2 text-slate-500 font-mono text-xs">{item.product.sku || '-'}</td>
                                             <td className="text-center py-2.5 px-2 text-slate-600">{item.product.size || '-'}</td>
                                             <td className="text-center py-2.5 px-2 text-slate-600">{item.product.color || '-'}</td>
                                             <td className="text-right py-2.5 px-2 font-medium text-slate-900">{item.quantity}</td>

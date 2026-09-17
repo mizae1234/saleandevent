@@ -48,7 +48,7 @@ export async function getStockTransferById(id: string) {
             toChannel: { select: { id: true, code: true, name: true, type: true, status: true, location: true } },
             items: {
                 include: {
-                    product: { select: { name: true, code: true, size: true, color: true, producttype: true, price: true } },
+                    product: { select: { name: true, code: true, sku: true, size: true, color: true, producttype: true, price: true } },
                 },
                 orderBy: { createdAt: 'asc' },
             },
@@ -73,6 +73,7 @@ export async function getStockTransferById(id: string) {
             product: {
                 name: i.product.name,
                 code: i.product.code,
+                sku: i.product.sku,
                 size: i.product.size,
                 color: i.product.color,
                 producttype: i.product.producttype,
