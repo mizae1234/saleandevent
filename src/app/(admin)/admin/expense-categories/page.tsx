@@ -120,7 +120,7 @@ export default function ExpenseCategoriesPage() {
                     กฎการคำนวณภาษีหัก ณ ที่จ่าย 3% (Withholding Tax):
                 </p>
                 <ul className="list-disc pl-5 space-y-0.5 text-slate-600">
-                    <li><strong className="text-blue-700">ม.40(1):</strong> รวมฐานกับค่าแรง (เช่น ค่าลงงาน, ค่าเก็บงาน) $\rightarrow$ หัก 3% เฉพาะเมื่อทำงานเกิน 10 วัน</li>
+                    <li><strong className="text-blue-700">ม.40(1):</strong> รวมฐานกับค่าแรง (เช่น ค่าลงงาน, ค่าเก็บงาน) $\rightarrow$ หัก 3%</li>
                     <li><strong className="text-emerald-700">ม.40(2):</strong> รวมฐานกับค่าคอมมิสชั่น (เช่น ค่าเป้า) $\rightarrow$ หัก 3% เสมอ</li>
                     <li><strong>ไม่คิดภาษี:</strong> ค่าใช้จ่ายเบิกจ่ายตามจริง (เช่น ค่าเดินทาง, ค่าที่พัก, อื่นๆ)</li>
                 </ul>
@@ -270,7 +270,7 @@ export default function ExpenseCategoriesPage() {
                                     className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors"
                                 >
                                     <option value="none">⚪ ไม่คิดภาษีหัก ณ ที่จ่าย (None / ยกเว้น)</option>
-                                    <option value="40_1">🔵 เงินได้ ม.40(1) — รวมกับค่าแรง (หัก 3% เมื่อเกิน 10 วัน)</option>
+                                    <option value="40_1">🔵 เงินได้ ม.40(1) — รวมกับค่าแรง (หัก 3%)</option>
                                     <option value="40_2">🟢 เงินได้ ม.40(2) — รวมกับค่าคอมมิสชั่น (หัก 3%)</option>
                                 </select>
                                 <p className="text-xs text-slate-400 mt-1">

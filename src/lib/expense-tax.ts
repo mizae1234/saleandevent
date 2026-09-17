@@ -55,7 +55,7 @@ export function getExpenseWhtType(categoryName: string, configuredWhtType?: stri
  * 
  * Rules:
  * 1. 40(1) Base = Wage (daysWorked × dailyRate) + sum of all expenses configured as '40_1' (e.g. ค่าลงงาน, ค่าเก็บงาน)
- *    40(1) Tax  = If daysWorked > 10: 40(1) Base × 3%, else 0.
+ *    40(1) Tax  = 40(1) Base × 3%
  * 
  * 2. 40(2) Base = Commission + sum of all expenses configured as '40_2' (e.g. ค่าเป้า)
  *    40(2) Tax  = 40(2) Base × 3%
@@ -88,8 +88,7 @@ export function calculatePayrollTax({
 
     // 40(1) calculation
     const total401 = baseWage + additional401;
-    const shouldWithholdWage = daysWorked > 10;
-    const wageTax = shouldWithholdWage ? Math.round(total401 * 0.03 * 100) / 100 : 0;
+    const wageTax = Math.round(total401 * 0.03 * 100) / 100;
 
     // 40(2) calculation
     const total402 = commission + additional402;

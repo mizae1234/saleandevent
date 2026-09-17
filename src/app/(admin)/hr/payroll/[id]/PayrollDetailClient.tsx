@@ -151,10 +151,9 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
         setLocalRows(prev => prev.map(r => {
             if (r.channelStaffId !== channelStaffId) return r;
             const totalWage = r.daysWorked * newRate;
-            const shouldWithhold = r.daysWorked > 10;
             const totalWage401 = totalWage + (r.setupExpense || 0) + (r.teardownExpense || 0);
             const totalCommission402 = r.totalCommission + (r.targetIncentive || 0);
-            const wageTax = shouldWithhold ? Math.round(totalWage401 * 0.03 * 100) / 100 : 0;
+            const wageTax = Math.round(totalWage401 * 0.03 * 100) / 100;
             const commissionTax = Math.round(totalCommission402 * 0.03 * 100) / 100;
             const withholdingTax = wageTax + commissionTax;
 

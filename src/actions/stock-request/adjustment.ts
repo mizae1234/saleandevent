@@ -47,6 +47,28 @@ export async function adjustChannelStock(
         return { error: 'จำนวนสินค้าต้องไม่ติดลบ' };
     }
 
+    // Validate newQty >= soldQuantity
+    const existingStocks = await db.channelStock.findMany({
+        where: {
+            channelId,
+            barcode: { in: changedItems.map(item => item.barcode) },
+        },
+        include: {
+            product: { select: { name: true, code: true, size: true, color: true } },
+        },
+    });
+    const stockMap = new Map(existingStocks.map(s => [s.barcode, s]));
+
+    for (const item of changedItems) {
+        const stockItem = stockMap.get(item.barcode);
+        if (stockItem && item.newQty < stockItem.soldQuantity) {
+            const prodDesc = `${stockItem.product.code || item.barcode} (${stockItem.product.name} ${stockItem.product.color || ''} ${stockItem.product.size || ''})`.trim();
+            return {
+                error: `ไม่สามารถปรับจำนวนรับเข้าของ ${prodDesc} ให้น้อยกว่ายอดขายแล้วได้ (ขายแล้ว ${stockItem.soldQuantity} ชิ้น, ปรับเป็น ${item.newQty} ชิ้น)`,
+            };
+        }
+    }
+
     await db.$transaction(async (tx) => {
         for (const item of changedItems) {
             const diff = item.newQty - item.currentQty;

@@ -167,6 +167,12 @@ export function StockAdjustmentClient({ channels }: Props) {
     // Save adjustments (called from ConfirmDialog onConfirm)
     const handleConfirmSave = async () => {
         if (!selectedChannel) return;
+
+        if (hasInvalidAdjustments) {
+            toastError("มียอดรับเข้าน้อยกว่ายอดที่ขายแล้ว กรุณาตรวจสอบก่อนบันทึก");
+            return;
+        }
+
         setSaving(true);
 
         try {
@@ -194,6 +200,16 @@ export function StockAdjustmentClient({ channels }: Props) {
 
     // Check if all adjustments have reasons (for enabling save)
     const allHaveReasons = Array.from(adjustments.values()).every(a => a.reason.trim());
+
+    // Check if any adjustment reduces received quantity below sold quantity
+    const invalidAdjustments = useMemo(() => {
+        return Array.from(adjustments.values()).filter(adj => {
+            const item = stock.find(s => s.barcode === adj.barcode);
+            return item && adj.newQty < item.soldQuantity;
+        });
+    }, [adjustments, stock]);
+
+    const hasInvalidAdjustments = invalidAdjustments.length > 0;
 
     // Get current quantity (adjusted or original)
     const getCurrentQty = (item: StockItem) => {
@@ -428,7 +444,7 @@ export function StockAdjustmentClient({ channels }: Props) {
                                 <ConfirmDialog
                                     trigger={
                                         <button
-                                            disabled={saving || !allHaveReasons}
+                                            disabled={saving || !allHaveReasons || hasInvalidAdjustments}
                                             className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg transition-colors disabled:opacity-50 shadow-sm"
                                         >
                                             {saving ? <Spinner size="sm" /> : <Save className="h-3.5 w-3.5" />}
@@ -440,7 +456,7 @@ export function StockAdjustmentClient({ channels }: Props) {
                                     onConfirm={handleConfirmSave}
                                     confirmText="ยืนยันปรับปรุง"
                                     variant="warning"
-                                    disabled={!allHaveReasons}
+                                    disabled={!allHaveReasons || hasInvalidAdjustments}
                                 />
                             </div>
                         )}
@@ -455,6 +471,27 @@ export function StockAdjustmentClient({ channels }: Props) {
                                     รายการที่เปลี่ยนแปลง ({changedCount} รายการ)
                                 </span>
                             </div>
+
+                            {/* Warning if any item has newQty < soldQuantity */}
+                            {hasInvalidAdjustments && (
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-2.5 mb-3 flex items-start gap-2 text-xs text-red-700">
+                                    <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <span className="font-semibold">พบ {invalidAdjustments.length} รายการที่ยอดรับเข้าน้อยกว่ายอดขายแล้ว:</span>
+                                        <div className="mt-1 space-y-0.5">
+                                            {invalidAdjustments.map(inv => {
+                                                const s = stock.find(item => item.barcode === inv.barcode);
+                                                return (
+                                                    <div key={inv.barcode} className="text-red-600">
+                                                        • <span className="font-mono font-semibold">{inv.code}</span> ({inv.productName} {inv.color} {inv.size}): ปรับเป็น {inv.newQty} แต่มียอดขายแล้ว {s?.soldQuantity || 0} ชิ้น
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        <div className="text-red-500 font-medium mt-1">กรุณาปรับจำนวนรับเข้าให้ไม่น้อยกว่ายอดขายแล้วก่อนทำการบันทึก</div>
+                                    </div>
+                                </div>
+                            )}
                             <div className="space-y-1.5 mb-3">
                                 {Array.from(adjustments.values()).map(adj => {
                                     const diff = adj.newQty - adj.currentQty;
@@ -534,7 +571,8 @@ export function StockAdjustmentClient({ channels }: Props) {
                                             <th className="text-center p-3 text-xs font-semibold text-slate-500">ไซส์</th>
                                             <th className="text-center p-3 text-xs font-semibold text-slate-500 w-20">รับเข้า</th>
                                             <th className="text-center p-3 text-xs font-semibold text-slate-500 w-20">ขายแล้ว</th>
-                                            <th className="text-center p-3 text-xs font-semibold text-slate-500 w-32">ปรับจำนวน (รับเข้า)</th>
+                                            <th className="text-center p-3 text-xs font-semibold text-slate-500 w-20">คงเหลือ</th>
+                                            <th className="text-center p-3 text-xs font-semibold text-slate-500 w-36">ปรับจำนวน (รับเข้า)</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -543,12 +581,15 @@ export function StockAdjustmentClient({ channels }: Props) {
                                             const currentQty = getCurrentQty(item);
                                             const isChanged = adj !== undefined;
                                             const diff = isChanged ? adj.newQty - adj.currentQty : 0;
+                                            const origRemaining = item.quantity - item.soldQuantity;
+                                            const currentRemaining = currentQty - item.soldQuantity;
+                                            const isBelowSold = currentQty < item.soldQuantity;
 
                                             return (
                                                 <tr
                                                     key={item.id}
                                                     className={`hover:bg-slate-50 transition-colors ${
-                                                        isChanged ? "bg-amber-50/50" : ""
+                                                        isBelowSold ? "bg-red-50/40" : isChanged ? "bg-amber-50/50" : ""
                                                     }`}
                                                 >
                                                     <td className="p-3 text-slate-400 text-xs">{idx + 1}</td>
@@ -571,11 +612,22 @@ export function StockAdjustmentClient({ channels }: Props) {
                                                         )}
                                                     </td>
                                                     <td className="p-3 text-center text-blue-600 font-medium">{item.soldQuantity}</td>
+                                                    <td className="p-3 text-center font-medium">
+                                                        <span className={isChanged ? "text-slate-400 line-through" : origRemaining < 0 ? "text-red-600 font-bold" : "text-emerald-700"}>
+                                                            {origRemaining}
+                                                        </span>
+                                                        {isChanged && (
+                                                            <span className={`ml-1.5 font-bold ${currentRemaining < 0 ? "text-red-600" : "text-emerald-700"}`}>
+                                                                {currentRemaining}
+                                                            </span>
+                                                        )}
+                                                    </td>
                                                     <td className="p-3">
                                                         <div className="flex items-center justify-center gap-1">
                                                             <button
                                                                 onClick={() => updateAdjustment(item, currentQty - 1)}
-                                                                disabled={currentQty <= 0}
+                                                                disabled={currentQty <= item.soldQuantity || currentQty <= 0}
+                                                                title={currentQty <= item.soldQuantity ? `ไม่สามารถปรับลดต่ำกว่ายอดขายแล้ว (${item.soldQuantity} ชิ้น)` : "ลดจำนวน"}
                                                                 className="p-1 rounded-md bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                                                             >
                                                                 <Minus className="h-3.5 w-3.5" />
@@ -590,9 +642,11 @@ export function StockAdjustmentClient({ channels }: Props) {
                                                                     }
                                                                 }}
                                                                 className={`w-16 text-center py-1 rounded-md border text-sm font-semibold ${
-                                                                    isChanged
-                                                                        ? "border-amber-300 bg-amber-50 text-amber-800"
-                                                                        : "border-slate-200 bg-white text-slate-700"
+                                                                    isBelowSold
+                                                                        ? "border-red-400 bg-red-50 text-red-700 ring-1 ring-red-300"
+                                                                        : isChanged
+                                                                            ? "border-amber-300 bg-amber-50 text-amber-800"
+                                                                            : "border-slate-200 bg-white text-slate-700"
                                                                 } focus:outline-none focus:ring-1 focus:ring-teal-400`}
                                                             />
                                                             <button
@@ -602,13 +656,19 @@ export function StockAdjustmentClient({ channels }: Props) {
                                                                 <Plus className="h-3.5 w-3.5" />
                                                             </button>
                                                         </div>
-                                                        {isChanged && (
+                                                        {isBelowSold ? (
+                                                            <div className="text-center mt-1">
+                                                                <span className="text-[10px] font-medium text-red-600 block leading-tight">
+                                                                    น้อยกว่าขาย ({item.soldQuantity})
+                                                                </span>
+                                                            </div>
+                                                        ) : isChanged ? (
                                                             <div className="text-center mt-1">
                                                                 <span className={`text-xs font-medium ${diff > 0 ? "text-emerald-600" : "text-red-500"}`}>
                                                                     {diff > 0 ? `+${diff}` : diff}
                                                                 </span>
                                                             </div>
-                                                        )}
+                                                        ) : null}
                                                     </td>
                                                 </tr>
                                             );
@@ -628,6 +688,16 @@ export function StockAdjustmentClient({ channels }: Props) {
                                                 )}
                                             </td>
                                             <td className="p-3 text-center text-blue-600 font-mono">{totalSoldQty}</td>
+                                            <td className="p-3 text-center font-mono">
+                                                <span className={changedCount > 0 ? "text-slate-400 line-through font-normal" : totalSentQty - totalSoldQty < 0 ? "text-red-600" : "text-emerald-700"}>
+                                                    {totalSentQty - totalSoldQty}
+                                                </span>
+                                                {changedCount > 0 && (
+                                                    <span className={`ml-1.5 font-bold ${totalCurrentAdjustedQty - totalSoldQty < 0 ? "text-red-600" : "text-emerald-700"}`}>
+                                                        {totalCurrentAdjustedQty - totalSoldQty}
+                                                    </span>
+                                                )}
+                                            </td>
                                             <td className="p-3 text-center">
                                                 {changedCount > 0 && (
                                                     <span className={`font-semibold ${totalDiff > 0 ? "text-emerald-600" : totalDiff < 0 ? "text-red-500" : "text-slate-500"}`}>

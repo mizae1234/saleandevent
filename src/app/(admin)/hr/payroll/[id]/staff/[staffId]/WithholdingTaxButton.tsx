@@ -54,7 +54,6 @@ export function WithholdingTaxButton({
         ],
     });
 
-    const shouldWithholdWage = daysWorked > 10;
     const hasTax = taxResult.totalWithholdingTax > 0;
     const resolvedSetup = setupExpense || (expenses.find(e => e.category === 'ค่าลงงาน')?.amount || 0);
     const resolvedTeardown = teardownExpense || (expenses.find(e => e.category === 'ค่าเก็บงาน')?.amount || 0);
@@ -142,7 +141,7 @@ export function WithholdingTaxButton({
                         ใบหัก ณ ที่จ่าย (ภ.ง.ด.3 {whtIssued && hasTax ? '— 3%' : ''})
                     </p>
                     <p className="text-xs text-slate-500 mt-0.5">
-                        ทำงาน {daysWorked} วัน {shouldWithholdWage ? '(เกิน 10 วัน หัก ม.40(1) 3%)' : '(ไม่เกิน 10 วัน ยกเว้นภาษี ม.40(1))'}
+                        ทำงาน {daysWorked} วัน
                     </p>
                 </div>
                 <button
@@ -221,12 +220,8 @@ export function WithholdingTaxButton({
                                 )}
                             </div>
                             <div className="flex justify-between text-xs mt-1 pl-2">
-                                <span className={shouldWithholdWage ? 'text-red-500' : 'text-slate-400'}>
-                                    {shouldWithholdWage ? 'หัก ณ ที่จ่าย ม.40(1) (3%)' : 'หัก 0% (ทำงาน ≤ 10 วัน)'}
-                                </span>
-                                <span className={shouldWithholdWage ? 'text-red-600 font-medium' : 'text-slate-400'}>
-                                    {shouldWithholdWage ? `-฿${taxResult.wageTax.toLocaleString()}` : '฿0'}
-                                </span>
+                                <span className="text-red-500">หัก ณ ที่จ่าย ม.40(1) (3%)</span>
+                                <span className="text-red-600 font-medium">-฿{taxResult.wageTax.toLocaleString()}</span>
                             </div>
                         </div>
 

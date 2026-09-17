@@ -21,7 +21,7 @@ export interface WithholdingTaxData {
     targetIncentive?: number;  // ค่าเป้า (ม.40(2))
     commission402Total?: number; // commission + targetIncentive
     taxRate: number;           // 0.03 or 0
-    wageTax: number;           // wage401Total × 0.03 (when > 10 days)
+    wageTax: number;           // wage401Total × 0.03
     commissionTax: number;     // commission402Total × 0.03
     totalIncome: number;       // wage401Total + commission402Total
     totalTax: number;          // wageTax + commissionTax
@@ -397,7 +397,7 @@ export async function generateWithholdingTaxPdf(data: WithholdingTaxData) {
           ค่าแรง ฿${data.dailyRate.toLocaleString()} × ${data.daysWorked} วัน (${formatMoney(data.totalWage)})
           ${data.setupExpense ? ` + ค่าลงงาน ฿${formatMoney(data.setupExpense)}` : ''}
           ${data.teardownExpense ? ` + ค่าเก็บงาน ฿${formatMoney(data.teardownExpense)}` : ''}
-          ${data.daysWorked > 10 ? ' (เกิน 10 วัน หัก 3%)' : ' (ไม่เกิน 10 วัน ไม่หักภาษี)'}
+          (หัก 3%)
         </span>
       </div>
       <div class="date">${hasWage ? docDate : ''}</div>
