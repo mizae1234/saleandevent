@@ -13,7 +13,7 @@ export async function getStockTransfers(statusFilter?: string) {
             toChannel: { select: { id: true, code: true, name: true, type: true, status: true } },
             items: {
                 include: {
-                    product: { select: { name: true, code: true, size: true, color: true } },
+                    product: { select: { barcode: true, name: true, code: true, sku: true, size: true, color: true } },
                 },
             },
         },
@@ -34,6 +34,12 @@ export async function getStockTransfers(statusFilter?: string) {
         shippedAt: t.shippedAt?.toISOString() || null,
         receivedAt: t.receivedAt?.toISOString() || null,
         cancelledAt: t.cancelledAt?.toISOString() || null,
+        itemsSummary: t.items.map(i => ({
+            barcode: i.product.barcode,
+            name: i.product.name,
+            code: i.product.code,
+            sku: i.product.sku,
+        })),
     }));
 }
 
