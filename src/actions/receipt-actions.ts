@@ -1,6 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
+import { getSession } from '@/lib/auth';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { th } from 'date-fns/locale';
 
@@ -137,10 +138,50 @@ export async function getSingleReceiptData(saleId: string): Promise<SingleReceip
             dateRange = `เริ่ม ${format(new Date(ch.startDate), 'dd/MM/yyyy')}`;
         }
 
-        // Staff name
-        const mainStaff = ch?.staff?.find((s) => s.isMain) || ch?.staff?.[0];
-        const staffName = mainStaff?.staff?.name || ch?.responsiblePersonName || 'พนักงานขาย';
-        const managerName = ch?.responsiblePersonName || staffName;
+        // Staff name (ชื่อคนขาย) & Manager
+        let sellerName: string | null = null;
+
+        // 1. จาก staffId ในบิลขาย
+        if (sale.staffId) {
+            const seller = await db.staff.findUnique({
+                where: { id: sale.staffId },
+                select: { name: true },
+            });
+            if (seller?.name) sellerName = seller.name;
+        }
+
+        // 2. จาก createdBy ในบิลขาย (กรณีเป็น ID พนักงาน)
+        if (!sellerName && sale.createdBy && sale.createdBy !== '00000000-0000-0000-0000-000000000000') {
+            const creator = await db.staff.findUnique({
+                where: { id: sale.createdBy },
+                select: { name: true },
+            });
+            if (creator?.name) sellerName = creator.name;
+        }
+
+        // 3. จากพนักงานที่ผูกกับจุดขาย (PC / พนักงานขาย หรือคนแรก)
+        if (!sellerName && ch?.staff && ch.staff.length > 0) {
+            const pcStaff = ch.staff.find((s) => !s.isMain) || ch.staff[0];
+            if (pcStaff?.staff?.name) sellerName = pcStaff.staff.name;
+        }
+
+        // 4. จาก session ของผู้ใช้งานปัจจุบัน
+        if (!sellerName) {
+            try {
+                const session = await getSession();
+                if (session?.name) sellerName = session.name;
+            } catch {
+                // Ignore session lookup error
+            }
+        }
+
+        // 5. จากชื่อผู้รับผิดชอบงาน
+        if (!sellerName && ch?.responsiblePersonName) {
+            sellerName = ch.responsiblePersonName;
+        }
+
+        const staffName = sellerName || '-';
+        const managerName = '-';
 
         // Payment method mapping
         const pm = (sale.paymentMethod || 'cash').toLowerCase();
@@ -173,7 +214,7 @@ export async function getSingleReceiptData(saleId: string): Promise<SingleReceip
             company: {
                 name: company?.name || 'SARAN',
                 logoUrl: company?.logoUrl || null,
-                tagline: 'Upgrade Your Wardrobe, Not Your Budget',
+                tagline: '',
                 footerNote: company?.footerNote || 'ขอบคุณที่อุดหนุน SARAN\nThank you for shopping with us',
             },
             channel: {
@@ -264,11 +305,6 @@ export async function getDailySalesSummaryData(
             dayNumber = Math.max(1, diff + 1);
         }
 
-        // Main staff & Manager
-        const mainStaff = channel.staff?.find((s) => s.isMain) || channel.staff?.[0];
-        const staffName = mainStaff?.staff?.name || channel.responsiblePersonName || 'พนักงานขาย';
-        const managerName = channel.responsiblePersonName || staffName;
-
         // Group sales by day
         // Day sales: sales on targetDateFormattedStr
         const targetDaySales = channel.sales.filter((s) => {
@@ -278,6 +314,53 @@ export async function getDailySalesSummaryData(
 
         const activeDaySales = targetDaySales.filter((s) => s.status === 'active');
         const cancelledDaySales = targetDaySales.filter((s) => s.status === 'cancelled');
+
+        // Staff name (ชื่อคนขาย) & Manager
+        let sellerName: string | null = null;
+
+        // 1. ดึงชื่อคนขายจาก staffId ของบิลขายในวันนี้
+        const staffIdsOnDay = Array.from(
+            new Set(activeDaySales.map((s: any) => s.staffId).filter(Boolean))
+        ) as string[];
+
+        if (staffIdsOnDay.length > 0) {
+            const sellers = await db.staff.findMany({
+                where: { id: { in: staffIdsOnDay } },
+                select: { name: true },
+            });
+            const names = sellers.map((s) => s.name).filter(Boolean);
+            if (names.length > 0) {
+                sellerName = names.join(', ');
+            }
+        }
+
+        // 2. ถ้าในบิลไม่มี staffId ให้ดูพนักงานที่ผูกกับจุดขายนี้
+        if (!sellerName && channel.staff && channel.staff.length > 0) {
+            const pcStaff = channel.staff.filter((s) => !s.isMain);
+            const targetStaffList = pcStaff.length > 0 ? pcStaff : channel.staff;
+            const names = targetStaffList.map((s) => s.staff?.name).filter(Boolean);
+            if (names.length > 0) {
+                sellerName = names.join(', ');
+            }
+        }
+
+        // 3. จาก session ของผู้ใช้งานปัจจุบัน
+        if (!sellerName) {
+            try {
+                const session = await getSession();
+                if (session?.name) sellerName = session.name;
+            } catch {
+                // Ignore session lookup error
+            }
+        }
+
+        // 4. จากผู้รับผิดชอบงาน
+        if (!sellerName && channel.responsiblePersonName) {
+            sellerName = channel.responsiblePersonName;
+        }
+
+        const staffName = sellerName || '-';
+        const managerName = '-';
 
         // Payment breakdown for today
         const pmStats: Record<string, { label: string; bills: number; items: number; amount: number }> = {
@@ -357,7 +440,7 @@ export async function getDailySalesSummaryData(
             company: {
                 name: company?.name || 'SARAN',
                 logoUrl: company?.logoUrl || null,
-                tagline: 'Upgrade Your Wardrobe, Not Your Budget',
+                tagline: '',
             },
             channel: {
                 id: channel.id,

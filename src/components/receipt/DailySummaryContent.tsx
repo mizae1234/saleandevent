@@ -26,7 +26,7 @@ export function DailySummaryContent({ data, widthMode }: Props) {
                 fontFamily: "'Sarabun', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             }}
         >
-            {/* 1. LOGO & TAGLINE */}
+            {/* 1. LOGO */}
             <div className="text-center space-y-1">
                 {company.logoUrl ? (
                     <div className="flex justify-center">
@@ -40,11 +40,6 @@ export function DailySummaryContent({ data, widthMode }: Props) {
                     <div className="font-extrabold tracking-widest text-2xl font-serif">
                         {company.name}
                     </div>
-                )}
-                {company.tagline && (
-                    <p className={`text-slate-500 uppercase tracking-wider ${is58 ? "text-[8px]" : "text-[10px]"}`}>
-                        {company.tagline}
-                    </p>
                 )}
             </div>
 
@@ -72,11 +67,11 @@ export function DailySummaryContent({ data, widthMode }: Props) {
                 </div>
                 <div className="flex justify-between">
                     <span className="text-slate-500">พนักงาน</span>
-                    <span className="font-medium text-slate-800 truncate max-w-[160px] text-right">{channel.staffName}</span>
+                    <span className="font-medium text-slate-800 truncate max-w-[160px] text-right">{channel.staffName || "-"}</span>
                 </div>
                 <div className="flex justify-between">
                     <span className="text-slate-500">หัวหน้า</span>
-                    <span className="font-medium text-slate-800 truncate max-w-[160px] text-right">{channel.managerName}</span>
+                    <span className="font-medium text-slate-800 truncate max-w-[160px] text-right">-</span>
                 </div>
             </div>
 
@@ -199,13 +194,13 @@ export function DailySummaryContent({ data, widthMode }: Props) {
                 <div className="space-y-1">
                     <div className="border-b border-slate-400 w-3/4 mx-auto pb-6" />
                     <p className={`text-slate-600 font-medium ${is58 ? "text-[9px]" : "text-[10px]"}`}>
-                        พนักงานขาย ({summary.signatures.staff.replace(/^.*?\((.*?)\).*$/, "$1") || summary.signatures.staff})
+                        พนักงานขาย {summary.signatures.staff && summary.signatures.staff !== '-' ? `(${summary.signatures.staff.replace(/^.*?\((.*?)\).*$/, "$1") || summary.signatures.staff})` : ''}
                     </p>
                 </div>
                 <div className="space-y-1">
                     <div className="border-b border-slate-400 w-3/4 mx-auto pb-6" />
                     <p className={`text-slate-600 font-medium ${is58 ? "text-[9px]" : "text-[10px]"}`}>
-                        หัวหน้า / ผู้ตรวจสอบ ({summary.signatures.manager.replace(/^.*?\((.*?)\).*$/, "$1") || summary.signatures.manager})
+                        หัวหน้า / ผู้ตรวจสอบ {summary.signatures.manager && summary.signatures.manager !== '-' ? `(${summary.signatures.manager.replace(/^.*?\((.*?)\).*$/, "$1") || summary.signatures.manager})` : ''}
                     </p>
                 </div>
             </div>

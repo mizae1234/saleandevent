@@ -27,7 +27,7 @@ export function SingleReceiptContent({ data, widthMode }: Props) {
                 fontFamily: "'Sarabun', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             }}
         >
-            {/* 1. LOGO & TAGLINE */}
+            {/* 1. LOGO */}
             <div className="text-center space-y-1">
                 {company.logoUrl ? (
                     <div className="flex justify-center">
@@ -41,11 +41,6 @@ export function SingleReceiptContent({ data, widthMode }: Props) {
                     <div className="font-extrabold tracking-widest text-2xl font-serif">
                         {company.name}
                     </div>
-                )}
-                {company.tagline && (
-                    <p className={`text-slate-500 uppercase tracking-wider ${is58 ? "text-[8px]" : "text-[10px]"}`}>
-                        {company.tagline}
-                    </p>
                 )}
             </div>
 
@@ -73,11 +68,11 @@ export function SingleReceiptContent({ data, widthMode }: Props) {
                 </div>
                 <div className="flex justify-between">
                     <span className="text-slate-500">พนักงาน</span>
-                    <span className="font-medium text-slate-800 truncate max-w-[160px] text-right">{channel.staffName}</span>
+                    <span className="font-medium text-slate-800 truncate max-w-[160px] text-right">{channel.staffName || "-"}</span>
                 </div>
                 <div className="flex justify-between">
                     <span className="text-slate-500">หัวหน้า</span>
-                    <span className="font-medium text-slate-800 truncate max-w-[160px] text-right">{channel.managerName}</span>
+                    <span className="font-medium text-slate-800 truncate max-w-[160px] text-right">-</span>
                 </div>
             </div>
 
