@@ -3,6 +3,7 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
+import { PrintReceiptButton } from "@/components/receipt";
 
 interface SaleItem {
     id: string;
@@ -50,17 +51,21 @@ export function SaleDetailClient({ sale }: { sale: SaleData }) {
     return (
         <div className="max-w-3xl mx-auto space-y-6">
             {/* Header */}
-            <div className="flex items-center gap-4">
-                <Link
-                    href={`/pc/sales/channel/${sale.channel.id}`}
-                    className="flex items-center justify-center h-10 w-10 rounded-full bg-white shadow-sm hover:bg-slate-50 transition-colors"
-                >
-                    <ArrowLeft className="h-5 w-5 text-slate-600" />
-                </Link>
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900">รายละเอียดบิลขาย</h1>
-                    <p className="text-sm text-slate-500">{sale.channel.name}</p>
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <Link
+                        href={`/pc/sales/channel/${sale.channel.id}`}
+                        className="flex items-center justify-center h-10 w-10 rounded-full bg-white shadow-sm hover:bg-slate-50 transition-colors"
+                    >
+                        <ArrowLeft className="h-5 w-5 text-slate-600" />
+                    </Link>
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900">รายละเอียดบิลขาย</h1>
+                        <p className="text-sm text-slate-500">{sale.channel.name}</p>
+                    </div>
                 </div>
+
+                <PrintReceiptButton saleId={sale.id} variant="button" label="พิมพ์ใบเสร็จ (Thermal)" />
             </div>
 
             {/* Receipt Info */}

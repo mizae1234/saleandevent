@@ -36,6 +36,10 @@ export async function GET(
         return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
+    const company = await db.companySetting.findFirst({
+        orderBy: { createdAt: 'asc' },
+    });
+
     // Use invoice's direct customer, fall back to channel's customer
     const customer = invoice.customer || invoice.channel.customer;
 
@@ -52,6 +56,14 @@ export async function GET(
         grandTotal: Number(invoice.grandTotal),
         status: invoice.status,
         notes: invoice.notes,
+        company: company ? {
+            name: company.name,
+            taxId: company.taxId,
+            address: company.address,
+            phone: company.phone,
+            branchName: company.branchName,
+            branchCode: company.branchCode,
+        } : null,
         channel: {
             id: invoice.channel.id,
             code: invoice.channel.code,

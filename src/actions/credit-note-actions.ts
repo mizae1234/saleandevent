@@ -160,7 +160,10 @@ export async function deleteCreditNote(cnId: string) {
 }
 
 export async function getCreditNotePdfData(cnId: string) {
-    const cn = await getCreditNote(cnId);
+    const [cn, company] = await Promise.all([
+        getCreditNote(cnId),
+        db.companySetting.findFirst({ orderBy: { createdAt: 'asc' } }),
+    ]);
     if (!cn || !cn.invoice) throw new Error("ไม่พบข้อมูลใบลดหนี้");
 
     return {
@@ -169,6 +172,14 @@ export async function getCreditNotePdfData(cnId: string) {
         reason: cn.reason,
         totalAmount: Number(cn.totalAmount),
         invoiceNumber: cn.invoice.invoiceNumber,
+        company: company ? {
+            name: company.name,
+            taxId: company.taxId,
+            address: company.address,
+            phone: company.phone,
+            branchName: company.branchName,
+            branchCode: company.branchCode,
+        } : null,
         channel: {
             code: cn.invoice.channel.code,
             name: cn.invoice.channel.name,

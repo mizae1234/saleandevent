@@ -5,6 +5,13 @@ export interface CreditNotePdfData {
     cnDate: string | null;
     reason: string | null;
     totalAmount: number;
+    company?: {
+        name: string;
+        taxId: string | null;
+        address: string | null;
+        phone?: string | null;
+        branchName?: string | null;
+    } | null;
     invoiceNumber: string | null;
     channel: { code: string; name: string; location: string };
     customer: {
@@ -93,14 +100,20 @@ export async function generateCreditNotePdf(data: CreditNotePdfData) {
     const rightX = pageWidth - marginRight;
 
     // HEADER
+    const companyName = data.company?.name || "บริษัท สวยไม่ไหว 2020 จำกัด";
+    const companyTaxId = data.company?.taxId 
+        ? `เลขประจำตัวผู้เสียภาษี ${data.company.taxId}`
+        : "เลขประจำตัวผู้เสียภาษี 0 1 0 5 5 6 3 0 4 6 5 8 2";
+    const companyAddress = data.company?.address || "5/204 ถนนเทศบาลสงเคราะห์ แขวงลาดยาว เขตจตุจักร จังหวัดกรุงเทพมหานคร";
+
     doc.setFont("Sarabun", "bold");
     doc.setFontSize(18);
-    doc.text("บริษัท สวยไม่ไหว 2020 จำกัด", marginLeft, 16);
+    doc.text(companyName, marginLeft, 16);
 
     doc.setFontSize(12);
     doc.setFont("Sarabun", "normal");
-    doc.text("เลขประจำตัวผู้เสียภาษี 0 1 0 5 5 6 3 0 4 6 5 8 2", marginLeft, 23);
-    doc.text("5/204 ถนนเทศบาลสงเคราะห์ แขวงลาดยาว เขตจตุจักร จังหวัดกรุงเทพมหานคร", marginLeft, 29);
+    doc.text(companyTaxId, marginLeft, 23);
+    doc.text(companyAddress, marginLeft, 29);
 
     doc.setFontSize(16);
     doc.setFont("Sarabun", "bold");

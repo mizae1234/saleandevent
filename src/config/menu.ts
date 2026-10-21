@@ -26,6 +26,7 @@ import {
     LayoutDashboard,
     SlidersHorizontal,
     ArrowRightLeft,
+    Building2,
     LucideIcon
 } from "lucide-react";
 
@@ -99,6 +100,7 @@ export const MENU_SECTIONS: MenuSection[] = [
         key: "system_admin",
         title: "System Admin (ตั้งค่า)",
         items: [
+            { title: "ข้อมูลร้านค้า / บริษัท", href: "/admin/company", icon: Building2 },
             { title: "จัดการสินค้า", href: "/admin/products", icon: Tag },
             { title: "หมวดหมู่สินค้า", href: "/admin/product-categories", icon: LayoutDashboard },
             { title: "หมวดหมู่ค่าใช้จ่าย", href: "/admin/expense-categories", icon: Receipt },

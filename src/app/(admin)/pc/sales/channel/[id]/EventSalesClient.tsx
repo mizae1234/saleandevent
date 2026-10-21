@@ -9,6 +9,7 @@ import { th } from "date-fns/locale";
 import { cancelSale } from "@/actions/sale-actions";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
+import { PrintReceiptButton, PrintDailySummaryButton } from "@/components/receipt";
 
 type SaleItem = {
     id: string;
@@ -470,18 +471,25 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
             </div>
 
             {/* Result count + Export Button */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs text-slate-400">
                     แสดง {visible.length} จาก {filtered.length} รายการ
                 </p>
-                <button
-                    onClick={handleExportExcel}
-                    disabled={exporting || filtered.length === 0}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50"
-                >
-                    {exporting ? <Spinner size="xs" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
-                    {exporting ? "กำลัง Export..." : "Export Excel"}
-                </button>
+                <div className="flex items-center gap-2">
+                    <PrintDailySummaryButton
+                        channelId={event.id}
+                        targetDate={startDate || undefined}
+                        label="พิมพ์สรุปยอดรายวัน"
+                    />
+                    <button
+                        onClick={handleExportExcel}
+                        disabled={exporting || filtered.length === 0}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                    >
+                        {exporting ? <Spinner size="xs" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+                        {exporting ? "กำลัง Export..." : "Export Excel"}
+                    </button>
+                </div>
             </div>
 
             {/* Sales List */}
@@ -687,10 +695,15 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className="px-4 py-2 border-t border-slate-100">
+                                                    <div className="px-4 py-2 border-t border-slate-100 flex items-center justify-between">
+                                                        <PrintReceiptButton
+                                                            saleId={sale.id}
+                                                            variant="secondary"
+                                                            label="พิมพ์ใบเสร็จ (Thermal)"
+                                                        />
                                                         <button
                                                             onClick={() => setCancellingId(sale.id)}
-                                                            className="text-xs text-red-400 hover:text-red-600 transition-colors"
+                                                            className="text-xs text-red-400 hover:text-red-600 transition-colors cursor-pointer"
                                                         >
                                                             ยกเลิกบิล
                                                         </button>

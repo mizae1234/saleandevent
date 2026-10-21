@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { createSale } from "@/actions/sale-actions";
 import {
     Search, Plus, Minus, Trash2, ShoppingCart,
-    CheckCircle, X, Receipt, Tag, PlusCircle, Package, CalendarDays
+    CheckCircle, X, Receipt, Tag, PlusCircle, Package, CalendarDays, Printer
 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { ThermalReceiptModal } from "@/components/receipt";
+import { getSingleReceiptData, type SingleReceiptData } from "@/actions/receipt-actions";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -66,6 +68,15 @@ export function POSInterface({ channelId, eventName, stockItems, isCashBooth }: 
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
     const [receivedAmount, setReceivedAmount] = useState<string>('');
+    const [completedReceiptData, setCompletedReceiptData] = useState<SingleReceiptData | null>(null);
+    const [showReceiptModal, setShowReceiptModal] = useState(false);
+    const [shouldPrintReceipt, setShouldPrintReceipt] = useState<boolean>(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("pos_should_print_receipt");
+            return saved !== null ? saved === "true" : true;
+        }
+        return true;
+    });
     const [isLoaded, setIsLoaded] = useState(false);
 
     // โหลดข้อมูลจาก localStorage
@@ -287,6 +298,16 @@ export function POSInterface({ channelId, eventName, stockItems, isCashBooth }: 
             localStorage.removeItem(`pos_cart_${channelId}`);
             localStorage.removeItem(`pos_adjustments_${channelId}`);
             localStorage.removeItem(`pos_discount_${channelId}`);
+
+            // Fetch receipt data to show modal only if user opted to print
+            if (shouldPrintReceipt && res && 'saleId' in res && res.saleId) {
+                const rData = await getSingleReceiptData(res.saleId);
+                if (rData) {
+                    setCompletedReceiptData(rData);
+                    setShowReceiptModal(true);
+                }
+            }
+
             router.refresh();
         } catch (error) {
             console.error("Failed to create sale:", error);
@@ -643,6 +664,23 @@ export function POSInterface({ channelId, eventName, stockItems, isCashBooth }: 
                                             {adjustments.length > 0 && <span>+ พิเศษ {adjustments.length} รายการ</span>}
                                         </div>
                                     </div>
+
+                                    {/* Print Receipt Checkbox */}
+                                    <label className="flex items-center gap-2.5 pt-3 border-t border-slate-200 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={shouldPrintReceipt}
+                                            onChange={(e) => {
+                                                setShouldPrintReceipt(e.target.checked);
+                                                localStorage.setItem("pos_should_print_receipt", String(e.target.checked));
+                                            }}
+                                            className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                                        />
+                                        <span className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
+                                            <Printer className="h-3.5 w-3.5 text-teal-600" />
+                                            พิมพ์ใบเสร็จหลังชำระเงิน
+                                        </span>
+                                    </label>
                                 </div>
                             </div>
                         </AlertDialogDescription>
@@ -784,6 +822,23 @@ export function POSInterface({ channelId, eventName, stockItems, isCashBooth }: 
                             </div>
                         </div>
 
+                        {/* Print Receipt Checkbox */}
+                        <label className="flex items-center gap-2.5 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer select-none shadow-2xs hover:bg-slate-50/50 transition-colors">
+                            <input
+                                type="checkbox"
+                                checked={shouldPrintReceipt}
+                                onChange={(e) => {
+                                    setShouldPrintReceipt(e.target.checked);
+                                    localStorage.setItem("pos_should_print_receipt", String(e.target.checked));
+                                }}
+                                className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                            />
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                                <Printer className="h-4 w-4 text-teal-600" />
+                                <span>พิมพ์ใบเสร็จหลังชำระเงิน</span>
+                            </div>
+                        </label>
+
                         <div className="pt-2">
                             <button
                                 onClick={handleSubmit}
@@ -796,6 +851,17 @@ export function POSInterface({ channelId, eventName, stockItems, isCashBooth }: 
                     </div>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {completedReceiptData && (
+                <ThermalReceiptModal
+                    isOpen={showReceiptModal}
+                    onClose={() => {
+                        setShowReceiptModal(false);
+                        setCompletedReceiptData(null);
+                    }}
+                    receipt={{ mode: "single", data: completedReceiptData }}
+                />
+            )}
         </>
     );
 }

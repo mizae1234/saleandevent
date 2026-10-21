@@ -14,6 +14,13 @@ export interface InvoicePdfData {
     vatAmount: number;
     grandTotal: number;
     notes: string | null;
+    company?: {
+        name: string;
+        taxId: string | null;
+        address: string | null;
+        phone?: string | null;
+        branchName?: string | null;
+    } | null;
     channel: { code: string; name: string; location: string };
     customer: {
         name: string;
@@ -108,22 +115,20 @@ export async function generateInvoicePdf(data: InvoicePdfData) {
     // ═══════════════════════════════════════
     //  HEADER: Company info (left) + Document title (right)
     // ═══════════════════════════════════════
+    const companyName = data.company?.name || "บริษัท สวยไม่ไหว 2020 จำกัด";
+    const companyTaxId = data.company?.taxId 
+        ? `เลขประจำตัวผู้เสียภาษี ${data.company.taxId}`
+        : "เลขประจำตัวผู้เสียภาษี 0 1 0 5 5 6 3 0 4 6 5 8 2";
+    const companyAddress = data.company?.address || "5/204 ถนนเทศบาลสงเคราะห์ แขวงลาดยาว เขตจตุจักร จังหวัดกรุงเทพมหานคร";
+
     doc.setFont("Sarabun", "bold");
     doc.setFontSize(18);
-    doc.text("บริษัท สวยไม่ไหว 2020 จำกัด", marginLeft, 16);
+    doc.text(companyName, marginLeft, 16);
 
     doc.setFontSize(12);
     doc.setFont("Sarabun", "normal");
-    doc.text(
-        "เลขประจำตัวผู้เสียภาษี 0 1 0 5 5 6 3 0 4 6 5 8 2",
-        marginLeft,
-        23
-    );
-    doc.text(
-        "5/204 ถนนเทศบาลสงเคราะห์ แขวงลาดยาว เขตจตุจักร จังหวัดกรุงเทพมหานคร",
-        marginLeft,
-        29
-    );
+    doc.text(companyTaxId, marginLeft, 23);
+    doc.text(companyAddress, marginLeft, 29);
 
     // Document title (right side)
     doc.setFontSize(16);
