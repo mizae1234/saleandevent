@@ -187,7 +187,7 @@ export async function getSingleReceiptData(saleId: string): Promise<SingleReceip
         const pm = (sale.paymentMethod || 'cash').toLowerCase();
         let pmLabel = 'เงินสด';
         if (pm === 'transfer' || pm === 'qr') pmLabel = 'โอนเงิน (QR Code)';
-        else if (pm === 'credit' || pm === 'card') pmLabel = 'บัตรเครดิต';
+        else if (pm === 'credit' || pm === 'card' || pm === 'creditcard' || pm === 'credit_card') pmLabel = 'บัตรเครดิต';
 
         const totalItems = sale.items.reduce((sum, item) => sum + item.quantity, 0);
         let itemsSum = 0;
@@ -375,7 +375,11 @@ export async function getDailySalesSummaryData(
 
         activeDaySales.forEach((s) => {
             const pmKey = (s.paymentMethod || 'cash').toLowerCase();
-            const mappedKey = pmKey === 'credit' || pmKey === 'card' ? 'credit' : pmKey === 'transfer' || pmKey === 'qr' ? 'transfer' : 'cash';
+            const mappedKey = (pmKey === 'credit' || pmKey === 'card' || pmKey === 'creditcard' || pmKey === 'credit_card')
+                ? 'credit'
+                : (pmKey === 'transfer' || pmKey === 'qr')
+                    ? 'transfer'
+                    : 'cash';
             
             const saleItemCount = s.items.reduce((sum, i) => sum + i.quantity, 0);
             const saleAmount = Number(s.totalAmount);

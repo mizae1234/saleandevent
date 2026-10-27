@@ -41,6 +41,8 @@ const PAYMENT_LABELS: Record<string, { label: string; bg: string; icon: string }
     cash: { label: "เงินสด", bg: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: "💵" },
     transfer: { label: "โอนเงิน", bg: "bg-blue-50 text-blue-700 border-blue-200", icon: "📱" },
     credit: { label: "บัตรเครดิต", bg: "bg-purple-50 text-purple-700 border-purple-200", icon: "💳" },
+    creditcard: { label: "บัตรเครดิต", bg: "bg-purple-50 text-purple-700 border-purple-200", icon: "💳" },
+    credit_card: { label: "บัตรเครดิต", bg: "bg-purple-50 text-purple-700 border-purple-200", icon: "💳" },
 };
 
 export function SaleDetailClient({ sale }: { sale: SaleData }) {

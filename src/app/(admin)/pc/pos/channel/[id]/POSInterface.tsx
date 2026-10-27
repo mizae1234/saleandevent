@@ -66,7 +66,7 @@ export function POSInterface({ channelId, eventName, stockItems, isCashBooth }: 
     const [billDiscount, setBillDiscount] = useState(0);
     const [showConfirm, setShowConfirm] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'credit'>('cash');
     const [receivedAmount, setReceivedAmount] = useState<string>('');
     const [completedReceiptData, setCompletedReceiptData] = useState<SingleReceiptData | null>(null);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
@@ -293,6 +293,7 @@ export function POSInterface({ channelId, eventName, stockItems, isCashBooth }: 
             setBillDiscount(0);
             setShowConfirm(false);
             setShowPaymentModal(false);
+            setPaymentMethod('cash');
             setReceivedAmount('');
             setMobileTab('products');
             localStorage.removeItem(`pos_cart_${channelId}`);
@@ -758,20 +759,55 @@ export function POSInterface({ channelId, eventName, stockItems, isCashBooth }: 
                     
                     <div className="p-4 space-y-4 bg-slate-50">
                         {/* Payment Method Tabs */}
-                        <div className="flex p-1 bg-white border border-slate-200 rounded-lg">
+                        <div className="flex p-1 bg-white border border-slate-200 rounded-lg gap-1">
                             <button
+                                type="button"
                                 onClick={() => setPaymentMethod('cash')}
-                                className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${paymentMethod === 'cash' ? 'bg-emerald-500 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                                className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${paymentMethod === 'cash' ? 'bg-emerald-500 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'}`}
                             >
                                 เงินสด
                             </button>
                             <button
+                                type="button"
                                 onClick={() => setPaymentMethod('transfer')}
-                                className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${paymentMethod === 'transfer' ? 'bg-emerald-500 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                                className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${paymentMethod === 'transfer' ? 'bg-emerald-500 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'}`}
                             >
                                 เงินโอน
                             </button>
+                            <button
+                                type="button"
+                                onClick={() => setPaymentMethod('credit')}
+                                className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${paymentMethod === 'credit' ? 'bg-emerald-500 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-50'}`}
+                            >
+                                บัตรเครดิต
+                            </button>
                         </div>
+
+                        {/* Credit Card Details */}
+                        {paymentMethod === 'credit' && (
+                            <div className="bg-white border border-purple-200 rounded-xl p-3.5 shadow-xs flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center text-xl shrink-0">
+                                    💳
+                                </div>
+                                <div className="text-xs">
+                                    <p className="font-semibold text-purple-900">ชำระด้วยบัตรเครดิต</p>
+                                    <p className="text-slate-500 mt-0.5">ยอดชำระ ฿{grandTotal.toLocaleString()} (ไม่ต้องทอนเงิน กดบันทึกได้ทันที)</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Transfer Details */}
+                        {paymentMethod === 'transfer' && (
+                            <div className="bg-white border border-blue-200 rounded-xl p-3.5 shadow-xs flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center text-xl shrink-0">
+                                    📱
+                                </div>
+                                <div className="text-xs">
+                                    <p className="font-semibold text-blue-900">ชำระด้วยเงินโอน / QR Code</p>
+                                    <p className="text-slate-500 mt-0.5">ยอดชำระ ฿{grandTotal.toLocaleString()} (ตรวจสอบสลิปก่อนกดยืนยัน)</p>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Cash Details */}
                         {paymentMethod === 'cash' && (

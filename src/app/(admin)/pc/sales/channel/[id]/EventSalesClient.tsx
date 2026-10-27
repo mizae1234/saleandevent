@@ -62,6 +62,8 @@ const PAYMENT_INFO: Record<string, { label: string; bg: string; text: string; ic
     cash: { label: "เงินสด", bg: "bg-emerald-50 text-emerald-700 border-emerald-200", text: "text-emerald-700", icon: "💵" },
     transfer: { label: "โอนเงิน", bg: "bg-blue-50 text-blue-700 border-blue-200", text: "text-blue-700", icon: "📱" },
     credit: { label: "บัตรเครดิต", bg: "bg-purple-50 text-purple-700 border-purple-200", text: "text-purple-700", icon: "💳" },
+    creditcard: { label: "บัตรเครดิต", bg: "bg-purple-50 text-purple-700 border-purple-200", text: "text-purple-700", icon: "💳" },
+    credit_card: { label: "บัตรเครดิต", bg: "bg-purple-50 text-purple-700 border-purple-200", text: "text-purple-700", icon: "💳" },
 };
 
 function getPaymentInfo(method: string | null | undefined) {
@@ -89,7 +91,8 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
 
         if (paymentFilter !== 'all') {
             const pm = (sale.paymentMethod || 'cash').toLowerCase();
-            if (pm !== paymentFilter) return false;
+            const normalizedPm = (pm === 'creditcard' || pm === 'credit_card' || pm === 'card') ? 'credit' : pm;
+            if (normalizedPm !== paymentFilter) return false;
         }
 
         if (startDate || endDate) {
@@ -131,10 +134,10 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
         activeSales.forEach(s => {
             const pm = (s.paymentMethod || 'cash').toLowerCase();
             const amt = Number(s.totalAmount) || 0;
-            if (pm === 'transfer') {
+            if (pm === 'transfer' || pm === 'qr') {
                 transferCount++;
                 transferAmount += amt;
-            } else if (pm === 'credit') {
+            } else if (pm === 'credit' || pm === 'card' || pm === 'creditcard' || pm === 'credit_card') {
                 creditCount++;
                 creditAmount += amt;
             } else {
@@ -454,7 +457,7 @@ export function EventSalesClient({ event, sales, backHref }: Props) {
                         { key: 'all' as const, label: 'ทุกวิธี' },
                         { key: 'cash' as const, label: '💵 เงินสด' },
                         { key: 'transfer' as const, label: '📱 โอนเงิน' },
-                        ...(paymentBreakdown.credit.count > 0 ? [{ key: 'credit' as const, label: '💳 บัตรเครดิต' }] : []),
+                        { key: 'credit' as const, label: '💳 บัตรเครดิต' },
                     ].map(p => (
                         <button
                             key={p.key}
