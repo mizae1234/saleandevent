@@ -268,6 +268,11 @@ export default async function ChannelDetailPage({ params }: { params: Promise<{ 
                         salesTarget={channel.salesTarget ? parseFloat(channel.salesTarget.toString()) : null}
                         customerId={channel.customerId}
                         isCashBooth={channel.isCashBooth}
+                        latitude={channel.latitude}
+                        longitude={channel.longitude}
+                        checkInRadiusKm={channel.checkInRadiusKm}
+                        workStartTime={channel.workStartTime}
+                        workEndTime={channel.workEndTime}
                     />
                     <div className="bg-white rounded-xl p-4 text-sm shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100">
                         <div className="flex justify-between">

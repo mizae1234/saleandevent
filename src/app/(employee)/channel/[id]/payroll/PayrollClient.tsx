@@ -1,12 +1,37 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Plus, Receipt, Trash2, X, Tag, Clock, ChevronDown, CalendarDays, Save, Check, Send, CheckCircle2, Banknote, Lock, Circle, Paperclip, Upload, FileText, Image as ImageIcon } from "lucide-react";
+import { useState, useTransition, useEffect } from "react";
+import {
+    Plus,
+    Receipt,
+    Trash2,
+    X,
+    Tag,
+    Clock,
+    ChevronDown,
+    CalendarDays,
+    Save,
+    Check,
+    Send,
+    CheckCircle2,
+    Lock,
+    Circle,
+    Paperclip,
+    Upload,
+    FileText,
+    ChevronLeft,
+    ChevronRight,
+} from "lucide-react";
 import { Spinner } from "@/components/shared";
-import { addChannelExpense, removeChannelExpense, updateEmployeeCompensation, submitPayroll, deletePayrollAttachment } from "@/actions/channel";
+import {
+    addChannelExpense,
+    removeChannelExpense,
+    updateEmployeeCompensation,
+    submitPayroll,
+    deletePayrollAttachment,
+} from "@/actions/channel";
 import { useRouter } from "next/navigation";
-
-
+import { formatPeriodMonthThai } from "@/lib/payroll-period";
 
 interface ExpenseItem {
     id: string;
@@ -35,7 +60,12 @@ interface WageInfo {
 
 interface Props {
     channelId: string;
+    channelType?: string;
+    periodMonth?: string | null;
+    periodOptions?: { value: string; label: string }[];
+    periodHistoryMap?: Record<string, { isSubmitted: boolean; isWagePaid: boolean; isCommissionPaid: boolean }>;
     staffId: string;
+    paymentType?: string;
     categories: string[];
     startDate: string | null;
     endDate: string | null;
@@ -68,7 +98,27 @@ function formatDateTime(isoString: string) {
     });
 }
 
-export function PayrollClient({ channelId, staffId, categories, startDate, endDate, expenses: initialExpenses, wage, isSubmitted, submittedAt, isWagePaid, wagePaidAt, isCommissionPaid, commissionPaidAt, attachments }: Props) {
+export function PayrollClient({
+    channelId,
+    channelType = 'EVENT',
+    periodMonth = null,
+    periodOptions = [],
+    periodHistoryMap = {},
+    staffId,
+    paymentType = 'daily',
+    categories,
+    startDate,
+    endDate,
+    expenses: initialExpenses,
+    wage,
+    isSubmitted,
+    submittedAt,
+    isWagePaid,
+    wagePaidAt,
+    isCommissionPaid,
+    commissionPaidAt,
+    attachments,
+}: Props) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [showForm, setShowForm] = useState(false);
@@ -80,6 +130,9 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState('');
 
+    const isBranch = channelType === 'BRANCH';
+    const isMonthly = paymentType === 'monthly';
+
     // Compensation editing (days + commission + dailyRate)
     const [editing, setEditing] = useState(false);
     const [daysInput, setDaysInput] = useState(String(wage.daysWorked));
@@ -87,27 +140,47 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
     const [dailyRateInput, setDailyRateInput] = useState(String(wage.dailyRate));
     const [saved, setSaved] = useState(false);
 
+    useEffect(() => {
+        setEditing(false);
+        setShowConfirmSubmit(false);
+        setDaysInput(String(wage.daysWorked));
+        setCommissionInput(String(wage.commission));
+        setDailyRateInput(String(wage.dailyRate));
+    }, [periodMonth, wage.daysWorked, wage.commission, wage.dailyRate]);
+
     // Lock editing when submitted
     const locked = isSubmitted;
 
-    const currentDays = editing ? (parseInt(daysInput) || 0) : wage.daysWorked;
+    const currentDays = isMonthly ? 1 : (editing ? (parseInt(daysInput) || 0) : wage.daysWorked);
     const currentCommission = editing ? (parseFloat(commissionInput) || 0) : wage.commission;
     const currentDailyRate = editing ? (parseFloat(dailyRateInput) || 0) : wage.dailyRate;
-    const previewWage = (currentDailyRate * currentDays) + currentCommission;
+    const previewWage = (isMonthly ? currentDailyRate : (currentDailyRate * currentDays)) + currentCommission;
 
     const totalExpenses = initialExpenses.reduce((sum, exp) => sum + exp.amount, 0);
     const grandTotal = wage.wageSummary + totalExpenses;
 
+    const handlePeriodChange = (newPeriod: string) => {
+        router.push(`/channel/${channelId}/payroll?period=${newPeriod}`);
+    };
+
+    const currentPeriodIndex = periodMonth ? periodOptions.findIndex(o => o.value === periodMonth) : -1;
+    const prevPeriod = currentPeriodIndex >= 0 && currentPeriodIndex < periodOptions.length - 1
+        ? periodOptions[currentPeriodIndex + 1].value
+        : null;
+    const nextPeriod = currentPeriodIndex > 0
+        ? periodOptions[currentPeriodIndex - 1].value
+        : null;
+
     const handleStartEdit = () => {
         if (locked) return;
         setEditing(true);
-        setDaysInput(String(wage.daysWorked));
+        setDaysInput(String(isMonthly ? 1 : wage.daysWorked));
         setCommissionInput(String(wage.commission));
         setDailyRateInput(String(wage.dailyRate));
     };
 
     const handleSaveCompensation = () => {
-        const days = parseInt(daysInput);
+        const days = isMonthly ? 1 : parseInt(daysInput);
         const commission = parseFloat(commissionInput);
         const dailyRate = parseFloat(dailyRateInput);
         if (isNaN(days) || days < 0) return;
@@ -115,7 +188,12 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
         if (isNaN(dailyRate) || dailyRate < 0) return;
 
         startTransition(async () => {
-            await updateEmployeeCompensation(channelId, staffId, { daysWorked: days, commission, dailyRate });
+            await updateEmployeeCompensation(
+                channelId,
+                staffId,
+                { daysWorked: days, commission, dailyRate },
+                periodMonth
+            );
             setEditing(false);
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
@@ -129,11 +207,16 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
         if (!parsedAmount || parsedAmount <= 0) return;
 
         startTransition(async () => {
-            await addChannelExpense(channelId, {
-                category,
-                amount: parsedAmount,
-                description: description || category,
-            }, staffId);
+            await addChannelExpense(
+                channelId,
+                {
+                    category,
+                    amount: parsedAmount,
+                    description: description || category,
+                    periodMonth,
+                },
+                staffId
+            );
             setAmount("");
             setDescription("");
             setShowForm(false);
@@ -151,7 +234,7 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
 
     const handleSubmitPayroll = () => {
         startTransition(async () => {
-            await submitPayroll(channelId, staffId);
+            await submitPayroll(channelId, staffId, periodMonth);
             setShowConfirmSubmit(false);
             router.refresh();
         });
@@ -168,6 +251,9 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
             const formData = new FormData();
             formData.append('channelId', channelId);
             formData.append('staffId', staffId);
+            if (periodMonth) {
+                formData.append('periodMonth', periodMonth);
+            }
             for (let i = 0; i < files.length; i++) {
                 formData.append('files', files[i]);
             }
@@ -190,7 +276,6 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
             setTimeout(() => setUploadProgress(''), 3000);
         } finally {
             setUploading(false);
-            // Reset input
             e.target.value = '';
         }
     };
@@ -211,6 +296,65 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
 
     return (
         <div className="space-y-4">
+            {/* ── Monthly Period Selector for BRANCH ── */}
+            {isBranch && periodMonth && (
+                <div className="bg-white rounded-2xl border border-indigo-100 shadow-sm p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <CalendarDays className="h-4 w-4 text-indigo-600" />
+                            <span className="text-xs font-semibold text-indigo-900">
+                                เลือกงวดเบิกรายเดือน (รอบจ่ายวันที่ 30)
+                            </span>
+                        </div>
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                            {isMonthly ? 'พนักงานรายเดือน' : 'เบิกรายวัน/ประจำ'}
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => prevPeriod && handlePeriodChange(prevPeriod)}
+                            disabled={!prevPeriod}
+                            className="h-10 w-10 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            title="เดือนก่อนหน้า"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </button>
+
+                        <select
+                            value={periodMonth}
+                            onChange={(e) => handlePeriodChange(e.target.value)}
+                            className="flex-1 h-10 px-3 rounded-xl border border-indigo-200 bg-indigo-50/40 text-sm font-semibold text-indigo-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        >
+                            {periodOptions.map(opt => {
+                                const hist = periodHistoryMap[opt.value];
+                                const statusSuffix = hist?.isWagePaid
+                                    ? ' ✅ โอนแล้ว'
+                                    : hist?.isSubmitted
+                                        ? ' 📤 ส่งเบิกแล้ว'
+                                        : '';
+                                return (
+                                    <option key={opt.value} value={opt.value}>
+                                        {opt.label}{statusSuffix}
+                                    </option>
+                                );
+                            })}
+                        </select>
+
+                        <button
+                            type="button"
+                            onClick={() => nextPeriod && handlePeriodChange(nextPeriod)}
+                            disabled={!nextPeriod}
+                            className="h-10 w-10 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            title="เดือนถัดไป"
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* ── Payment Status ── */}
             <div className="space-y-2">
                 {/* Submit status */}
@@ -218,14 +362,22 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
                     <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
                         <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
                         <div>
-                            <p className="text-sm font-semibold text-emerald-800">ส่งเบิกแล้ว</p>
+                            <p className="text-sm font-semibold text-emerald-800">
+                                {isBranch && periodMonth
+                                    ? `ส่งเบิกงวด ${formatPeriodMonthThai(periodMonth)} แล้ว`
+                                    : 'ส่งเบิกแล้ว'}
+                            </p>
                             {submittedAt && <p className="text-[11px] text-emerald-600">ส่งเมื่อ {formatDateTime(submittedAt)}</p>}
                         </div>
                     </div>
                 ) : (
                     <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
                         <Circle className="h-5 w-5 text-slate-400 flex-shrink-0" />
-                        <p className="text-sm text-slate-500">ยังไม่ได้ส่งเบิก</p>
+                        <p className="text-sm text-slate-500">
+                            {isBranch && periodMonth
+                                ? `ยังไม่ได้ส่งเบิกงวด ${formatPeriodMonthThai(periodMonth)}`
+                                : 'ยังไม่ได้ส่งเบิก'}
+                        </p>
                     </div>
                 )}
 
@@ -234,14 +386,18 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
                     <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
                         <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
                         <div>
-                            <p className="text-sm font-semibold text-emerald-800">โอนค่าแรงแล้ว</p>
+                            <p className="text-sm font-semibold text-emerald-800">
+                                {isMonthly ? 'โอนเงินเดือนและค่าใช้จ่ายแล้ว' : 'โอนค่าแรงแล้ว'}
+                            </p>
                             {wagePaidAt && <p className="text-[11px] text-emerald-600">{formatDateTime(wagePaidAt)}</p>}
                         </div>
                     </div>
                 ) : (
                     <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
                         <Clock className="h-5 w-5 text-amber-500 flex-shrink-0" />
-                        <p className="text-sm text-amber-700">ยังไม่โอนค่าแรง</p>
+                        <p className="text-sm text-amber-700">
+                            {isMonthly ? 'ยังไม่โอนเงินเดือน (รอบจ่ายวันที่ 30)' : 'ยังไม่โอนค่าแรง'}
+                        </p>
                     </div>
                 )}
 
@@ -263,7 +419,7 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
             </div>
 
             {/* ── Event Date Range ── */}
-            {(startDate || endDate) && (
+            {!isBranch && (startDate || endDate) && (
                 <div className="flex items-center gap-2 px-1 text-xs text-slate-500">
                     <CalendarDays className="h-3.5 w-3.5" />
                     <span>
@@ -272,10 +428,12 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
                 </div>
             )}
 
-            {/* ── Wage Summary ── */}
+            {/* ── Wage / Salary Summary ── */}
             <div className="rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 text-white shadow-lg shadow-blue-200/50">
                 <div className="flex items-center justify-between">
-                    <p className="text-blue-100 text-xs font-medium">สรุปค่าแรง</p>
+                    <p className="text-blue-100 text-xs font-medium">
+                        {isMonthly ? 'สรุปเงินเดือนประจำ / ค่าคอมมิชชั่น' : 'สรุปค่าแรง / ค่าคอมมิชชั่น'}
+                    </p>
                     {!editing && !locked && (
                         <button
                             onClick={handleStartEdit}
@@ -294,61 +452,103 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
                 {editing ? (
                     /* ── Edit Mode ── */
                     <div className="mt-2 space-y-2">
-                        {/* Daily Rate Edit */}
-                        <div className="bg-white/15 rounded-lg p-2.5">
-                            <span className="text-blue-100 text-[11px] font-medium">ค่าแรง/วัน</span>
-                            <div className="flex items-center gap-1.5 mt-1">
-                                <span className="text-blue-100 text-sm">฿</span>
-                                <input
-                                    type="number"
-                                    value={dailyRateInput}
-                                    onChange={(e) => setDailyRateInput(e.target.value)}
-                                    onFocus={(e) => e.target.select()}
-                                    className="w-full px-2 py-1.5 rounded-lg bg-white/20 text-white text-lg font-bold text-center border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                    min="0"
-                                    step="1"
-                                    autoFocus
-                                />
-                            </div>
-                            <p className="text-blue-200 text-[10px] mt-1">ค่าเริ่มต้นจากระบบ: ฿{wage.dailyRate.toLocaleString()}</p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-white/15 rounded-lg p-2.5">
-                                <span className="text-blue-100 text-[11px] font-medium">วันทำงาน</span>
-                                <div className="flex items-center gap-1.5 mt-1">
-                                    <input
-                                        type="number"
-                                        value={daysInput}
-                                        onChange={(e) => setDaysInput(e.target.value)}
-                                        onFocus={(e) => e.target.select()}
-                                        className="w-14 px-2 py-1.5 rounded-lg bg-white/20 text-white text-lg font-bold text-center border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                        min="0"
-                                    />
-                                    <span className="text-blue-100 text-xs">วัน</span>
+                        {isMonthly ? (
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="bg-white/15 rounded-lg p-2.5">
+                                    <span className="text-blue-100 text-[11px] font-medium">เงินเดือนประจำ (บาท)</span>
+                                    <div className="flex items-center gap-1.5 mt-1">
+                                        <span className="text-blue-100 text-sm">฿</span>
+                                        <input
+                                            type="number"
+                                            value={dailyRateInput}
+                                            onChange={(e) => setDailyRateInput(e.target.value)}
+                                            onFocus={(e) => e.target.select()}
+                                            className="w-full px-2 py-1.5 rounded-lg bg-white/20 text-white text-lg font-bold text-center border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            min="0"
+                                            step="1"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <p className="text-blue-200 text-[10px] mt-1">ค่าเริ่มต้น: ฿{wage.dailyRate.toLocaleString()}</p>
                                 </div>
-                                <p className="text-blue-200 text-[10px] mt-1">× ฿{currentDailyRate.toLocaleString()}/วัน</p>
-                            </div>
 
-                            <div className="bg-white/15 rounded-lg p-2.5">
-                                <span className="text-blue-100 text-[11px] font-medium">คอมมิชชั่น</span>
-                                <div className="flex items-center gap-1.5 mt-1">
-                                    <span className="text-blue-100 text-sm">฿</span>
-                                    <input
-                                        type="number"
-                                        value={commissionInput}
-                                        onChange={(e) => setCommissionInput(e.target.value)}
-                                        onFocus={(e) => e.target.select()}
-                                        className="w-full px-2 py-1.5 rounded-lg bg-white/20 text-white text-lg font-bold text-center border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                        min="0"
-                                        step="0.01"
-                                    />
+                                <div className="bg-white/15 rounded-lg p-2.5">
+                                    <span className="text-blue-100 text-[11px] font-medium">คอมมิชชั่น (บาท)</span>
+                                    <div className="flex items-center gap-1.5 mt-1">
+                                        <span className="text-blue-100 text-sm">฿</span>
+                                        <input
+                                            type="number"
+                                            value={commissionInput}
+                                            onChange={(e) => setCommissionInput(e.target.value)}
+                                            onFocus={(e) => e.target.select()}
+                                            className="w-full px-2 py-1.5 rounded-lg bg-white/20 text-white text-lg font-bold text-center border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            min="0"
+                                            step="0.01"
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        ) : (
+                            <>
+                                {/* Daily Rate Edit */}
+                                <div className="bg-white/15 rounded-lg p-2.5">
+                                    <span className="text-blue-100 text-[11px] font-medium">ค่าแรง/วัน</span>
+                                    <div className="flex items-center gap-1.5 mt-1">
+                                        <span className="text-blue-100 text-sm">฿</span>
+                                        <input
+                                            type="number"
+                                            value={dailyRateInput}
+                                            onChange={(e) => setDailyRateInput(e.target.value)}
+                                            onFocus={(e) => e.target.select()}
+                                            className="w-full px-2 py-1.5 rounded-lg bg-white/20 text-white text-lg font-bold text-center border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            min="0"
+                                            step="1"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <p className="text-blue-200 text-[10px] mt-1">ค่าเริ่มต้นจากระบบ: ฿{wage.dailyRate.toLocaleString()}</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="bg-white/15 rounded-lg p-2.5">
+                                        <span className="text-blue-100 text-[11px] font-medium">วันทำงาน</span>
+                                        <div className="flex items-center gap-1.5 mt-1">
+                                            <input
+                                                type="number"
+                                                value={daysInput}
+                                                onChange={(e) => setDaysInput(e.target.value)}
+                                                onFocus={(e) => e.target.select()}
+                                                className="w-14 px-2 py-1.5 rounded-lg bg-white/20 text-white text-lg font-bold text-center border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                min="0"
+                                            />
+                                            <span className="text-blue-100 text-xs">วัน</span>
+                                        </div>
+                                        <p className="text-blue-200 text-[10px] mt-1">× ฿{currentDailyRate.toLocaleString()}/วัน</p>
+                                    </div>
+
+                                    <div className="bg-white/15 rounded-lg p-2.5">
+                                        <span className="text-blue-100 text-[11px] font-medium">คอมมิชชั่น</span>
+                                        <div className="flex items-center gap-1.5 mt-1">
+                                            <span className="text-blue-100 text-sm">฿</span>
+                                            <input
+                                                type="number"
+                                                value={commissionInput}
+                                                onChange={(e) => setCommissionInput(e.target.value)}
+                                                onFocus={(e) => e.target.select()}
+                                                className="w-full px-2 py-1.5 rounded-lg bg-white/20 text-white text-lg font-bold text-center border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                min="0"
+                                                step="0.01"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
 
                         <div className="pt-2 border-t border-white/20 flex justify-between items-end">
-                            <span className="text-blue-200 text-xs">รวมค่าแรง (preview)</span>
+                            <span className="text-blue-200 text-xs">
+                                {isMonthly ? 'รวมเงินเดือน+ค่าคอม (preview)' : 'รวมค่าแรง+ค่าคอม (preview)'}
+                            </span>
                             <span className="text-xl font-bold">฿{previewWage.toLocaleString()}</span>
                         </div>
 
@@ -372,32 +572,56 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
                 ) : (
                     /* ── Display Mode ── */
                     <>
-                        <div className="mt-2 bg-white/15 rounded-lg p-2.5">
-                            <span className="text-blue-100 text-[11px] font-medium">จำนวนวันทำงาน</span>
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-2xl font-bold">{wage.daysWorked}</span>
-                                <span className="text-blue-200 text-xs">วัน</span>
-                                {saved && (
-                                    <span className="ml-auto flex items-center gap-1 text-[11px] text-emerald-200">
-                                        <Check className="h-3 w-3" /> บันทึกแล้ว
-                                    </span>
-                                )}
+                        {isMonthly ? (
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                <div className="bg-white/15 rounded-lg p-2.5">
+                                    <span className="text-blue-100 text-[11px] font-medium">เงินเดือนประจำ (รอบ 30)</span>
+                                    <p className="text-xl font-bold mt-0.5">฿{wage.dailyRate.toLocaleString()}</p>
+                                </div>
+                                <div className="bg-white/15 rounded-lg p-2.5">
+                                    <span className="text-blue-100 text-[11px] font-medium">คอมมิชชั่น</span>
+                                    <div className="flex items-center justify-between mt-0.5">
+                                        <p className="text-xl font-bold">฿{wage.commission.toLocaleString()}</p>
+                                        {saved && (
+                                            <span className="flex items-center gap-1 text-[11px] text-emerald-200">
+                                                <Check className="h-3 w-3" /> บันทึกแล้ว
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <>
+                                <div className="mt-2 bg-white/15 rounded-lg p-2.5">
+                                    <span className="text-blue-100 text-[11px] font-medium">จำนวนวันทำงาน</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-2xl font-bold">{wage.daysWorked}</span>
+                                        <span className="text-blue-200 text-xs">วัน</span>
+                                        {saved && (
+                                            <span className="ml-auto flex items-center gap-1 text-[11px] text-emerald-200">
+                                                <Check className="h-3 w-3" /> บันทึกแล้ว
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
 
-                        <div className="grid grid-cols-2 gap-2 mt-2">
-                            <div>
-                                <p className="text-lg font-bold">฿{wage.dailyRate.toLocaleString()}</p>
-                                <p className="text-blue-200 text-[10px]">ค่าแรง/วัน</p>
-                            </div>
-                            <div>
-                                <p className="text-lg font-bold">฿{wage.commission.toLocaleString()}</p>
-                                <p className="text-blue-200 text-[10px]">คอมมิชชั่น</p>
-                            </div>
-                        </div>
+                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                    <div>
+                                        <p className="text-lg font-bold">฿{wage.dailyRate.toLocaleString()}</p>
+                                        <p className="text-blue-200 text-[10px]">ค่าแรง/วัน</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-lg font-bold">฿{wage.commission.toLocaleString()}</p>
+                                        <p className="text-blue-200 text-[10px]">คอมมิชชั่น</p>
+                                    </div>
+                                </div>
+                            </>
+                        )}
 
                         <div className="mt-2 pt-2 border-t border-white/20 flex justify-between items-end">
-                            <span className="text-blue-200 text-xs">รวมค่าแรง</span>
+                            <span className="text-blue-200 text-xs">
+                                {isMonthly ? 'รวมเงินเดือน + ค่าคอม' : 'รวมค่าแรง + ค่าคอม'}
+                            </span>
                             <span className="text-xl font-bold">฿{wage.wageSummary.toLocaleString()}</span>
                         </div>
                     </>
@@ -508,7 +732,7 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
                     </form>
                 )}
 
-                {/* Expense List — no status badges */}
+                {/* Expense List */}
                 <div className="divide-y divide-slate-50">
                     {initialExpenses.length === 0 && !showForm ? (
                         <div className="text-center py-8 text-slate-400">
@@ -658,54 +882,60 @@ export function PayrollClient({ channelId, staffId, categories, startDate, endDa
                 <div className="flex items-center justify-between">
                     <div>
                         <p className="text-xs text-emerald-600 font-medium">ยอดรวมทั้งหมด</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">ค่าแรง + ค่าใช้จ่าย</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                            {isMonthly ? 'เงินเดือน + ค่าคอม + ค่าใช้จ่าย' : 'ค่าแรง + ค่าคอม + ค่าใช้จ่าย'}
+                        </p>
                     </div>
                     <p className="text-2xl font-bold text-emerald-700">฿{grandTotal.toLocaleString()}</p>
                 </div>
             </div>
 
             {/* ── Submit / Status Section ── */}
-            {
-                !isSubmitted && (
-                    <div className="space-y-3">
-                        {!showConfirmSubmit ? (
-                            <button
-                                onClick={() => setShowConfirmSubmit(true)}
-                                className="w-full py-3 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm"
-                            >
-                                <Send className="h-4 w-4" />
-                                ส่งเบิกค่าแรง
-                            </button>
-                        ) : (
-                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
-                                <p className="text-sm font-semibold text-amber-800">ยืนยันส่งเบิกค่าแรง?</p>
-                                <div className="text-xs text-amber-700 space-y-1">
-                                    <p>• ค่าแรงรวม: ฿{wage.wageSummary.toLocaleString()}</p>
-                                    <p>• ค่าใช้จ่ายเบิก: ฿{totalExpenses.toLocaleString()}</p>
-                                    <p className="font-bold">• ยอดรวม: ฿{grandTotal.toLocaleString()}</p>
-                                </div>
-                                <p className="text-[11px] text-amber-600">หลังส่งเบิกแล้วจะไม่สามารถแก้ไขได้</p>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setShowConfirmSubmit(false)}
-                                        className="flex-1 py-2.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-                                    >
-                                        ยกเลิก
-                                    </button>
-                                    <button
-                                        onClick={handleSubmitPayroll}
-                                        disabled={isPending}
-                                        className="flex-1 py-2.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-1 transition-colors"
-                                    >
-                                        {isPending ? <Spinner size="xs" /> : <Send className="h-3 w-3" />}
-                                        ยืนยันส่งเบิก
-                                    </button>
-                                </div>
+            {!isSubmitted && (
+                <div className="space-y-3">
+                    {!showConfirmSubmit ? (
+                        <button
+                            onClick={() => setShowConfirmSubmit(true)}
+                            className="w-full py-3 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm"
+                        >
+                            <Send className="h-4 w-4" />
+                            {isBranch && periodMonth
+                                ? `ส่งเบิกประจำเดือน ${formatPeriodMonthThai(periodMonth)}`
+                                : 'ส่งเบิกค่าแรง'}
+                        </button>
+                    ) : (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+                            <p className="text-sm font-semibold text-amber-800">
+                                {isBranch && periodMonth
+                                    ? `ยืนยันส่งเบิกประจำเดือน ${formatPeriodMonthThai(periodMonth)}?`
+                                    : 'ยืนยันส่งเบิกค่าแรง?'}
+                            </p>
+                            <div className="text-xs text-amber-700 space-y-1">
+                                <p>• {isMonthly ? 'เงินเดือน + คอมมิชชั่น' : 'ค่าแรง + คอมมิชชั่น'}: ฿{wage.wageSummary.toLocaleString()}</p>
+                                <p>• ค่าใช้จ่ายเบิก: ฿{totalExpenses.toLocaleString()}</p>
+                                <p className="font-bold">• ยอดรวม: ฿{grandTotal.toLocaleString()}</p>
                             </div>
-                        )}
-                    </div>
-                )
-            }
-        </div >
+                            <p className="text-[11px] text-amber-600">หลังส่งเบิกแล้วจะไม่สามารถแก้ไขได้ในงวดนี้</p>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setShowConfirmSubmit(false)}
+                                    className="flex-1 py-2.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                                >
+                                    ยกเลิก
+                                </button>
+                                <button
+                                    onClick={handleSubmitPayroll}
+                                    disabled={isPending}
+                                    className="flex-1 py-2.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-1 transition-colors"
+                                >
+                                    {isPending ? <Spinner size="xs" /> : <Send className="h-3 w-3" />}
+                                    ยืนยันส่งเบิก
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
     );
 }

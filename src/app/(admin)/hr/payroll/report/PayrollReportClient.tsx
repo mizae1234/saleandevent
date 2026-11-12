@@ -50,6 +50,8 @@ interface PayrollRow {
 
     // Channel details
     channelId: string;
+    channelType?: string;
+    periodMonth?: string | null;
     channelName: string;
     channelCode: string;
     channelStatus: string;
@@ -613,7 +615,7 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
                                             {/* Staff Name */}
                                             <td className="px-3 py-3">
                                                 <Link
-                                                    href={`/hr/payroll/${row.channelId}/staff/${row.staffId}`}
+                                                    href={row.periodMonth ? `/hr/payroll/${row.channelId}/staff/${row.staffId}?period=${row.periodMonth}` : `/hr/payroll/${row.channelId}/staff/${row.staffId}`}
                                                     className="hover:underline"
                                                 >
                                                     <span
@@ -627,6 +629,11 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
                                                 {row.isMain && (
                                                     <span className="ml-1.5 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
                                                         หัวหน้า
+                                                    </span>
+                                                )}
+                                                {row.paymentType === "monthly" && (
+                                                    <span className="ml-1.5 text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded-full">
+                                                        รายเดือน
                                                     </span>
                                                 )}
                                                 {row.isWagePaid && row.wagePaidAt && (
@@ -657,7 +664,7 @@ export function PayrollReportClient({ rows, channels, salaryAccess }: Props) {
                                             {/* Event/Channel Name */}
                                             <td className="px-3 py-3">
                                                 <Link
-                                                    href={`/hr/payroll/${row.channelId}`}
+                                                    href={row.periodMonth ? `/hr/payroll/${row.channelId}?period=${row.periodMonth}` : `/hr/payroll/${row.channelId}`}
                                                     className="hover:underline"
                                                 >
                                                     <span className="font-semibold text-slate-700">

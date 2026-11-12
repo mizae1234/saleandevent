@@ -4,37 +4,78 @@ import { getChannelCompensationSummary } from "@/actions/channel";
 import PayrollDetailClient from "./PayrollDetailClient";
 import { getSession } from "@/lib/auth";
 import { calculatePayrollTax } from "@/lib/expense-tax";
+import {
+    getCurrentPeriodMonth,
+    isValidPeriodMonth,
+    getPeriodMonthDateRange,
+    getPeriodMonthOptions,
+} from "@/lib/payroll-period";
 
-export default async function PayrollDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PayrollDetailPage({
+    params,
+    searchParams,
+}: {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<{ period?: string }>;
+}) {
     const { id: channelId } = await params;
+    const resolvedSearchParams = await searchParams;
     const session = await getSession();
     const salaryAccess = session?.salaryAccess || null;
 
-    const [channel, compensation, expenseDetails, categories] = await Promise.all([
-        db.salesChannel.findUnique({
-            where: { id: channelId },
-            select: {
-                id: true, name: true, code: true, location: true,
-                startDate: true, endDate: true, status: true,
-                staff: {
-                    include: {
-                        staff: {
-                            select: {
-                                id: true, code: true, name: true,
-                                bankAccountNo: true, bankName: true,
-                                phone: true, paymentType: true,
-                            },
+    const channel = await db.salesChannel.findUnique({
+        where: { id: channelId },
+        select: {
+            id: true,
+            type: true,
+            name: true,
+            code: true,
+            location: true,
+            startDate: true,
+            endDate: true,
+            status: true,
+            staff: {
+                include: {
+                    staff: {
+                        select: {
+                            id: true,
+                            code: true,
+                            name: true,
+                            bankAccountNo: true,
+                            bankName: true,
+                            phone: true,
+                            paymentType: true,
                         },
                     },
+                    periods: true,
                 },
             },
-        }),
-        getChannelCompensationSummary(channelId).catch(() => null),
+        },
+    });
+
+    if (!channel) notFound();
+
+    const isBranch = channel.type === 'BRANCH';
+    const currentMonth = getCurrentPeriodMonth();
+    const periodMonth = isBranch
+        ? (isValidPeriodMonth(resolvedSearchParams.period) ? resolvedSearchParams.period : currentMonth)
+        : null;
+
+    const [compensation, expenseDetails, categories, periodSalesAgg] = await Promise.all([
+        getChannelCompensationSummary(channelId, periodMonth).catch(() => null),
         db.channelExpense.findMany({
             where: {
                 channelId,
                 status: { in: ['approved', 'pending'] },
                 createdBy: { not: null },
+                ...(isBranch && periodMonth
+                    ? {
+                        OR: [
+                            { periodMonth },
+                            ...(periodMonth === currentMonth ? [{ periodMonth: null }] : []),
+                        ],
+                    }
+                    : {}),
             },
             select: {
                 createdBy: true,
@@ -46,9 +87,20 @@ export default async function PayrollDetailPage({ params }: { params: Promise<{ 
         db.expenseCategory.findMany({
             select: { name: true, whtType: true },
         }),
+        isBranch && periodMonth
+            ? (() => {
+                const { start, end } = getPeriodMonthDateRange(periodMonth);
+                return db.sale.aggregate({
+                    where: {
+                        channelId,
+                        status: 'active',
+                        soldAt: { gte: start, lte: end },
+                    },
+                    _sum: { totalAmount: true },
+                });
+            })()
+            : Promise.resolve(null),
     ]);
-
-    if (!channel) notFound();
 
     const categoryWhtMap = new Map(categories.map(c => [c.name, c.whtType]));
 
@@ -67,8 +119,32 @@ export default async function PayrollDetailPage({ params }: { params: Promise<{ 
         });
     });
 
-    // Merge staff bank data with compensation data
-    const staffMap = new Map(channel.staff.map(cs => [cs.staffId, { ...cs.staff, channelStaffId: cs.id, isWagePaid: cs.isWagePaid, wagePaidAt: cs.wagePaidAt, isCommissionPaid: cs.isCommissionPaid, commissionPaidAt: cs.commissionPaidAt, isSubmitted: cs.isSubmitted, submittedAt: cs.submittedAt, whtIssued: cs.whtIssued, whtDocNo: cs.whtDocNo, whtPaidDate: cs.whtPaidDate }]));
+    // Merge staff bank data with compensation data (using period state when BRANCH)
+    const staffMap = new Map(
+        channel.staff.map(cs => {
+            const periodRec = isBranch && periodMonth
+                ? cs.periods.find(p => p.periodMonth === periodMonth) || null
+                : null;
+            const stateSource = isBranch ? periodRec : cs;
+
+            return [
+                cs.staffId,
+                {
+                    ...cs.staff,
+                    channelStaffId: cs.id,
+                    isWagePaid: stateSource?.isWagePaid || false,
+                    wagePaidAt: stateSource?.wagePaidAt || null,
+                    isCommissionPaid: stateSource?.isCommissionPaid || false,
+                    commissionPaidAt: stateSource?.commissionPaidAt || null,
+                    isSubmitted: stateSource?.isSubmitted || false,
+                    submittedAt: stateSource?.submittedAt || null,
+                    whtIssued: stateSource?.whtIssued || false,
+                    whtDocNo: stateSource?.whtDocNo || null,
+                    whtPaidDate: stateSource?.whtPaidDate || null,
+                },
+            ];
+        })
+    );
 
     const rows = (compensation?.staffSummary || []).map(s => {
         const staff = staffMap.get(s.staffId);
@@ -122,18 +198,25 @@ export default async function PayrollDetailPage({ params }: { params: Promise<{ 
         };
     });
 
+    const resolvedChannelSales = isBranch && periodSalesAgg
+        ? Number(periodSalesAgg._sum.totalAmount || 0)
+        : (compensation?.totalChannelSales || 0);
+
     return (
         <PayrollDetailClient
             channel={{
                 id: channel.id,
+                type: channel.type || 'EVENT',
                 name: channel.name,
                 code: channel.code,
                 location: channel.location || '',
                 startDate: channel.startDate?.toISOString() || null,
                 endDate: channel.endDate?.toISOString() || null,
             }}
+            periodMonth={periodMonth}
+            periodOptions={isBranch ? getPeriodMonthOptions(11, 2) : []}
             rows={rows}
-            totalChannelSales={compensation?.totalChannelSales || 0}
+            totalChannelSales={resolvedChannelSales}
             salaryAccess={salaryAccess}
         />
     );

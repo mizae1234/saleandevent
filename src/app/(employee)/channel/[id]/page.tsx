@@ -3,6 +3,8 @@ import { getSession } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { ShoppingCart, Wallet, MapPin, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { CheckInOutCard, type SerializedCheckIn } from "@/components/attendance/CheckInOutCard";
+import { getBangkokDateString } from "@/actions/attendance-actions";
 
 async function validateChannelAccess(channelId: string, staffId: string) {
     const assignment = await db.channelStaff.findFirst({
@@ -31,6 +33,45 @@ export default async function ChannelWorkModePage({ params }: { params: Promise<
 
     if (!channel || !channel.isActive) notFound();
 
+    // Load today's check-in record for this staff member
+    const todayStr = await getBangkokDateString();
+    const todayDate = new Date(`${todayStr}T00:00:00.000Z`);
+    const todayCheckInRow = await db.staffCheckIn.findUnique({
+        where: {
+            staffId_date: {
+                staffId: session.staffId,
+                date: todayDate,
+            },
+        },
+    });
+
+    const serializedCheckIn: SerializedCheckIn | null = todayCheckInRow
+        ? {
+              id: todayCheckInRow.id,
+              channelId: todayCheckInRow.channelId,
+              locationType: todayCheckInRow.locationType,
+              locationName: todayCheckInRow.locationName,
+              checkInAt: todayCheckInRow.checkInAt.toISOString(),
+              checkInLat: todayCheckInRow.checkInLat,
+              checkInLng: todayCheckInRow.checkInLng,
+              checkInDistanceKm: todayCheckInRow.checkInDistanceKm,
+              checkInPhotoUrl: todayCheckInRow.checkInPhotoUrl,
+              checkInNote: todayCheckInRow.checkInNote,
+              checkOutAt: todayCheckInRow.checkOutAt ? todayCheckInRow.checkOutAt.toISOString() : null,
+              checkOutLat: todayCheckInRow.checkOutLat,
+              checkOutLng: todayCheckInRow.checkOutLng,
+              checkOutDistanceKm: todayCheckInRow.checkOutDistanceKm,
+              checkOutPhotoUrl: todayCheckInRow.checkOutPhotoUrl,
+              isForgotCheckOut: todayCheckInRow.isForgotCheckOut,
+              forgotCheckOutReason: todayCheckInRow.forgotCheckOutReason,
+              hoursWorked: todayCheckInRow.hoursWorked ? Number(todayCheckInRow.hoursWorked) : null,
+              shiftStartTime: todayCheckInRow.shiftStartTime,
+              shiftEndTime: todayCheckInRow.shiftEndTime,
+              lateMinutes: todayCheckInRow.lateMinutes,
+              earlyLeaveMinutes: todayCheckInRow.earlyLeaveMinutes,
+          }
+        : null;
+
     const WORK_MODES = [
         {
             title: "เข้า POS",
@@ -41,8 +82,10 @@ export default async function ChannelWorkModePage({ params }: { params: Promise<
             shadowColor: "shadow-emerald-200/50",
         },
         {
-            title: "เงินเดือน / คอมฯ",
-            subtitle: "ดูวันทำงาน, เบิกค่าใช้จ่าย",
+            title: "เงินเดือน / คอมฯ / เบิกค่าใช้จ่าย",
+            subtitle: channel.type === 'BRANCH'
+                ? "เบิกเงินเดือนประจำ / ค่าแรง / คอมมิชชั่น / ค่าใช้จ่ายรายเดือน (รอบจ่ายวันที่ 30)"
+                : "ดูวันทำงาน, เบิกค่าแรงและค่าใช้จ่าย",
             icon: Wallet,
             href: `/channel/${channelId}/payroll`,
             color: "from-blue-500 to-blue-600",
@@ -67,6 +110,18 @@ export default async function ChannelWorkModePage({ params }: { params: Promise<
                     {channel.location}
                 </div>
             </div>
+
+            {/* Check-in / Check-out Card */}
+            <CheckInOutCard
+                channelId={channel.id}
+                locationName={`${channel.name} (${channel.code})`}
+                targetLat={channel.latitude}
+                targetLng={channel.longitude}
+                radiusKm={channel.checkInRadiusKm ?? 0.5}
+                workStartTime={channel.workStartTime || "10:00"}
+                workEndTime={channel.workEndTime || "21:00"}
+                todayCheckIn={serializedCheckIn}
+            />
 
             {/* Work Mode Cards */}
             <div>

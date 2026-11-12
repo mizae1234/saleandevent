@@ -44,6 +44,15 @@ export async function createChannelWithDetails(formData: FormData) {
     const staffJson = formData.get('staff') as string | null;
     const initialQty = formData.get('initialQuantity') as string | null;
     const notes = formData.get('notes') as string | null;
+    const latitudeStr = formData.get('latitude') as string | null;
+    const longitudeStr = formData.get('longitude') as string | null;
+    const checkInRadiusKmStr = formData.get('checkInRadiusKm') as string | null;
+    const workStartTime = (formData.get('workStartTime') as string | null)?.trim() || '10:00';
+    const workEndTime = (formData.get('workEndTime') as string | null)?.trim() || '21:00';
+
+    const latitude = latitudeStr && latitudeStr.trim() !== '' ? parseFloat(latitudeStr) : null;
+    const longitude = longitudeStr && longitudeStr.trim() !== '' ? parseFloat(longitudeStr) : null;
+    const checkInRadiusKm = checkInRadiusKmStr && checkInRadiusKmStr.trim() !== '' ? parseFloat(checkInRadiusKmStr) : 0.5;
 
     const code = await generateChannelCode(type);
     const staff: StaffSelection[] = staffJson ? JSON.parse(staffJson) : [];
@@ -56,6 +65,9 @@ export async function createChannelWithDetails(formData: FormData) {
 
         if (!name || !location || !type) {
             throw new Error('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน (ชื่อ, สถานที่, ประเภท)');
+        }
+        if (latitude === null || longitude === null || Number.isNaN(latitude) || Number.isNaN(longitude)) {
+            throw new Error('กรุณาระบุพิกัด GPS (Latitude / Longitude) สำหรับใช้ Check-in เข้างาน');
         }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -74,6 +86,11 @@ export async function createChannelWithDetails(formData: FormData) {
                     phone: phone || null,
                     customerId: customerId || null,
                     isCashBooth,
+                    latitude,
+                    longitude,
+                    checkInRadiusKm: Number.isNaN(checkInRadiusKm) ? 0.5 : checkInRadiusKm,
+                    workStartTime,
+                    workEndTime,
                     status: 'draft',
                 },
             });

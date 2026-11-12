@@ -63,6 +63,19 @@ export async function createStockTransfer(
     if (!fromChannel) throw new Error('ไม่พบ Channel ต้นทาง');
     if (!toChannel) throw new Error('ไม่พบ Channel ปลายทาง');
 
+    // Validate duplicate barcodes & integer quantities
+    const seenBarcodes = new Set<string>();
+    for (const item of items) {
+        if (seenBarcodes.has(item.barcode)) {
+            throw new Error(`พบบาร์โค้ดซ้ำในรายการโอน: ${item.barcode}`);
+        }
+        seenBarcodes.add(item.barcode);
+
+        if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+            throw new Error(`จำนวนโอนของ ${item.barcode} ต้องเป็นจำนวนเต็มบวกที่มากกว่า 0`);
+        }
+    }
+
     // Validate stock availability
     const stockRecords = await db.channelStock.findMany({
         where: { channelId: fromChannelId, barcode: { in: items.map(i => i.barcode) } },
@@ -76,9 +89,6 @@ export async function createStockTransfer(
         const remaining = stock.quantity - stock.soldQuantity - stock.returnedQuantity;
         if (item.quantity > remaining) {
             throw new Error(`สินค้า ${item.barcode} มีเหลือ ${remaining} ชิ้น แต่ขอโอน ${item.quantity} ชิ้น`);
-        }
-        if (item.quantity <= 0) {
-            throw new Error(`จำนวนโอนต้องมากกว่า 0`);
         }
     }
 

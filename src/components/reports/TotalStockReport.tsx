@@ -12,6 +12,7 @@ interface TotalStockItem {
     warehouseQty: number;
     channelQty: number;
     totalQty: number;
+    channelDetails?: string;
 }
 
 interface Props {
@@ -65,7 +66,10 @@ export function TotalStockReport({ data }: Props) {
                     "ชื่อสินค้า": item.name,
                     "สี": item.color || "-",
                     "ไซส์": item.size || "-",
+                    "คงเหลือคลังสินค้า": item.warehouseQty,
+                    "คงเหลือจุดขาย": item.channelQty,
                     "คงเหลือรวม": item.totalQty,
+                    "ข้อมูลจุดขายที่มีสต็อก": item.channelDetails || "-",
                 });
             });
             const ws = XLSX.utils.json_to_sheet(rows);

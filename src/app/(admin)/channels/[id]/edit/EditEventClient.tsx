@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition, useRef } from "react";
 import { Save, ArrowLeft, Users, Star, Package, Search, ChevronDown } from "lucide-react";
-import { SpinnerFullPage } from "@/components/shared";
+import { SpinnerFullPage, GpsCoordinatePicker } from "@/components/shared";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateChannelWithDetails } from "@/actions/channel";
@@ -32,6 +32,11 @@ interface ChannelData {
     responsiblePersonName: string | null;
     phone: string | null;
     customerId: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    checkInRadiusKm: number | null;
+    workStartTime?: string | null;
+    workEndTime?: string | null;
     staff: { staffId: string; isMain: boolean }[];
     stockRequests: StockRequestData[];
 }
@@ -52,6 +57,11 @@ export default function EditEventClient({ channelId }: { channelId: string }) {
     const [phone, setPhone] = useState("");
     const [channelType, setChannelType] = useState("EVENT");
     const [customerId, setCustomerId] = useState("");
+    const [latitude, setLatitude] = useState("");
+    const [longitude, setLongitude] = useState("");
+    const [checkInRadiusKm, setCheckInRadiusKm] = useState("0.5");
+    const [workStartTime, setWorkStartTime] = useState("10:00");
+    const [workEndTime, setWorkEndTime] = useState("21:00");
 
     // Customer state
     const [customerList, setCustomerList] = useState<Customer[]>([]);
@@ -96,6 +106,11 @@ export default function EditEventClient({ channelId }: { channelId: string }) {
                     setResponsiblePersonName(data.responsiblePersonName || "");
                     setPhone(data.phone || "");
                     setCustomerId(data.customerId || "");
+                    setLatitude(data.latitude !== null && data.latitude !== undefined ? String(data.latitude) : "");
+                    setLongitude(data.longitude !== null && data.longitude !== undefined ? String(data.longitude) : "");
+                    setCheckInRadiusKm(data.checkInRadiusKm !== null && data.checkInRadiusKm !== undefined ? String(data.checkInRadiusKm) : "0.5");
+                    setWorkStartTime(data.workStartTime || "10:00");
+                    setWorkEndTime(data.workEndTime || "21:00");
                     setSelectedStaff(data.staff);
                     setStockRequests(data.stockRequests || []);
                     const initialReq = (data.stockRequests || []).find((r: StockRequestData) => r.requestType === 'INITIAL');
@@ -140,6 +155,11 @@ export default function EditEventClient({ channelId }: { channelId: string }) {
                 if (customerId) formData.set("customerId", customerId);
                 formData.set("staff", JSON.stringify(selectedStaff));
                 if (initialQty) formData.set("initialQuantity", initialQty);
+                formData.set("latitude", latitude);
+                formData.set("longitude", longitude);
+                formData.set("checkInRadiusKm", checkInRadiusKm || "0.5");
+                formData.set("workStartTime", workStartTime || "10:00");
+                formData.set("workEndTime", workEndTime || "21:00");
 
                 await updateChannelWithDetails(channelId, formData);
                 router.push(`/channels/${channelId}`);
@@ -193,6 +213,22 @@ export default function EditEventClient({ channelId }: { channelId: string }) {
                     <label className="block text-sm font-medium text-slate-700 mb-1">สถานที่</label>
                     <input type="text" value={location} onChange={e => setLocation(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 focus:outline-none transition-colors" />
                 </div>
+
+                <GpsCoordinatePicker
+                    latitude={latitude}
+                    longitude={longitude}
+                    checkInRadiusKm={checkInRadiusKm}
+                    workStartTime={workStartTime}
+                    workEndTime={workEndTime}
+                    onChange={(vals) => {
+                        setLatitude(vals.latitude);
+                        setLongitude(vals.longitude);
+                        setCheckInRadiusKm(vals.checkInRadiusKm);
+                        if (vals.workStartTime !== undefined) setWorkStartTime(vals.workStartTime);
+                        if (vals.workEndTime !== undefined) setWorkEndTime(vals.workEndTime);
+                    }}
+                    title="พิกัด GPS และกะเวลาเข้า-ออกงาน"
+                />
 
                 {/* Customer Dropdown */}
                 <div ref={customerDropdownRef} className="relative">

@@ -21,6 +21,11 @@ export interface CompanySettingData {
     bankAccountNo: string | null;
     bankAccountName: string | null;
     footerNote: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    checkInRadiusKm: number | null;
+    workStartTime: string | null;
+    workEndTime: string | null;
     updatedAt: Date;
 }
 
@@ -39,6 +44,11 @@ const DEFAULT_COMPANY: Omit<CompanySettingData, 'id' | 'updatedAt'> = {
     bankAccountNo: '',
     bankAccountName: '',
     footerNote: '',
+    latitude: null,
+    longitude: null,
+    checkInRadiusKm: 0.5,
+    workStartTime: '09:00',
+    workEndTime: '18:00',
 };
 
 // ============ GET COMPANY SETTING ============
@@ -72,6 +82,11 @@ export async function getCompanySetting(): Promise<CompanySettingData> {
             bankAccountNo: setting.bankAccountNo,
             bankAccountName: setting.bankAccountName,
             footerNote: setting.footerNote,
+            latitude: setting.latitude,
+            longitude: setting.longitude,
+            checkInRadiusKm: setting.checkInRadiusKm ?? 0.5,
+            workStartTime: setting.workStartTime || '09:00',
+            workEndTime: setting.workEndTime || '18:00',
             updatedAt: setting.updatedAt,
         };
     } catch (error) {
@@ -96,6 +111,16 @@ export async function updateCompanySetting(formData: FormData) {
             return { error: 'กรุณาระบุชื่อร้านหรือชื่อบริษัท' };
         }
 
+        const latitudeStr = (formData.get('latitude') as string)?.trim();
+        const longitudeStr = (formData.get('longitude') as string)?.trim();
+        const checkInRadiusKmStr = (formData.get('checkInRadiusKm') as string)?.trim();
+        const workStartTime = (formData.get('workStartTime') as string)?.trim() || '09:00';
+        const workEndTime = (formData.get('workEndTime') as string)?.trim() || '18:00';
+
+        const latitude = latitudeStr ? parseFloat(latitudeStr) : null;
+        const longitude = longitudeStr ? parseFloat(longitudeStr) : null;
+        const checkInRadiusKm = checkInRadiusKmStr ? parseFloat(checkInRadiusKmStr) : 0.5;
+
         const dataToSave = {
             name,
             nameEn: (formData.get('nameEn') as string)?.trim() || null,
@@ -111,6 +136,11 @@ export async function updateCompanySetting(formData: FormData) {
             bankAccountNo: (formData.get('bankAccountNo') as string)?.trim() || null,
             bankAccountName: (formData.get('bankAccountName') as string)?.trim() || null,
             footerNote: (formData.get('footerNote') as string)?.trim() || null,
+            latitude: latitude !== null && !Number.isNaN(latitude) ? latitude : null,
+            longitude: longitude !== null && !Number.isNaN(longitude) ? longitude : null,
+            checkInRadiusKm: !Number.isNaN(checkInRadiusKm) ? checkInRadiusKm : 0.5,
+            workStartTime,
+            workEndTime,
             updatedBy: session?.staffId || null,
         };
 

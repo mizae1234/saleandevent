@@ -41,6 +41,11 @@ export async function GET(
             endDate: channel.endDate?.toISOString() || null,
             responsiblePersonName: channel.responsiblePersonName,
             customerId: channel.customerId,
+            latitude: channel.latitude,
+            longitude: channel.longitude,
+            checkInRadiusKm: channel.checkInRadiusKm,
+            workStartTime: channel.workStartTime || "10:00",
+            workEndTime: channel.workEndTime || "21:00",
             staff: channel.staff.map((s: any) => ({
                 staffId: s.staffId,
                 isMain: s.isMain,
@@ -74,6 +79,11 @@ export async function PATCH(
                 phone: body.phone || null,
                 customerId: body.customerId || null,
                 isCashBooth: body.isCashBooth !== undefined ? body.isCashBooth : undefined,
+                latitude: body.latitude !== undefined ? (body.latitude !== null && body.latitude !== '' ? parseFloat(String(body.latitude)) : null) : undefined,
+                longitude: body.longitude !== undefined ? (body.longitude !== null && body.longitude !== '' ? parseFloat(String(body.longitude)) : null) : undefined,
+                checkInRadiusKm: body.checkInRadiusKm !== undefined && body.checkInRadiusKm !== '' ? parseFloat(String(body.checkInRadiusKm)) : undefined,
+                workStartTime: body.workStartTime !== undefined ? (body.workStartTime || '10:00') : undefined,
+                workEndTime: body.workEndTime !== undefined ? (body.workEndTime || '21:00') : undefined,
             },
         });
 

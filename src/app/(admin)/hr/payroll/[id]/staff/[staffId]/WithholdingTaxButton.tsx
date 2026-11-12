@@ -9,6 +9,8 @@ import { toggleWhtIssued, updateWhtDetails } from '@/actions/channel/payroll';
 
 interface Props {
     channelStaffId: string;
+    periodMonth?: string | null;
+    paymentType?: string;
     staffName: string;
     staffCode: string;
     staffTaxId?: string;
@@ -29,10 +31,25 @@ interface Props {
 }
 
 export function WithholdingTaxButton({
-    channelStaffId, staffName, staffCode, staffTaxId, staffAddress, channelName, channelCode,
-    daysWorked, dailyRate, totalWage, commission,
-    setupExpense = 0, teardownExpense = 0, targetIncentive = 0, expenses = [],
-    whtIssued: initialWhtIssued, whtDocNo: initialDocNo, whtPaidDate: initialPaidDate,
+    channelStaffId,
+    periodMonth = null,
+    paymentType = 'daily',
+    staffName,
+    staffCode,
+    staffTaxId,
+    staffAddress,
+    channelName,
+    channelCode,
+    daysWorked,
+    dailyRate,
+    commission,
+    setupExpense = 0,
+    teardownExpense = 0,
+    targetIncentive = 0,
+    expenses = [],
+    whtIssued: initialWhtIssued,
+    whtDocNo: initialDocNo,
+    whtPaidDate: initialPaidDate,
 }: Props) {
     const [loading, setLoading] = useState(false);
     const [isPending, startTransition] = useTransition();
@@ -41,6 +58,8 @@ export function WithholdingTaxButton({
     const [paidDate, setPaidDate] = useState(initialPaidDate || '');
     const [savingDocNo, setSavingDocNo] = useState(false);
     const [savingDate, setSavingDate] = useState(false);
+
+    const isMonthly = paymentType === 'monthly';
 
     // Dynamic calculation based on Master whtType
     const taxResult = calculatePayrollTax({
@@ -63,12 +82,7 @@ export function WithholdingTaxButton({
         const newValue = !whtIssued;
         setWhtIssued(newValue);
         startTransition(async () => {
-            await toggleWhtIssued(channelStaffId, newValue);
-            // If toggling on and we got a new doc number from server, we need to refetch
-            // The revalidatePath in the server action will handle this
-            if (newValue && !docNo) {
-                // Doc number was auto-generated — page will revalidate with new data
-            }
+            await toggleWhtIssued(channelStaffId, newValue, periodMonth);
         });
     };
 
@@ -76,7 +90,7 @@ export function WithholdingTaxButton({
         if (docNo !== (initialDocNo || '')) {
             setSavingDocNo(true);
             startTransition(async () => {
-                await updateWhtDetails(channelStaffId, { docNo });
+                await updateWhtDetails(channelStaffId, { docNo }, periodMonth);
                 setSavingDocNo(false);
             });
         }
@@ -87,7 +101,7 @@ export function WithholdingTaxButton({
         setPaidDate(val);
         setSavingDate(true);
         startTransition(async () => {
-            await updateWhtDetails(channelStaffId, { paidDate: val || null });
+            await updateWhtDetails(channelStaffId, { paidDate: val || null }, periodMonth);
             setSavingDate(false);
         });
     };
@@ -141,7 +155,7 @@ export function WithholdingTaxButton({
                         ใบหัก ณ ที่จ่าย (ภ.ง.ด.3 {whtIssued && hasTax ? '— 3%' : ''})
                     </p>
                     <p className="text-xs text-slate-500 mt-0.5">
-                        ทำงาน {daysWorked} วัน
+                        {isMonthly ? 'เงินเดือนรายเดือน' : `ทำงาน ${daysWorked} วัน`}
                     </p>
                 </div>
                 <button
@@ -204,12 +218,16 @@ export function WithholdingTaxButton({
                         {/* 40(1) Group */}
                         <div className="pb-2 border-b border-slate-100">
                             <div className="flex justify-between font-medium text-slate-700">
-                                <span>เงินได้ ม.40(1) (ค่าแรง + ค่าลง/เก็บของ)</span>
+                                <span>เงินได้ ม.40(1) ({isMonthly ? 'เงินเดือน' : 'ค่าแรง'} + ค่าลง/เก็บของ)</span>
                                 <span>฿{taxResult.total401.toLocaleString()}</span>
                             </div>
                             <div className="text-xs text-slate-400 pl-2 mt-0.5 space-y-0.5">
                                 <div className="flex justify-between">
-                                    <span>• ค่าแรง ({daysWorked} วัน × ฿{dailyRate.toLocaleString()})</span>
+                                    <span>
+                                        {isMonthly
+                                            ? `• เงินเดือนประจำ (฿${dailyRate.toLocaleString()})`
+                                            : `• ค่าแรง (${daysWorked} วัน × ฿${dailyRate.toLocaleString()})`}
+                                    </span>
                                     <span>฿{taxResult.baseWage.toLocaleString()}</span>
                                 </div>
                                 {taxResult.additional401 > 0 && (
@@ -229,13 +247,13 @@ export function WithholdingTaxButton({
                         {taxResult.total402 > 0 && (
                             <div className="pb-2 border-b border-slate-100">
                                 <div className="flex justify-between font-medium text-slate-700">
-                                    <span>เงินได้ ม.40(2) (ค่าคอมมิสชั่น + ค่าเป้า)</span>
+                                    <span>เงินได้ ม.40(2) (ค่าคอมมิชชั่น + ค่าเป้า)</span>
                                     <span>฿{taxResult.total402.toLocaleString()}</span>
                                 </div>
                                 <div className="text-xs text-slate-400 pl-2 mt-0.5 space-y-0.5">
                                     {taxResult.commission > 0 && (
                                         <div className="flex justify-between">
-                                            <span>• ค่าคอมมิสชั่น</span>
+                                            <span>• ค่าคอมมิชชั่น</span>
                                             <span>฿{taxResult.commission.toLocaleString()}</span>
                                         </div>
                                     )}

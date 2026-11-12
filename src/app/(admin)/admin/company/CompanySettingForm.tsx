@@ -6,7 +6,7 @@ import { th } from "date-fns/locale";
 import { Save, CheckCircle2, Clock } from "lucide-react";
 import { updateCompanySetting, type CompanySettingData } from "@/actions/company-setting-actions";
 import { useToast } from "@/components/ui/toast";
-import { Spinner } from "@/components/shared";
+import { Spinner, GpsCoordinatePicker } from "@/components/shared";
 
 import { GeneralInfoSection } from "./components/GeneralInfoSection";
 import { LogoUploadSection } from "./components/LogoUploadSection";
@@ -38,6 +38,11 @@ export function CompanySettingForm({ initialData }: Props) {
     const [bankAccountNo, setBankAccountNo] = useState(initialData.bankAccountNo || "");
     const [bankAccountName, setBankAccountName] = useState(initialData.bankAccountName || "");
     const [footerNote, setFooterNote] = useState(initialData.footerNote || "");
+    const [latitude, setLatitude] = useState(initialData.latitude !== null && initialData.latitude !== undefined ? String(initialData.latitude) : "");
+    const [longitude, setLongitude] = useState(initialData.longitude !== null && initialData.longitude !== undefined ? String(initialData.longitude) : "");
+    const [checkInRadiusKm, setCheckInRadiusKm] = useState(initialData.checkInRadiusKm !== null && initialData.checkInRadiusKm !== undefined ? String(initialData.checkInRadiusKm) : "0.5");
+    const [workStartTime, setWorkStartTime] = useState(initialData.workStartTime || "09:00");
+    const [workEndTime, setWorkEndTime] = useState(initialData.workEndTime || "18:00");
     const [lastUpdated, setLastUpdated] = useState<Date>(initialData.updatedAt || new Date());
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -64,6 +69,11 @@ export function CompanySettingForm({ initialData }: Props) {
         formData.set("bankAccountNo", bankAccountNo.trim());
         formData.set("bankAccountName", bankAccountName.trim());
         formData.set("footerNote", footerNote.trim());
+        formData.set("latitude", latitude.trim());
+        formData.set("longitude", longitude.trim());
+        formData.set("checkInRadiusKm", checkInRadiusKm.trim() || "0.5");
+        formData.set("workStartTime", workStartTime.trim() || "09:00");
+        formData.set("workEndTime", workEndTime.trim() || "18:00");
 
         startTransition(async () => {
             try {
@@ -142,6 +152,26 @@ export function CompanySettingForm({ initialData }: Props) {
                 website={website}
                 setWebsite={setWebsite}
             />
+
+            {/* Head Office GPS Coordinates & Shift Times for Check-in / Check-out */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] p-6">
+                <GpsCoordinatePicker
+                    latitude={latitude}
+                    longitude={longitude}
+                    checkInRadiusKm={checkInRadiusKm}
+                    workStartTime={workStartTime}
+                    workEndTime={workEndTime}
+                    onChange={(vals) => {
+                        setLatitude(vals.latitude);
+                        setLongitude(vals.longitude);
+                        setCheckInRadiusKm(vals.checkInRadiusKm);
+                        if (vals.workStartTime !== undefined) setWorkStartTime(vals.workStartTime);
+                        if (vals.workEndTime !== undefined) setWorkEndTime(vals.workEndTime);
+                    }}
+                    title="พิกัด GPS และกะเวลาทำงาน สำนักงานใหญ่ (สำหรับ Check-in / Check-out)"
+                    subtitle="กำหนดพิกัดละติจูด/ลองจิจูด, รัศมีที่อนุญาต และเวลากะเข้า-ออกงานของสำนักงานใหญ่ (ค่าเริ่มต้น 09:00 – 18:00 น.)"
+                />
+            </div>
 
             <BankInfoSection
                 bankName={bankName}

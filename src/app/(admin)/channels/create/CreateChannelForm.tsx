@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { createChannelWithDetails } from '@/actions/channel';
 import { Package, MapPin, Calendar, Users, ChevronRight, Store, CalendarDays, Target, Phone, User, FileText, Hash, Search, ChevronDown } from 'lucide-react';
+import { GpsCoordinatePicker } from '@/components/shared';
+import { isValidLatLng } from '@/lib/geo';
 
 interface Staff {
     id: string;
@@ -43,6 +45,11 @@ export default function CreateChannelForm({ staffList, customerList }: Props) {
     const [initialQuantity, setInitialQuantity] = useState('');
     const [notes, setNotes] = useState('');
     const [isCashBooth, setIsCashBooth] = useState(false);
+    const [latitude, setLatitude] = useState('');
+    const [longitude, setLongitude] = useState('');
+    const [checkInRadiusKm, setCheckInRadiusKm] = useState('0.5');
+    const [workStartTime, setWorkStartTime] = useState('10:00');
+    const [workEndTime, setWorkEndTime] = useState('21:00');
 
     const customerDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -82,6 +89,11 @@ export default function CreateChannelForm({ staffList, customerList }: Props) {
             if (initialQuantity) formData.set('initialQuantity', initialQuantity);
             if (notes) formData.set('notes', notes);
             formData.set('isCashBooth', String(isCashBooth));
+            formData.set('latitude', latitude);
+            formData.set('longitude', longitude);
+            formData.set('checkInRadiusKm', checkInRadiusKm || '0.5');
+            formData.set('workStartTime', workStartTime || '10:00');
+            formData.set('workEndTime', workEndTime || '21:00');
 
             await createChannelWithDetails(formData);
         } catch {
@@ -104,7 +116,20 @@ export default function CreateChannelForm({ staffList, customerList }: Props) {
     const getStaffName = (staffId: string) => staffList.find(s => s.id === staffId)?.name || '';
 
     const canProceed = () => {
-        if (step === 1) return name.trim() && location.trim();
+        if (step === 1) {
+            const lat = parseFloat(latitude);
+            const lng = parseFloat(longitude);
+            const rad = parseFloat(checkInRadiusKm);
+            return (
+                name.trim() !== '' &&
+                location.trim() !== '' &&
+                latitude.trim() !== '' &&
+                longitude.trim() !== '' &&
+                isValidLatLng(lat, lng) &&
+                Number.isFinite(rad) &&
+                rad > 0
+            );
+        }
         if (step === totalSteps) return !!initialQuantity && Number(initialQuantity) > 0;
         return true;
     };
@@ -174,6 +199,24 @@ export default function CreateChannelForm({ staffList, customerList }: Props) {
                             <label className="block text-sm font-medium text-slate-700 mb-1">สถานที่ *</label>
                             <input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="เช่น เซ็นทรัล ลาดพร้าว ชั้น 2" className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 focus:outline-none transition-colors" />
                         </div>
+
+                        {/* Mandatory GPS Coordinates & Shift Times for Check-in / Check-out */}
+                        <GpsCoordinatePicker
+                            latitude={latitude}
+                            longitude={longitude}
+                            checkInRadiusKm={checkInRadiusKm}
+                            workStartTime={workStartTime}
+                            workEndTime={workEndTime}
+                            onChange={(vals) => {
+                                setLatitude(vals.latitude);
+                                setLongitude(vals.longitude);
+                                setCheckInRadiusKm(vals.checkInRadiusKm);
+                                if (vals.workStartTime !== undefined) setWorkStartTime(vals.workStartTime);
+                                if (vals.workEndTime !== undefined) setWorkEndTime(vals.workEndTime);
+                            }}
+                            required
+                            title="พิกัด GPS และกะเวลาเข้า-ออกงาน (บังคับระบุเพื่อใช้ Check-in)"
+                        />
 
                         {/* Customer Dropdown */}
                         <div ref={customerDropdownRef} className="relative">

@@ -28,6 +28,11 @@ model SalesChannel {
   version               Int             @default(1)
   isActive              Boolean         @default(true) @map("is_active")
   isCashBooth           Boolean         @default(false) @map("is_cash_booth")
+  latitude              Float?          @map("latitude")
+  longitude             Float?          @map("longitude")
+  checkInRadiusKm       Float?          @default(0.5) @map("check_in_radius_km")
+  workStartTime         String?         @default("10:00") @map("work_start_time") @db.VarChar(10)
+  workEndTime           String?         @default("21:00") @map("work_end_time") @db.VarChar(10)
   
   // Audit fields
   createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -37,11 +42,13 @@ model SalesChannel {
   
   // Relations
   attendance            Attendance[]
+  checkIns              StaffCheckIn[]
   expenses              ChannelExpense[]
   invoices              Invoice[]
   logs                  ChannelLog[]
-  staff                 ChannelStaff[]
-  stock                 ChannelStock[]
+  staff               ChannelStaff[]
+  staffPeriods       ChannelStaffPeriod[]
+  stock              ChannelStock[]
   returnSummaries       ReturnSummary[]
   sales                 Sale[]
   movements             StockMovement[]
@@ -415,6 +422,7 @@ model ChannelExpense {
   description String?
   receiptUrl  String?      @map("receipt_url")
   status      String       @default("draft") @db.VarChar(50)
+  periodMonth String?      @map("period_month") @db.VarChar(7) // e.g. "2026-11" for monthly branch claims
   
   // Audit fields
   createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -427,6 +435,7 @@ model ChannelExpense {
 
   @@index([channelId])
   @@index([status])
+  @@index([periodMonth])
   @@map("channel_expenses")
 }
 
@@ -454,6 +463,7 @@ model Staff {
   allowedMenus     Json?          @map("allowed_menus") // Override role-based menus if set
   taxId            String?        @map("tax_id") @db.VarChar(30)
   address          String?        @db.Text
+  isHeadOffice     Boolean        @default(false) @map("is_head_office")
   
   // Audit fields
   createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -463,7 +473,9 @@ model Staff {
   
   // Relations
   attendance       Attendance[]
+  checkIns         StaffCheckIn[]
   assignments      ChannelStaff[]
+  periodPayrolls   ChannelStaffPeriod[]
   passwordLogs     PasswordChangeLog[]
 
   @@index([status])
@@ -513,14 +525,54 @@ model ChannelStaff {
   updatedBy          String?      @map("updated_by") @db.Uuid
   
   // Relations
-  channel            SalesChannel       @relation(fields: [channelId], references: [id])
-  staff              Staff              @relation(fields: [staffId], references: [id])
+  channel            SalesChannel         @relation(fields: [channelId], references: [id])
+  staff              Staff                @relation(fields: [staffId], references: [id])
   attachments        PayrollAttachment[]
+  periods            ChannelStaffPeriod[]
 
   @@unique([channelId, staffId])
   @@index([channelId])
   @@index([staffId])
   @@map("channel_staff")
+}
+
+model ChannelStaffPeriod {
+  id                 String       @id @default(uuid()) @db.Uuid
+  channelStaffId     String       @map("channel_staff_id") @db.Uuid
+  channelId          String       @map("channel_id") @db.Uuid
+  staffId            String       @map("staff_id") @db.Uuid
+  periodMonth        String       @map("period_month") @db.VarChar(7) // YYYY-MM (pay cycle 30th of each month)
+  commissionOverride Decimal?     @map("commission_override") @db.Decimal(10, 2)
+  dailyRateOverride  Decimal?     @map("daily_rate_override") @db.Decimal(10, 2)
+  daysWorkedOverride Int?         @map("days_worked_override")
+  isWagePaid         Boolean      @default(false) @map("is_wage_paid")
+  wagePaidAt         DateTime?    @map("wage_paid_at") @db.Timestamptz(6)
+  isCommissionPaid   Boolean      @default(false) @map("is_commission_paid")
+  commissionPaidAt   DateTime?    @map("commission_paid_at") @db.Timestamptz(6)
+  isSubmitted        Boolean      @default(false) @map("is_submitted")
+  submittedAt        DateTime?    @map("submitted_at") @db.Timestamptz(6)
+
+  // WHT (Withholding Tax) fields
+  whtIssued          Boolean      @default(false) @map("wht_issued")
+  whtDocNo           String?      @map("wht_doc_no") @db.VarChar(50)
+  whtPaidDate        DateTime?    @map("wht_paid_date") @db.Date
+
+  // Audit fields
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy          String?      @map("created_by") @db.Uuid
+  updatedBy          String?      @map("updated_by") @db.Uuid
+
+  // Relations
+  channelStaff       ChannelStaff @relation(fields: [channelStaffId], references: [id], onDelete: Cascade)
+  channel            SalesChannel @relation(fields: [channelId], references: [id])
+  staff              Staff        @relation(fields: [staffId], references: [id])
+
+  @@unique([channelStaffId, periodMonth])
+  @@index([channelId, periodMonth])
+  @@index([staffId, periodMonth])
+  @@index([periodMonth])
+  @@map("channel_staff_periods")
 }
 
 model Attendance {
@@ -544,6 +596,50 @@ model Attendance {
   @@unique([channelId, staffId, date])
   @@index([channelId])
   @@map("attendance")
+}
+
+model StaffCheckIn {
+  id                   String        @id @default(uuid()) @db.Uuid
+  staffId              String        @map("staff_id") @db.Uuid
+  channelId            String?       @map("channel_id") @db.Uuid
+  locationType         String        @default("EVENT") @map("location_type") @db.VarChar(20) // EVENT, BRANCH, HQ
+  locationName         String        @map("location_name") @db.VarChar(255)
+  date                 DateTime      @db.Date
+  shiftStartTime       String?       @map("shift_start_time") @db.VarChar(10)
+  shiftEndTime         String?       @map("shift_end_time") @db.VarChar(10)
+  
+  // Check-in fields
+  checkInAt            DateTime      @default(now()) @map("check_in_at") @db.Timestamptz(6)
+  checkInLat           Float         @map("check_in_lat")
+  checkInLng           Float         @map("check_in_lng")
+  checkInDistanceKm    Float?        @map("check_in_distance_km")
+  checkInPhotoUrl      String        @map("check_in_photo_url") @db.Text
+  checkInNote          String?       @map("check_in_note") @db.Text
+  lateMinutes          Int           @default(0) @map("late_minutes")
+  
+  // Check-out fields
+  checkOutAt           DateTime?     @map("check_out_at") @db.Timestamptz(6)
+  checkOutLat          Float?        @map("check_out_lat")
+  checkOutLng          Float?        @map("check_out_lng")
+  checkOutDistanceKm   Float?        @map("check_out_distance_km")
+  checkOutPhotoUrl     String?       @map("check_out_photo_url") @db.Text
+  isForgotCheckOut     Boolean       @default(false) @map("is_forgot_check_out")
+  forgotCheckOutReason String?       @map("forgot_check_out_reason") @db.Text
+  hoursWorked          Decimal?      @map("hours_worked") @db.Decimal(5, 2)
+  earlyLeaveMinutes    Int           @default(0) @map("early_leave_minutes")
+  
+  // Audit fields
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  // Relations
+  staff                Staff         @relation(fields: [staffId], references: [id])
+  channel              SalesChannel? @relation(fields: [channelId], references: [id])
+
+  @@unique([staffId, date])
+  @@index([channelId])
+  @@index([date])
+  @@map("staff_check_ins")
 }
 
 // ============ RETURNS (EVENT only) ============
@@ -663,6 +759,11 @@ model CompanySetting {
   bankAccountNo   String?  @map("bank_account_no") @db.VarChar(50)
   bankAccountName String?  @map("bank_account_name") @db.VarChar(255)
   footerNote      String?  @map("footer_note") @db.Text
+  latitude        Float?   @map("latitude")
+  longitude       Float?   @map("longitude")
+  checkInRadiusKm Float?   @default(0.5) @map("check_in_radius_km")
+  workStartTime   String?  @default("09:00") @map("work_start_time") @db.VarChar(10)
+  workEndTime     String?  @default("18:00") @map("work_end_time") @db.VarChar(10)
 
   // Audit fields
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -785,6 +886,7 @@ model ProductCategory {
 model PayrollAttachment {
   id              String       @id @default(uuid()) @db.Uuid
   channelStaffId  String       @map("channel_staff_id") @db.Uuid
+  periodMonth     String?      @map("period_month") @db.VarChar(7) // e.g. "2026-11" for monthly branch claims
   fileName        String       @map("file_name") @db.VarChar(500)
   fileUrl         String       @map("file_url") @db.VarChar(1000)
   fileType        String       @map("file_type") @db.VarChar(100)
@@ -795,6 +897,7 @@ model PayrollAttachment {
   channelStaff    ChannelStaff @relation(fields: [channelStaffId], references: [id], onDelete: Cascade)
 
   @@index([channelStaffId])
+  @@index([periodMonth])
   @@map("payroll_attachments")
 }
 

@@ -3,10 +3,32 @@
 import { useState, useTransition, useEffect } from 'react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
-import { ArrowLeft, Banknote, CreditCard, Users, CheckCircle2, Circle, FileCheck, Clock, Download } from 'lucide-react';
+import {
+    ArrowLeft,
+    Banknote,
+    CreditCard,
+    Users,
+    CheckCircle2,
+    Circle,
+    FileCheck,
+    Clock,
+    Download,
+    CalendarDays,
+    Unlock,
+    Building2,
+} from 'lucide-react';
 import { Spinner } from '@/components/shared';
 import Link from 'next/link';
-import { toggleWagePaid, toggleCommissionPaid, markAllWagePaid, markAllCommissionPaid, updateStaffDailyRate } from '@/actions/channel';
+import { useRouter } from 'next/navigation';
+import {
+    toggleWagePaid,
+    toggleCommissionPaid,
+    markAllWagePaid,
+    markAllCommissionPaid,
+    updateStaffDailyRate,
+    unlockPayrollSubmission,
+} from '@/actions/channel';
+import { formatPeriodMonthThai } from '@/lib/payroll-period';
 import * as XLSX from 'xlsx';
 
 type PayrollRow = {
@@ -48,25 +70,41 @@ type PayrollRow = {
 interface Props {
     channel: {
         id: string;
+        type?: string;
         name: string;
         code: string;
         location: string;
         startDate: string | null;
         endDate: string | null;
     };
+    periodMonth?: string | null;
+    periodOptions?: { value: string; label: string }[];
     rows: PayrollRow[];
     totalChannelSales: number;
     salaryAccess?: string | null; // none, daily, monthly, all
 }
 
-export default function PayrollDetailClient({ channel, rows: initialRows, totalChannelSales, salaryAccess }: Props) {
+export default function PayrollDetailClient({
+    channel,
+    periodMonth = null,
+    periodOptions = [],
+    rows: initialRows,
+    totalChannelSales,
+    salaryAccess,
+}: Props) {
+    const router = useRouter();
+    const isBranch = channel.type === 'BRANCH';
+
     // Check if a specific payment type is visible
     const canView = (paymentType: string) => {
         if (!salaryAccess || salaryAccess === 'none') return false;
         if (salaryAccess === 'all') return true;
         return salaryAccess === paymentType; // 'daily' matches 'daily', 'monthly' matches 'monthly'
     };
-    const mask = (val: number | string, paymentType: string) => !canView(paymentType) ? '***' : typeof val === 'number' ? val.toLocaleString() : val;
+    const canViewAny = canView('daily') || canView('monthly');
+    const mask = (val: number | string, paymentType: string) =>
+        !canView(paymentType) ? '***' : typeof val === 'number' ? val.toLocaleString() : val;
+
     const [isPending, startTransition] = useTransition();
     const [loadingId, setLoadingId] = useState<string | null>(null);
 
@@ -108,7 +146,7 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
         ));
         setLoadingId(`w-${channelStaffId}`);
         startTransition(async () => {
-            await toggleWagePaid(channelStaffId, !current);
+            await toggleWagePaid(channelStaffId, !current, periodMonth);
             setLoadingId(null);
         });
     };
@@ -122,7 +160,20 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
         ));
         setLoadingId(`c-${channelStaffId}`);
         startTransition(async () => {
-            await toggleCommissionPaid(channelStaffId, !current);
+            await toggleCommissionPaid(channelStaffId, !current, periodMonth);
+            setLoadingId(null);
+        });
+    };
+
+    const handleUnlockSubmission = (channelStaffId: string) => {
+        setLocalRows(prev => prev.map(r =>
+            r.channelStaffId === channelStaffId
+                ? { ...r, isSubmitted: false, submittedAt: null }
+                : r
+        ));
+        setLoadingId(`u-${channelStaffId}`);
+        startTransition(async () => {
+            await unlockPayrollSubmission(channelStaffId, periodMonth);
             setLoadingId(null);
         });
     };
@@ -132,7 +183,7 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
         setLocalRows(prev => prev.map(r => ({ ...r, isWagePaid: val, wagePaidAt: val ? now : null })));
         setLoadingId('allW');
         startTransition(async () => {
-            await markAllWagePaid(channel.id, val);
+            await markAllWagePaid(channel.id, val, periodMonth);
             setLoadingId(null);
         });
     };
@@ -142,7 +193,7 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
         setLocalRows(prev => prev.map(r => ({ ...r, isCommissionPaid: val, commissionPaidAt: val ? now : null })));
         setLoadingId('allC');
         startTransition(async () => {
-            await markAllCommissionPaid(channel.id, val);
+            await markAllCommissionPaid(channel.id, val, periodMonth);
             setLoadingId(null);
         });
     };
@@ -166,7 +217,7 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
             };
         }));
         startTransition(async () => {
-            await updateStaffDailyRate(channelStaffId, newRate || null);
+            await updateStaffDailyRate(channelStaffId, newRate || null, periodMonth);
         });
     };
 
@@ -177,13 +228,15 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                 'ลำดับ': i + 1,
                 'รหัสสาขา/Event': channel.code,
                 'ชื่อสาขา/Event': channel.name,
+                ...(periodMonth ? { 'งวดเดือน': formatPeriodMonthThai(periodMonth) } : {}),
                 'รหัส': row.staffCode,
                 'ชื่อพนักงาน': row.name,
+                'ประเภทการจ้าง': row.paymentType === 'monthly' ? 'รายเดือน' : 'รายวัน',
                 'ธนาคาร': row.bankName !== '-' ? row.bankName : '',
                 'เลขบัญชี': row.bankAccountNo !== '-' ? row.bankAccountNo : '',
-                'ค่าแรง/วัน': row.dailyRate,
-                'จำนวนวัน': row.daysWorked,
-                'ค่าแรงรวม': row.totalWage,
+                'ค่าแรง/เงินเดือน': row.dailyRate,
+                'จำนวนวัน/งวด': row.daysWorked,
+                'ค่าแรง/เงินเดือนรวม': row.totalWage,
                 'ค่าลงงาน': row.setupExpense,
                 'ค่าเก็บงาน': row.teardownExpense,
                 'ค่าเดินทาง': row.travelExpense,
@@ -209,13 +262,15 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
             'ลำดับ': 0,
             'รหัสสาขา/Event': '',
             'ชื่อสาขา/Event': '',
+            ...(periodMonth ? { 'งวดเดือน': '' } : {}),
             'รหัส': '',
             'ชื่อพนักงาน': 'รวมทั้งหมด',
+            'ประเภทการจ้าง': '',
             'ธนาคาร': '',
             'เลขบัญชี': '',
-            'ค่าแรง/วัน': 0,
-            'จำนวนวัน': 0,
-            'ค่าแรงรวม': totalWage,
+            'ค่าแรง/เงินเดือน': 0,
+            'จำนวนวัน/งวด': 0,
+            'ค่าแรง/เงินเดือนรวม': totalWage,
             'ค่าลงงาน': localRows.reduce((sum, r) => sum + r.setupExpense, 0),
             'ค่าเก็บงาน': localRows.reduce((sum, r) => sum + r.teardownExpense, 0),
             'ค่าเดินทาง': localRows.reduce((sum, r) => sum + r.travelExpense, 0),
@@ -239,15 +294,8 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'สรุปค่าแรง');
 
-        // Set column widths
-        ws['!cols'] = [
-            { wch: 5 }, { wch: 15 }, { wch: 25 }, { wch: 8 }, { wch: 20 }, { wch: 12 }, { wch: 16 },
-            { wch: 10 }, { wch: 8 }, { wch: 12 },
-            { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 35 },
-            { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
-        ];
-
-        XLSX.writeFile(wb, `payroll_${channel.code}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        const suffix = periodMonth ? `_${periodMonth}` : `_${new Date().toISOString().slice(0, 10)}`;
+        XLSX.writeFile(wb, `payroll_${channel.code}${suffix}.xlsx`);
     };
 
     const handleExportKcash = () => {
@@ -289,10 +337,10 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                 { t: 's', v: cleanAccountNo },
                 { t: 's', v: row.name },
                 { t: 'n', v: netAmount },
-                { t: 's', v: channel.code }, // Bene Ref
+                { t: 's', v: periodMonth ? `${channel.code}-${periodMonth}` : channel.code }, // Bene Ref
                 { t: 's', v: "" }, // Advice Email
                 { t: 's', v: row.phone && row.phone !== '-' ? row.phone.replace(/[^0-9]/g, "") : "" }, // SMS Tel. No
-                { t: 's', v: "" } // Payment Detail
+                { t: 's', v: periodMonth ? `งวด ${formatPeriodMonthThai(periodMonth)}` : "" } // Payment Detail
             ];
         });
 
@@ -304,44 +352,79 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'KCASH');
 
-        // Set column widths
         ws['!cols'] = [
-            { wch: 15 }, // Vendor ID
-            { wch: 15 }, // Bank Code
-            { wch: 12 }, // Branch No
-            { wch: 18 }, // Account Number
-            { wch: 25 }, // Vendor Name
-            { wch: 12 }, // Amount
-            { wch: 15 }, // Bene Ref
-            { wch: 20 }, // Advice Email
-            { wch: 15 }, // SMS Tel. No
-            { wch: 20 }  // Payment Detail
+            { wch: 15 },
+            { wch: 15 },
+            { wch: 12 },
+            { wch: 18 },
+            { wch: 25 },
+            { wch: 12 },
+            { wch: 15 },
+            { wch: 20 },
+            { wch: 15 },
+            { wch: 20 }
         ];
 
-        XLSX.writeFile(wb, `kcash_${channel.code}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        const suffix = periodMonth ? `_${periodMonth}` : `_${new Date().toISOString().slice(0, 10)}`;
+        XLSX.writeFile(wb, `kcash_${channel.code}${suffix}.xlsx`);
     };
 
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div>
-                <Link href="/hr/payroll" className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1 mb-3">
-                    <ArrowLeft className="h-4 w-4" /> กลับ
-                </Link>
-                <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                    <Banknote className="h-6 w-6 text-teal-600" />
-                    สรุปค่าแรง — {channel.name}
-                </h1>
-                <div className="flex items-center gap-4 text-sm text-slate-500 mt-1">
-                    <span>{channel.code}</span>
-                    <span>{channel.location}</span>
-                    {channel.startDate && (
-                        <span>
-                            {format(new Date(channel.startDate), 'd MMM', { locale: th })}
-                            {channel.endDate && ` - ${format(new Date(channel.endDate), 'd MMM yy', { locale: th })}`}
-                        </span>
-                    )}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <Link
+                        href={periodMonth ? `/hr/payroll?period=${periodMonth}` : "/hr/payroll"}
+                        className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1 mb-3"
+                    >
+                        <ArrowLeft className="h-4 w-4" /> กลับ
+                    </Link>
+                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2 flex-wrap">
+                        {isBranch ? (
+                            <Building2 className="h-6 w-6 text-indigo-600" />
+                        ) : (
+                            <Banknote className="h-6 w-6 text-teal-600" />
+                        )}
+                        {isBranch ? `สรุปเงินเดือน/ค่าแรงรายเดือน — ${channel.name}` : `สรุปค่าแรง — ${channel.name}`}
+                    </h1>
+                    <div className="flex items-center gap-4 text-sm text-slate-500 mt-1 flex-wrap">
+                        <span className="font-mono">{channel.code}</span>
+                        <span>{channel.location}</span>
+                        {isBranch && periodMonth ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
+                                <CalendarDays className="h-3.5 w-3.5" />
+                                งวด {formatPeriodMonthThai(periodMonth)} (รอบจ่ายวันที่ 30)
+                            </span>
+                        ) : channel.startDate && (
+                            <span>
+                                {format(new Date(channel.startDate), 'd MMM', { locale: th })}
+                                {channel.endDate && ` - ${format(new Date(channel.endDate), 'd MMM yy', { locale: th })}`}
+                            </span>
+                        )}
+                    </div>
                 </div>
+
+                {/* Month Period Selector for Branch */}
+                {isBranch && periodMonth && (
+                    <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-xl px-3.5 py-2 self-start md:self-auto">
+                        <CalendarDays className="h-4 w-4 text-indigo-600" />
+                        <div>
+                            <p className="text-[10px] font-semibold text-indigo-600 uppercase leading-none mb-0.5">
+                                เลือกงวดเดือน (รอบจ่ายวันที่ 30)
+                            </p>
+                            <select
+                                value={periodMonth}
+                                onChange={(e) => router.push(`/hr/payroll/${channel.id}?period=${e.target.value}`)}
+                                className="bg-transparent text-xs font-bold text-indigo-950 focus:outline-none cursor-pointer"
+                            >
+                                {periodOptions.map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Summary Cards */}
@@ -353,23 +436,23 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                     </p>
                 </div>
                 <div className="bg-white rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100">
-                    <p className="text-xs text-slate-400 mb-1">ค่าแรงรวม</p>
-                    <p className="text-xl font-bold text-slate-700">{!canView('daily') ? '***' : `฿${totalWage.toLocaleString()}`}</p>
+                    <p className="text-xs text-slate-400 mb-1">{isBranch ? 'เงินเดือน/ค่าแรงรวม' : 'ค่าแรงรวม'}</p>
+                    <p className="text-xl font-bold text-slate-700">{!canViewAny ? '***' : `฿${totalWage.toLocaleString()}`}</p>
                 </div>
                 <div className="bg-white rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100">
                     <p className="text-xs text-slate-400 mb-1">ค่าคอมรวม</p>
-                    <p className="text-xl font-bold text-purple-700">{!canView('daily') ? '***' : `฿${totalCommission.toLocaleString()}`}</p>
+                    <p className="text-xl font-bold text-purple-700">{!canViewAny ? '***' : `฿${totalCommission.toLocaleString()}`}</p>
                 </div>
                 <div className="bg-white rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100">
                     <p className="text-xs text-slate-400 mb-1">ค่าใช้จ่ายเบิก</p>
-                    <p className="text-xl font-bold text-orange-600">{!canView('daily') ? '***' : `฿${totalExpense.toLocaleString()}`}</p>
+                    <p className="text-xl font-bold text-orange-600">{!canViewAny ? '***' : `฿${totalExpense.toLocaleString()}`}</p>
                 </div>
                 <div className="bg-gradient-to-r from-emerald-50 to-white rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-emerald-200">
                     <p className="text-xs text-emerald-600 mb-1">ยอดโอนทั้งหมด</p>
-                    <p className="text-xl font-bold text-emerald-700">{!canView('daily') ? '***' : `฿${totalPay.toLocaleString()}`}</p>
+                    <p className="text-xl font-bold text-emerald-700">{!canViewAny ? '***' : `฿${totalPay.toLocaleString()}`}</p>
                 </div>
                 <div className={`rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] border ${allWagePaid ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-100'}`}>
-                    <p className="text-xs text-slate-400 mb-1">โอนค่าแรง</p>
+                    <p className="text-xs text-slate-400 mb-1">{isBranch ? 'โอนเงินเดือน/ค่าแรง' : 'โอนค่าแรง'}</p>
                     <p className={`text-xl font-bold ${allWagePaid ? 'text-emerald-700' : 'text-amber-600'}`}>
                         {wagePaidCount}/{localRows.length}
                     </p>
@@ -387,11 +470,11 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                 <div className="px-5 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
                     <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                         <CreditCard className="h-4 w-4 text-slate-400" />
-                        รายละเอียดโอนเงิน
+                        รายละเอียดโอนเงิน {isBranch && periodMonth ? `(งวด ${formatPeriodMonthThai(periodMonth)})` : ''}
                     </h3>
                     <div className="flex items-center gap-2 flex-wrap">
                         <span className="bg-teal-50 text-teal-700 px-3 py-1 rounded-md text-xs font-medium border border-teal-100">
-                            ยอดขายรวม: ฿{totalChannelSales.toLocaleString()}
+                            {isBranch && periodMonth ? `ยอดขายเดือนนี้: ฿${totalChannelSales.toLocaleString()}` : `ยอดขายรวม: ฿${totalChannelSales.toLocaleString()}`}
                         </span>
                         <button
                             onClick={handleExport}
@@ -411,7 +494,7 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                             className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${allWagePaid ? 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
                         >
                             {loadingId === 'allW' ? <Spinner size="xs" /> : allWagePaid ? <Circle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
-                            {allWagePaid ? 'ยกเลิกค่าแรง' : 'โอนค่าแรงทั้งหมด'}
+                            {allWagePaid ? 'ยกเลิกโอนค่าแรง/เงินเดือน' : 'โอนค่าแรง/เงินเดือนทั้งหมด'}
                         </button>
                         <button
                             onClick={() => handleMarkAllCom(!allComPaid)}
@@ -429,13 +512,13 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                             <tr>
                                 <th className="px-3 py-3 text-center text-xs font-semibold w-10">ค่าแรง</th>
                                 <th className="px-3 py-3 text-center text-xs font-semibold w-10">คอม</th>
-                                <th className="px-3 py-3 text-center text-xs font-semibold w-14">สถานะ</th>
+                                <th className="px-3 py-3 text-center text-xs font-semibold w-20">สถานะ</th>
                                 <th className="px-3 py-3 text-left text-xs font-semibold w-12">รหัส</th>
                                 <th className="px-3 py-3 text-left text-xs font-semibold">ชื่อพนักงาน</th>
                                 <th className="px-3 py-3 text-left text-xs font-semibold">บัญชีธนาคาร</th>
-                                <th className="px-3 py-3 text-center text-xs font-semibold w-8">วัน</th>
-                                <th className="px-3 py-3 text-right text-xs font-semibold w-20">ค่าแรง/วัน</th>
-                                <th className="px-3 py-3 text-right text-xs font-semibold">ค่าแรงรวม</th>
+                                <th className="px-3 py-3 text-center text-xs font-semibold w-14">วัน/ประเภท</th>
+                                <th className="px-3 py-3 text-right text-xs font-semibold w-24">อัตรา/เงินเดือน</th>
+                                <th className="px-3 py-3 text-right text-xs font-semibold">ค่าแรง/เงินเดือนรวม</th>
                                 <th className="px-3 py-3 text-right text-xs font-semibold">เบิกค่าใช้จ่าย</th>
                                 <th className="px-3 py-3 text-right text-xs font-semibold bg-blue-50/50 border-l border-r border-slate-200">ค่าแรง+เบิก</th>
                                 <th className="px-3 py-3 text-right text-xs font-semibold">ค่าคอม</th>
@@ -446,7 +529,10 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                         <tbody className="divide-y divide-slate-100">
                             {localRows.map(row => {
                                 const bothPaid = row.isWagePaid && row.isCommissionPaid;
-                                const wageExpSub = row.totalWage + row.expenseAmount;
+                                const isMonthly = row.paymentType === 'monthly';
+                                const staffDetailHref = periodMonth
+                                    ? `/hr/payroll/${channel.id}/staff/${row.staffId}?period=${periodMonth}`
+                                    : `/hr/payroll/${channel.id}/staff/${row.staffId}`;
 
                                 return (
                                     <tr key={row.staffId} className={`transition-colors ${bothPaid ? 'bg-emerald-50/30' : 'hover:bg-slate-50/50'}`}>
@@ -455,7 +541,7 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                                             <button
                                                 onClick={() => handleToggleWage(row.channelStaffId, row.isWagePaid)}
                                                 disabled={isPending}
-                                                title={row.isWagePaid ? `โอนค่าแรงแล้ว ${row.wagePaidAt ? format(new Date(row.wagePaidAt), 'd MMM yy HH:mm', { locale: th }) : ''}` : 'ยังไม่โอนค่าแรง'}
+                                                title={row.isWagePaid ? `โอนแล้ว ${row.wagePaidAt ? format(new Date(row.wagePaidAt), 'd MMM yy HH:mm', { locale: th }) : ''}` : 'ยังไม่โอน'}
                                             >
                                                 {loadingId === `w-${row.channelStaffId}` ? (
                                                     <Spinner size="sm" className="text-slate-400" />
@@ -482,12 +568,27 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                                                 )}
                                             </button>
                                         </td>
-                                        {/* Submit status */}
+                                        {/* Submit status + Unlock button */}
                                         <td className="px-3 py-3 text-center">
                                             {row.isSubmitted ? (
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
-                                                    <FileCheck className="h-3 w-3" /> ส่งแล้ว
-                                                </span>
+                                                <div className="inline-flex items-center gap-1">
+                                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                                                        <FileCheck className="h-3 w-3" /> ส่งแล้ว
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleUnlockSubmission(row.channelStaffId)}
+                                                        disabled={isPending}
+                                                        title="ปลดล็อคเพื่อให้พนักงานแก้ไข/ส่งเบิกใหม่"
+                                                        className="p-1 text-slate-400 hover:text-amber-600 rounded transition-colors"
+                                                    >
+                                                        {loadingId === `u-${row.channelStaffId}` ? (
+                                                            <Spinner size="xs" />
+                                                        ) : (
+                                                            <Unlock className="h-3 w-3" />
+                                                        )}
+                                                    </button>
+                                                </div>
                                             ) : (
                                                 <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-full">
                                                     <Clock className="h-3 w-3" /> รอส่ง
@@ -496,11 +597,14 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                                         </td>
                                         <td className="px-3 py-3 text-xs font-mono text-slate-500">{row.staffCode}</td>
                                         <td className="px-3 py-3">
-                                            <Link href={`/hr/payroll/${channel.id}/staff/${row.staffId}`} className="hover:underline">
+                                            <Link href={staffDetailHref} className="hover:underline">
                                                 <span className={`font-medium ${bothPaid ? 'text-slate-500' : 'text-blue-700'}`}>{row.name}</span>
                                             </Link>
                                             {row.isMain && (
                                                 <span className="ml-1.5 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">หัวหน้า</span>
+                                            )}
+                                            {isMonthly && (
+                                                <span className="ml-1.5 text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded-full">รายเดือน</span>
                                             )}
                                             {row.isWagePaid && row.wagePaidAt && (
                                                 <span className="block text-[10px] text-blue-400 mt-0.5">
@@ -523,15 +627,31 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                                                 <span className="text-slate-300 text-xs">ยังไม่ระบุ</span>
                                             )}
                                         </td>
-                                        <td className="px-3 py-3 text-center text-slate-600">{row.daysWorked}</td>
-                                        <td className="px-3 py-3 text-right text-slate-600">{mask(row.dailyRate, row.paymentType)}</td>
-                                        <td className={`px-3 py-3 text-right font-medium ${row.isWagePaid ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{mask(row.dailyRate * row.daysWorked, row.paymentType)}</td>
-                                        <td className={`px-3 py-3 text-right ${row.isWagePaid ? 'text-slate-400 line-through' : 'text-orange-600'}`}>{!canView(row.paymentType) ? '***' : row.expenseAmount > 0 ? row.expenseAmount.toLocaleString() : '-'}</td>
+                                        <td className="px-3 py-3 text-center text-slate-600">
+                                            {isMonthly ? (
+                                                <span className="text-[11px] font-medium text-indigo-600">เหมาเดือน</span>
+                                            ) : (
+                                                `${row.daysWorked} วัน`
+                                            )}
+                                        </td>
+                                        <td className="px-3 py-3 text-right text-slate-600">
+                                            {mask(row.dailyRate, row.paymentType)}
+                                        </td>
+                                        <td className={`px-3 py-3 text-right font-medium ${row.isWagePaid ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
+                                            {mask(row.dailyRate * row.daysWorked, row.paymentType)}
+                                        </td>
+                                        <td className={`px-3 py-3 text-right ${row.isWagePaid ? 'text-slate-400 line-through' : 'text-orange-600'}`}>
+                                            {!canView(row.paymentType) ? '***' : row.expenseAmount > 0 ? row.expenseAmount.toLocaleString() : '-'}
+                                        </td>
                                         <td className={`px-3 py-3 text-right font-semibold border-l border-r border-slate-100 ${row.isWagePaid ? 'text-slate-400 line-through bg-blue-50/10' : 'text-blue-700 bg-blue-50/20'}`}>
                                             {!canView(row.paymentType) ? '***' : (row.dailyRate * row.daysWorked + row.expenseAmount) > 0 ? `฿${(row.dailyRate * row.daysWorked + row.expenseAmount).toLocaleString()}` : '-'}
                                         </td>
-                                        <td className={`px-3 py-3 text-right ${row.isCommissionPaid ? 'text-slate-400 line-through' : 'text-purple-600'}`}>{!canView(row.paymentType) ? '***' : row.totalCommission > 0 ? row.totalCommission.toLocaleString() : '-'}</td>
-                                        <td className="px-3 py-3 text-right text-red-600 font-medium">{!canView(row.paymentType) ? '***' : row.withholdingTax > 0 ? `฿${row.withholdingTax.toLocaleString()}` : '-'}</td>
+                                        <td className={`px-3 py-3 text-right ${row.isCommissionPaid ? 'text-slate-400 line-through' : 'text-purple-600'}`}>
+                                            {!canView(row.paymentType) ? '***' : row.totalCommission > 0 ? row.totalCommission.toLocaleString() : '-'}
+                                        </td>
+                                        <td className="px-3 py-3 text-right text-red-600 font-medium">
+                                            {!canView(row.paymentType) ? '***' : row.withholdingTax > 0 ? `฿${row.withholdingTax.toLocaleString()}` : '-'}
+                                        </td>
                                         <td className={`px-3 py-3 text-right font-bold border-l border-slate-100 ${bothPaid ? 'text-emerald-500 line-through' : 'text-emerald-700 bg-emerald-50/20'}`}>
                                             {!canView(row.paymentType) ? '***' : `฿${(row.dailyRate * row.daysWorked + row.totalCommission + row.expenseAmount - row.withholdingTax).toLocaleString()}`}
                                         </td>
@@ -542,13 +662,13 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
                         <tfoot className="border-t-2 border-slate-200 bg-slate-50 font-semibold">
                             <tr>
                                 <td colSpan={8} className="px-3 py-3 text-right text-slate-500">รวมทั้งหมด</td>
-                                <td className="px-3 py-3 text-right text-slate-900">{!canView('daily') ? '***' : totalWage.toLocaleString()}</td>
-                                <td className="px-3 py-3 text-right text-orange-700">{!canView('daily') ? '***' : totalExpense.toLocaleString()}</td>
-                                <td className="px-3 py-3 text-right text-blue-700 border-l border-r border-slate-200 font-bold">{!canView('daily') ? '***' : `฿${totalWageExp.toLocaleString()}`}</td>
-                                <td className="px-3 py-3 text-right text-purple-700">{!canView('daily') ? '***' : totalCommission.toLocaleString()}</td>
-                                <td className="px-3 py-3 text-right text-red-700 font-medium">{!canView('daily') ? '***' : totalWithholdingTax.toLocaleString()}</td>
+                                <td className="px-3 py-3 text-right text-slate-900">{!canViewAny ? '***' : totalWage.toLocaleString()}</td>
+                                <td className="px-3 py-3 text-right text-orange-700">{!canViewAny ? '***' : totalExpense.toLocaleString()}</td>
+                                <td className="px-3 py-3 text-right text-blue-700 border-l border-r border-slate-200 font-bold">{!canViewAny ? '***' : `฿${totalWageExp.toLocaleString()}`}</td>
+                                <td className="px-3 py-3 text-right text-purple-700">{!canViewAny ? '***' : totalCommission.toLocaleString()}</td>
+                                <td className="px-3 py-3 text-right text-red-700 font-medium">{!canViewAny ? '***' : totalWithholdingTax.toLocaleString()}</td>
                                 <td className="px-3 py-3 text-right text-emerald-700 text-base border-l border-slate-200">
-                                    {!canView('daily') ? '***' : `฿${totalPay.toLocaleString()}`}
+                                    {!canViewAny ? '***' : `฿${totalPay.toLocaleString()}`}
                                 </td>
                             </tr>
                         </tfoot>
@@ -560,11 +680,12 @@ export default function PayrollDetailClient({ channel, rows: initialRows, totalC
             <div className="p-3 bg-blue-50 text-blue-700 text-xs rounded-lg border border-blue-100">
                 <p className="font-semibold mb-1">หมายเหตุ:</p>
                 <ul className="list-disc pl-4 space-y-0.5 opacity-80">
-                    <li>กดไอคอน ○ เพื่อเปลี่ยนสถานะ — <span className="text-blue-600">ค่าแรง</span> กับ <span className="text-purple-600">คอม</span> แยกกัน</li>
-                    <li>คลิกชื่อพนักงานเพื่อดูรายละเอียดและแก้ไขข้อมูล</li>
-                    <li>คอลัมน์ <b>ค่าแรง+เบิก</b> = ค่าแรงรวม + ค่าใช้จ่ายเบิก (โอนพร้อมกัน)</li>
+                    <li>กดไอคอน ○ เพื่อเปลี่ยนสถานะ — <span className="text-blue-600">ค่าแรง/เงินเดือน</span> กับ <span className="text-purple-600">คอม</span> แยกกัน</li>
+                    <li>คลิกชื่อพนักงานเพื่อดูรายละเอียด แก้ไขเงินเดือน/ค่าแรง/ค่าใช้จ่าย และออกใบหัก ณ ที่จ่าย (ภ.ง.ด.3)</li>
+                    <li>คอลัมน์ <b>ค่าแรง+เบิก</b> = เงินเดือน/ค่าแรงรวม + ค่าใช้จ่ายเบิก (โอนพร้อมกัน)</li>
+                    {isBranch && <li>สำหรับสาขา ระบบแยกสถานะการเบิกและการจ่ายตามงวดเดือน (รอบจ่ายทุกวันที่ 30)</li>}
                 </ul>
             </div>
-        </div >
+        </div>
     );
 }

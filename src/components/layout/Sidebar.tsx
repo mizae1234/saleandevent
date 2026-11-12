@@ -4,6 +4,7 @@ import { MENU_SECTIONS } from "@/config/menu";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { MapPin } from "lucide-react";
 import { LogOutButton } from "./LogOutButton";
 
 interface SidebarProps {
@@ -112,6 +113,18 @@ export function Sidebar({ className, onNavigated, allowedMenus = [], userName = 
                         </div>
                     ))}
                 </nav>
+            </div>
+
+            {/* Quick Check-in / Workspace Button for all staff */}
+            <div className="px-3 pb-2">
+                <Link
+                    href="/workspace"
+                    onClick={onNavigated}
+                    className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-sm transition-colors"
+                >
+                    <MapPin className="h-4 w-4" />
+                    ลงเวลาเข้า-ออกงาน (Check-in)
+                </Link>
             </div>
 
             {/* User Profile Footer */}

@@ -1,12 +1,10 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Banknote, Receipt, Save, Check, Plus, X, Trash2, Tag, ChevronDown, Paperclip, FileText, Download } from 'lucide-react';
+import { Banknote, Receipt, Save, Check, Plus, Trash2, Tag, ChevronDown, Paperclip, FileText, Download } from 'lucide-react';
 import { Spinner } from '@/components/shared';
 import { updateEmployeeCompensation, addChannelExpense, removeChannelExpense, deletePayrollAttachment } from '@/actions/channel';
 import { useRouter } from 'next/navigation';
-
-
 
 interface ExpenseItem {
     id: string;
@@ -27,6 +25,8 @@ interface AttachmentItem {
 interface Props {
     channelId: string;
     staffId: string;
+    periodMonth?: string | null;
+    paymentType?: string;
     categories: string[];
     wage: {
         dailyRate: number;
@@ -40,12 +40,25 @@ interface Props {
     attachments: AttachmentItem[];
 }
 
-export default function StaffPayrollEditor({ channelId, staffId, categories, wage, expenses, totalExpense, grandTotal, attachments }: Props) {
+export default function StaffPayrollEditor({
+    channelId,
+    staffId,
+    periodMonth = null,
+    paymentType = 'daily',
+    categories,
+    wage,
+    expenses,
+    totalExpense,
+    grandTotal,
+    attachments,
+}: Props) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
+    const isMonthly = paymentType === 'monthly';
 
     // Compensation editing
     const [editingWage, setEditingWage] = useState(false);
+    const [dailyRateInput, setDailyRateInput] = useState(String(wage.dailyRate));
     const [daysInput, setDaysInput] = useState(String(wage.daysWorked));
     const [commissionInput, setCommissionInput] = useState(String(wage.commission));
     const [saved, setSaved] = useState(false);
@@ -57,19 +70,27 @@ export default function StaffPayrollEditor({ channelId, staffId, categories, wag
     const [expenseDesc, setExpenseDesc] = useState('');
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
-    const currentDays = editingWage ? (parseInt(daysInput) || 0) : wage.daysWorked;
+    const currentDailyRate = editingWage ? (parseFloat(dailyRateInput) || 0) : wage.dailyRate;
+    const currentDays = isMonthly ? 1 : (editingWage ? (parseInt(daysInput) || 0) : wage.daysWorked);
     const currentCommission = editingWage ? (parseFloat(commissionInput) || 0) : wage.commission;
-    const previewWage = (wage.dailyRate * currentDays) + currentCommission;
+    const previewWage = (currentDailyRate * currentDays) + currentCommission;
     const previewGrand = previewWage + totalExpense;
 
     const handleSaveCompensation = () => {
-        const days = parseInt(daysInput);
+        const dailyRate = parseFloat(dailyRateInput);
+        const days = isMonthly ? 1 : parseInt(daysInput);
         const commission = parseFloat(commissionInput);
+        if (isNaN(dailyRate) || dailyRate < 0) return;
         if (isNaN(days) || days < 0) return;
         if (isNaN(commission) || commission < 0) return;
 
         startTransition(async () => {
-            await updateEmployeeCompensation(channelId, staffId, { daysWorked: days, commission });
+            await updateEmployeeCompensation(
+                channelId,
+                staffId,
+                { daysWorked: days, commission, dailyRate },
+                periodMonth
+            );
             setEditingWage(false);
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
@@ -83,11 +104,16 @@ export default function StaffPayrollEditor({ channelId, staffId, categories, wag
         if (!parsed || parsed <= 0) return;
 
         startTransition(async () => {
-            await addChannelExpense(channelId, {
-                category,
-                amount: parsed,
-                description: expenseDesc || category,
-            }, staffId);
+            await addChannelExpense(
+                channelId,
+                {
+                    category,
+                    amount: parsed,
+                    description: expenseDesc || category,
+                    periodMonth,
+                },
+                staffId
+            );
             setExpenseAmount('');
             setExpenseDesc('');
             setShowExpenseForm(false);
@@ -122,11 +148,17 @@ export default function StaffPayrollEditor({ channelId, staffId, categories, wag
             <div className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] overflow-hidden">
                 <div className="px-5 py-3 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-blue-800 flex items-center gap-2">
-                        <Banknote className="h-4 w-4" /> สรุปค่าแรง
+                        <Banknote className="h-4 w-4" />
+                        {isMonthly ? 'สรุปเงินเดือนประจำ / คอมมิชชั่น' : 'สรุปค่าแรง / คอมมิชชั่น'}
                     </h3>
                     {!editingWage && (
                         <button
-                            onClick={() => { setEditingWage(true); setDaysInput(String(wage.daysWorked)); setCommissionInput(String(wage.commission)); }}
+                            onClick={() => {
+                                setEditingWage(true);
+                                setDailyRateInput(String(wage.dailyRate));
+                                setDaysInput(String(isMonthly ? 1 : wage.daysWorked));
+                                setCommissionInput(String(wage.commission));
+                            }}
                             className="text-xs text-blue-600 hover:text-blue-800 underline underline-offset-2"
                         >
                             แก้ไข
@@ -139,28 +171,39 @@ export default function StaffPayrollEditor({ channelId, staffId, categories, wag
                     )}
                 </div>
                 <div className="p-5 space-y-3 text-sm">
-                    <div className="flex justify-between">
-                        <span className="text-slate-500">ค่าแรง/วัน</span>
-                        <span className="text-slate-800">฿{wage.dailyRate.toLocaleString()}</span>
-                    </div>
-
                     {editingWage ? (
                         <>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className={`grid ${isMonthly ? 'grid-cols-2' : 'grid-cols-3'} gap-3`}>
                                 <div>
-                                    <label className="text-xs text-slate-500 mb-1 block">จำนวนวันทำงาน</label>
+                                    <label className="text-xs text-slate-500 mb-1 block">
+                                        {isMonthly ? 'เงินเดือนประจำ (บาท)' : 'ค่าแรง/วัน (บาท)'}
+                                    </label>
                                     <input
                                         type="number"
                                         onFocus={(e) => e.target.select()}
-                                        value={daysInput}
-                                        onChange={e => setDaysInput(e.target.value)}
+                                        value={dailyRateInput}
+                                        onChange={e => setDailyRateInput(e.target.value)}
                                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         min="0"
+                                        step="0.01"
                                         autoFocus
                                     />
                                 </div>
+                                {!isMonthly && (
+                                    <div>
+                                        <label className="text-xs text-slate-500 mb-1 block">จำนวนวันทำงาน</label>
+                                        <input
+                                            type="number"
+                                            onFocus={(e) => e.target.select()}
+                                            value={daysInput}
+                                            onChange={e => setDaysInput(e.target.value)}
+                                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            min="0"
+                                        />
+                                    </div>
+                                )}
                                 <div>
-                                    <label className="text-xs text-slate-500 mb-1 block">คอมมิชชั่น</label>
+                                    <label className="text-xs text-slate-500 mb-1 block">คอมมิชชั่น (บาท)</label>
                                     <input
                                         type="number"
                                         onFocus={(e) => e.target.select()}
@@ -195,11 +238,17 @@ export default function StaffPayrollEditor({ channelId, staffId, categories, wag
                     ) : (
                         <>
                             <div className="flex justify-between">
-                                <span className="text-slate-500">จำนวนวันทำงาน</span>
-                                <span className="text-slate-800 font-medium">{wage.daysWorked} วัน</span>
+                                <span className="text-slate-500">{isMonthly ? 'เงินเดือนประจำ' : 'ค่าแรง/วัน'}</span>
+                                <span className="text-slate-800">฿{wage.dailyRate.toLocaleString()}</span>
                             </div>
+                            {!isMonthly && (
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">จำนวนวันทำงาน</span>
+                                    <span className="text-slate-800 font-medium">{wage.daysWorked} วัน</span>
+                                </div>
+                            )}
                             <div className="flex justify-between pt-2 border-t border-slate-100">
-                                <span className="text-slate-600 font-medium">ค่าแรงรวม</span>
+                                <span className="text-slate-600 font-medium">{isMonthly ? 'เงินเดือนรวม' : 'ค่าแรงรวม'}</span>
                                 <span className="text-slate-900 font-bold">฿{wage.totalWage.toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between">
@@ -411,7 +460,7 @@ export default function StaffPayrollEditor({ channelId, staffId, categories, wag
                             </div>
                         ))}
 
-                        {/* Other Files (non-image, non-PDF) */}
+                        {/* Other Files */}
                         {attachments.filter(a => !isImage(a.fileType) && a.fileType !== 'application/pdf').map(att => (
                             <div key={att.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200 group">
                                 <div className="h-10 w-10 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0">
@@ -449,7 +498,9 @@ export default function StaffPayrollEditor({ channelId, staffId, categories, wag
                 <div className="flex items-center justify-between">
                     <div>
                         <p className="text-sm text-emerald-600 font-semibold">ยอดโอนทั้งหมด</p>
-                        <p className="text-xs text-slate-400 mt-0.5">ค่าแรง + คอม + ค่าใช้จ่าย</p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                            {isMonthly ? 'เงินเดือน + คอม + ค่าใช้จ่าย' : 'ค่าแรง + คอม + ค่าใช้จ่าย'}
+                        </p>
                     </div>
                     <p className="text-3xl font-bold text-emerald-700">
                         ฿{(editingWage ? previewGrand : grandTotal).toLocaleString()}

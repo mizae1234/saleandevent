@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
         const formData = await request.formData();
         const channelId = formData.get('channelId') as string;
         const staffId = formData.get('staffId') as string;
+        const periodMonth = (formData.get('periodMonth') as string) || null;
 
         if (!channelId || !staffId) {
             return NextResponse.json({ error: 'Missing channelId or staffId' }, { status: 400 });
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
             const attachment = await db.payrollAttachment.create({
                 data: {
                     channelStaffId: channelStaff.id,
+                    periodMonth,
                     fileName: file.name,
                     fileUrl: url,
                     fileType: file.type,

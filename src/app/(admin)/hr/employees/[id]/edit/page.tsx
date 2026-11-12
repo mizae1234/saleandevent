@@ -36,6 +36,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
         taxId: staff.taxId,
         address: staff.address,
         status: staff.status,
+        isHeadOffice: staff.isHeadOffice,
     };
 
     return (

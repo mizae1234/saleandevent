@@ -47,6 +47,7 @@ export async function createStaff(formData: FormData) {
         const taxId = formData.get('taxId') as string | null;
         const address = formData.get('address') as string | null;
         const status = formData.get('status') as string || 'active';
+        const isHeadOffice = formData.get('isHeadOffice') === 'true' || formData.get('isHeadOffice') === 'on';
 
         if (!name) {
             return { error: 'กรุณากรอกชื่อ-สกุล' };
@@ -70,6 +71,7 @@ export async function createStaff(formData: FormData) {
                 taxId: taxId || null,
                 address: address || null,
                 status,
+                isHeadOffice,
             }
         });
     } catch (error) {
@@ -101,6 +103,7 @@ export async function updateStaff(id: string, formData: FormData) {
         const taxId = formData.get('taxId') as string | null;
         const address = formData.get('address') as string | null;
         const status = formData.get('status') as string || 'active';
+        const isHeadOffice = formData.get('isHeadOffice') === 'true' || formData.get('isHeadOffice') === 'on';
 
         if (!name) {
             return { error: 'กรุณากรอกชื่อ-สกุล' };
@@ -124,6 +127,7 @@ export async function updateStaff(id: string, formData: FormData) {
                 taxId: taxId || null,
                 address: address || null,
                 status,
+                isHeadOffice,
             }
         });
     } catch (error) {

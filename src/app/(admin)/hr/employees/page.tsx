@@ -115,8 +115,13 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 font-medium text-slate-900">
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 flex-wrap">
                                             {staff.name}
+                                            {staff.isHeadOffice && (
+                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-teal-100 text-teal-700">
+                                                    🏢 สำนักงานใหญ่
+                                                </span>
+                                            )}
                                             {staff.status === 'inactive' && (
                                                 <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700">ลาออก/ปิดใช้งาน</span>
                                             )}

@@ -33,6 +33,7 @@ interface ChannelStock {
     name: string;
     code: string;
     type: string;
+    location?: string;
     status: string;
     isActive: boolean;
     totalSent: number;
@@ -136,18 +137,25 @@ export function ChannelStockReport({ data }: Props) {
     const handleExport = async () => {
         try {
             const XLSX = await import("xlsx");
+            const activeChannels = filteredData.filter(c => c.totalSent > 0);
             const rows: any[] = [];
-            filteredData.filter(c => c.totalSent > 0).forEach((c, i) => {
+            activeChannels.forEach((c, i) => {
+                const statusLabel = getChannelStatus(c.status).label;
+                const typeLabel = c.type === "EVENT" ? "Event" : "สาขา (Branch)";
                 c.items.forEach((item) => {
                     rows.push({
-                        "ลำดับสาขา": i + 1,
-                        "ชื่อสาขา/Event": c.name,
+                        "ลำดับจุดขาย": i + 1,
+                        "รหัสจุดขาย": c.code,
+                        "ชื่อจุดขาย (สาขา/Event)": c.name,
+                        "ประเภทจุดขาย": typeLabel,
+                        "สถานที่จุดขาย": c.location || "-",
+                        "สถานะจุดขาย": statusLabel,
                         "บาร์โค้ด": item.barcode,
-                        "ชื่อสินค้า": item.name,
-                        "รหัส": item.code || "-",
                         "SKU": item.sku || "-",
-                        "ไซส์": item.size || "-",
+                        "รหัสสินค้า": item.code || "-",
+                        "ชื่อสินค้า": item.name,
                         "สี": item.color || "-",
+                        "ไซส์": item.size || "-",
                         "ส่งไป": item.sent,
                         "ขายแล้ว": item.sold,
                         "คืนแล้ว": item.returned,
@@ -156,9 +164,27 @@ export function ChannelStockReport({ data }: Props) {
                     });
                 });
             });
-            const ws = XLSX.utils.json_to_sheet(rows);
+
+            const summaryRows = activeChannels.map((c, i) => ({
+                "ลำดับ": i + 1,
+                "รหัสจุดขาย": c.code,
+                "ชื่อจุดขาย (สาขา/Event)": c.name,
+                "ประเภทจุดขาย": c.type === "EVENT" ? "Event" : "สาขา (Branch)",
+                "สถานที่จุดขาย": c.location || "-",
+                "สถานะจุดขาย": getChannelStatus(c.status).label,
+                "ส่งไปทั้งหมด": c.totalSent,
+                "ขายแล้ว": c.totalSold,
+                "คืนแล้ว": c.totalReturned,
+                "โอนออก": c.totalTransferOut,
+                "คงเหลือ": c.totalRemaining,
+                "สัดส่วนขาย (%)": `${c.soldPercent}%`,
+            }));
+
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "สินค้าคงเหลือ");
+            const wsDetail = XLSX.utils.json_to_sheet(rows);
+            const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+            XLSX.utils.book_append_sheet(wb, wsDetail, "สินค้าคงเหลือรายจุดขาย");
+            XLSX.utils.book_append_sheet(wb, wsSummary, "สรุปตามจุดขาย");
             const dateStr = new Date().toISOString().slice(0, 10);
             XLSX.writeFile(wb, `channel_stock_${dateStr}.xlsx`);
         } catch (err) {
@@ -189,28 +215,38 @@ export function ChannelStockReport({ data }: Props) {
                 </div>
             </div>
 
-            {/* Status Filter */}
-            <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="h-9 px-3 pr-8 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
-                >
-                    {statusTabs.map(tab => (
-                        <option key={tab.key} value={tab.key}>
-                            {tab.label} ({tab.count})
-                        </option>
-                    ))}
-                </select>
-                {statusFilter !== 'all' && (
-                    <button
-                        onClick={() => setStatusFilter('all')}
-                        className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+            {/* Status Filter + Quick Export */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="h-9 px-3 pr-8 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 transition-colors cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
                     >
-                        ล้าง
-                    </button>
-                )}
+                        {statusTabs.map(tab => (
+                            <option key={tab.key} value={tab.key}>
+                                {tab.label} ({tab.count})
+                            </option>
+                        ))}
+                    </select>
+                    {statusFilter !== 'all' && (
+                        <button
+                            onClick={() => setStatusFilter('all')}
+                            className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                        >
+                            ล้าง
+                        </button>
+                    )}
+                </div>
+
+                <button
+                    onClick={handleExport}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+                >
+                    <Download className="h-3.5 w-3.5 text-emerald-600" />
+                    ส่งออก Excel (ข้อมูลจุดขาย)
+                </button>
             </div>
 
             {/* Chart */}

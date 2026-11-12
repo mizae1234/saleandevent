@@ -23,6 +23,7 @@ interface StaffData {
     taxId?: string | null;
     address?: string | null;
     status?: string;
+    isHeadOffice?: boolean;
 }
 
 interface StaffFormProps {
@@ -149,6 +150,31 @@ export function StaffForm({ initialData, action, isEdit = false, salaryAccess }:
                         placeholder="เลขผู้เสียภาษี 13 หลัก"
                     />
 
+                    {/* ประจำสำนักงานใหญ่ (สำหรับ Check-in / Check-out) */}
+                    <div className="md:col-span-2">
+                        <label
+                            htmlFor="isHeadOffice"
+                            className="flex items-start gap-3 p-4 rounded-xl border border-teal-200 bg-teal-50/40 cursor-pointer hover:bg-teal-50/70 transition-colors"
+                        >
+                            <input
+                                type="checkbox"
+                                id="isHeadOffice"
+                                name="isHeadOffice"
+                                value="true"
+                                defaultChecked={initialData?.isHeadOffice || false}
+                                className="mt-0.5 h-5 w-5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                            />
+                            <div>
+                                <span className="text-sm font-semibold text-slate-900">
+                                    🏢 ประจำสำนักงานใหญ่ (อนุญาตให้ Check-in / Check-out ที่สำนักงานใหญ่)
+                                </span>
+                                <span className="block text-xs text-slate-500 mt-0.5">
+                                    เมื่อติ๊กเลือก พนักงานคนนี้จะเห็นปุ่ม Check-in / Check-out สำหรับ &quot;สำนักงานใหญ่&quot; ในหน้าลงเวลาเข้างาน
+                                </span>
+                            </div>
+                        </label>
+                    </div>
+
                     {/* ที่อยู่ */}
                     <div className="md:col-span-2">
                         <FormTextarea
@@ -209,15 +235,15 @@ export function StaffForm({ initialData, action, isEdit = false, salaryAccess }:
                         <option value="commission">คอมมิชชั่น</option>
                     </FormSelect>
 
-                    {/* ค่าแรงรายวัน */}
+                    {/* ค่าแรงรายวัน / เงินเดือน */}
                     {hideSalary ? (
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">ค่าแรง(บาท)</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">ค่าแรง / เงินเดือนประจำ (บาท)</label>
                             <div className="h-10 flex items-center px-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-400 font-mono">***</div>
                         </div>
                     ) : (
                         <FormInput
-                            label="ค่าแรง(บาท)"
+                            label="ค่าแรง / เงินเดือนประจำ (บาท)"
                             type="number"
                             onFocus={(e) => (e.target as HTMLInputElement).select()}
                             name="dailyRate"

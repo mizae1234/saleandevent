@@ -27,8 +27,9 @@ description: Full codebase reference for the unified sales channel & stock manag
 ## 2. Project Structure
 
 ```
+/backup.sh                 # Production DB backup script (SSH + pg_dump + local download to /backups)
 /prisma
-  schema.prisma          # 700 lines, 20+ models
+  schema.prisma          # 1000+ lines, 25+ models
   seed.ts / seed.sql     # Seeding scripts
   import-excel.ts        # Excel product import
 /scripts
@@ -36,18 +37,22 @@ description: Full codebase reference for the unified sales channel & stock manag
 /src
   /actions               # Server Actions (business logic)
     auth-actions.ts
+    attendance-actions.ts  # Check-in / Check-out (GPS geofence + R2 photo + HQ/Channel)
+    company-setting-actions.ts # Store / Head Office settings & GPS coordinates
     sale-actions.ts
     product-actions.ts
     invoice-actions.ts
     staff-actions.ts
     customer-actions.ts
     role-permission-actions.ts
-    /channel             # 10 files — barrel via index.ts
+    /channel             # 10 files — barrel via index.ts (supports EVENT & monthly BRANCH payroll)
     /stock-request       # 6 files — barrel via index.ts
   /lib
     auth.ts              # JWT session, bcrypt
     db.ts                # Prisma singleton (PG adapter)
     r2.ts                # R2 upload/delete
+    geo.ts               # Haversine GPS distance & Google Maps URL coordinate parser
+    payroll-period.ts    # Monthly payroll period helpers (YYYY-MM, 30th pay cycle)
     utils.ts             # cn(), fmt()
     invoice-pdf.ts       # jsPDF invoice generation
     withholding-tax-pdf.ts
@@ -63,14 +68,15 @@ description: Full codebase reference for the unified sales channel & stock manag
     sale.ts              # SaleItemInput, AdjustmentInput, CreateSaleInput
     invoice.ts           # InvoiceItemInput
   /components
+    /attendance          # CheckInOutCard (Live camera + GPS distance check + Forgot check-out)
     /dashboard           # KpiCard, SalesChart, BranchChart, etc.
     /layout              # Sidebar, BottomNav, MobileNav, EmployeeHeader
-    /shared              # ConfirmDialog, EmptyState, FormInput, PageHeader, Spinner
+    /shared              # ConfirmDialog, EmptyState, FormInput, PageHeader, Spinner, GpsCoordinatePicker
     /ui                  # button, dialog, input, label, select, textarea, toast
   /app
     /(admin)             # Back-office pages (desktop)
     /(employee)          # Employee mobile pages (workspace, channel)
-    /api                 # 16 API routes
+    /api                 # API routes (channels, products, payroll upload, attendance upload, etc.)
     /login               # Login page
   middleware.ts          # Route protection (JWT + allowedMenus RBAC)
 ```
@@ -83,12 +89,13 @@ description: Full codebase reference for the unified sales channel & stock manag
 
 | Model | PK | Purpose |
 |---|---|---|
-| `SalesChannel` | UUID | EVENT or BRANCH — central hub for all operations |
+| `SalesChannel` | UUID | EVENT or BRANCH — central hub for all operations. Includes `latitude`, `longitude`, and `checkInRadiusKm` (default `0.5` km) for employee GPS check-in |
 | `ChannelLog` | UUID | Audit log per channel (action, details JSON, changedBy) |
 | `Product` | `barcode` (VarChar) | Products keyed by barcode, with `sku` (nullable VarChar(100)), code/color/size as identifiers |
 | `WarehouseStock` | `barcode` | Central warehouse stock (quantity, reservedQuantity) ⚠️ ข้อมูลติดลบ ห้าม AI หรือ Dashboard ใช้ตรรกะผลรวมตารางนี้ตรงๆ ให้เลี่ยงใช้ ChannelStock หรือครอบ clamp |
 | `ChannelStock` | UUID | Stock at a channel (quantity, soldQuantity, returnedQuantity) — unique on `[channelId, barcode]` |
 | `StockMovement` | UUID | All movement records (RECEIVING, RETURN, etc.) |
+| `StockTransfer` / `StockTransferItem` | UUID | Stock transfers between Warehouse and Channels (supports Excel Export/Import with SKU & strict stock validation) |
 
 ### Stock Request Lifecycle
 
@@ -107,7 +114,7 @@ description: Full codebase reference for the unified sales channel & stock manag
 |---|---|
 | `Sale` | Bill record (billCode = `{ChannelCode}-{running 4-digit}`) |
 | `SaleItem` | Line items with freebie flag |
-| `ChannelExpense` | Per-channel expenses (category, amount, receipt URL) |
+| `ChannelExpense` | Per-channel expenses (category, amount, receipt URL, optional `periodMonth` (`YYYY-MM`) for monthly Branch claims) |
 | `Invoice` | Invoice with discount/VAT calculation, status `draft → submitted` |
 | `InvoiceItem` | Per-barcode invoice quantities |
 | `Customer` | Customer master (taxId, creditTerm, discountPercent) |
@@ -116,16 +123,19 @@ description: Full codebase reference for the unified sales channel & stock manag
 
 | Model | Purpose |
 |---|---|
-| `Staff` | Employee (code S0001 format, role, paymentType, dailyRate, commissionAmount, allowedMenus override, salaryAccess) |
-| `ChannelStaff` | Staff assigned to channel (with commission/dailyRate overrides, isWagePaid, isCommissionPaid, isSubmitted) |
+| `Staff` | Employee (code S0001 format, role, paymentType (`daily` \| `monthly` \| `commission`), dailyRate, commissionAmount, `isHeadOffice` boolean for Head Office check-in, allowedMenus override, salaryAccess) |
+| `ChannelStaff` | Staff assigned to channel (used directly for EVENT one-time payroll: commission/dailyRate/daysWorked overrides, isWagePaid, isCommissionPaid, isSubmitted, WHT fields) |
+| `ChannelStaffPeriod` | Monthly payroll cycle record for permanent `BRANCH` channels (`periodMonth` = `YYYY-MM`, pay cycle 30th of every month). Unique on `[channelStaffId, periodMonth]` |
+| `StaffCheckIn` | Employee GPS + Live Photo Check-in / Check-out record (`locationType`: `EVENT` \| `BRANCH` \| `HQ`, `checkInLat/Lng`, `checkInPhotoUrl`, `checkOutLat/Lng`, `checkOutPhotoUrl`, `isForgotCheckOut`, `forgotCheckOutReason`, `hoursWorked`). Unique on `[staffId, date]` (1 person per 1 location per day). Decoupled from `Attendance` / payroll daysWorked calculation |
 | `Attendance` | Daily attendance per channel (unique on `[channelId, staffId, date]`) |
-| `PayrollAttachment` | R2-stored files attached to payroll records |
+| `PayrollAttachment` | R2-stored files attached to payroll records (supports optional `periodMonth` for monthly Branch claims) |
 | `PasswordChangeLog` | Audit trail for password changes |
 
 ### Others
 
 | Model | Purpose |
 |---|---|
+| `CompanySetting` | Store / Company master info & Head Office (`สำนักงานใหญ่`) GPS coordinates (`latitude`, `longitude`, `checkInRadiusKm`) |
 | `Promotion` | Config JSON for Buy-X-Get-Y, tiered, gift promos |
 | `ReturnSummary` / `ReturnItem` | Event closing return data (sold, remaining, damaged, missing) |
 | `RolePermission` | Per-role allowedMenus config |
@@ -153,8 +163,8 @@ description: Full codebase reference for the unified sales channel & stock manag
 #### Create & Update
 | Function | Notes |
 |---|---|
-| `createChannelWithDetails` | Auto-generates code: EVENT=`EV-YYYYMM-XXX`, BRANCH=`BR-XXX`. Transaction: create channel + assign staff + initial stock request + log |
-| `updateChannelWithDetails` | Full update in transaction. Deletes all ChannelStaff and recreates. Updates/creates INITIAL stock request |
+| `createChannelWithDetails` | Auto-generates code: EVENT=`EV-YYYYMM-XXX`, BRANCH=`BR-XXX`. **Requires GPS coordinates (`latitude`, `longitude`) and `checkInRadiusKm`**. Transaction: create channel + assign staff + initial stock request + log |
+| `updateChannelWithDetails` | Full update in transaction (including `latitude`, `longitude`, `checkInRadiusKm`). Deletes all ChannelStaff and recreates. Updates/creates INITIAL stock request |
 
 #### Approval
 | Function | Notes |
@@ -173,24 +183,24 @@ description: Full codebase reference for the unified sales channel & stock manag
 #### Expense
 | Function | Notes |
 |---|---|
-| `addChannelExpense` | Create expense (auto `approved` status) + log |
+| `addChannelExpense` | Create expense (auto `approved` status, supports optional `periodMonth` for monthly Branch claims) + log |
 | `removeChannelExpense` | Delete expense + log |
 | `deletePayrollAttachment` | Delete from R2 + DB |
 
 #### Payroll
 | Function | Notes |
 |---|---|
-| `updateStaffDailyRate` | Override daily rate per channel assignment |
-| `toggleWagePaid` / `toggleCommissionPaid` | Toggle paid status + timestamp |
-| `markAllWagePaid` / `markAllCommissionPaid` | Bulk toggle for a channel |
-| `submitPayroll` | Mark `isSubmitted` + timestamp per staff in channel |
+| `updateStaffDailyRate` | Override daily rate / monthly salary per channel assignment (or per `ChannelStaffPeriod` when `periodMonth` is provided) |
+| `toggleWagePaid` / `toggleCommissionPaid` | Toggle paid status + timestamp (supports `periodMonth` for Branch monthly cycles) |
+| `markAllWagePaid` / `markAllCommissionPaid` | Bulk toggle for a channel (or specific `periodMonth`) |
+| `submitPayroll` | Mark `isSubmitted` + timestamp per staff in channel (or specific `periodMonth` for Branch) |
 
 #### Compensation
 | Function | Notes |
 |---|---|
-| `getChannelCompensationSummary` | Calculates wages (daysWorked × dailyRate) + commission (flat amount) per staff |
-| `saveStaffCompensation` | Batch update daysWorkedOverride + commissionOverride |
-| `updateEmployeeCompensation` | Per-staff update (for employee self-service) |
+| `getChannelCompensationSummary` | Calculates wages (`monthly` fixed salary = `effectiveRate`, or `daily` = `daysWorked × effectiveRate`) + commission per staff. Supports `periodMonth` (`YYYY-MM`) for monthly Branch claims |
+| `saveStaffCompensation` | Batch update daysWorkedOverride + commissionOverride (supports `periodMonth`) |
+| `updateEmployeeCompensation` | Per-staff update for employee self-service (supports `periodMonth`) |
 
 #### Payment
 | Function | Notes |
@@ -306,6 +316,14 @@ description: Full codebase reference for the unified sales channel & stock manag
 | `getStaffForPermissions` | Staff list with allowedMenus for permission management |
 | `saveStaffPermissions` | Per-staff allowedMenus + salaryAccess override |
 
+### 4.10 Attendance / Check-in & Check-out (`src/actions/attendance-actions.ts`)
+
+| Function | Notes |
+|---|---|
+| `performCheckIn` | Enforces 1 check-in per staff per day (`Asia/Bangkok` date), validates Haversine GPS distance `<= checkInRadiusKm` against target `SalesChannel` or Head Office (`CompanySetting`), requires live photo URL, and creates `StaffCheckIn` |
+| `performCheckOut` | Validates GPS distance against target location; if outside `checkInRadiusKm`, requires `isForgotCheckOut = true` (with optional `forgotCheckOutReason`), requires live photo URL, computes `hoursWorked`, and updates `StaffCheckIn` |
+| `updateLocationGpsConfig` | Admin/HR helper to quickly update `latitude`, `longitude`, and `checkInRadiusKm` for Head Office (`HQ`) or any `SalesChannel` |
+
 ---
 
 ## 5. Lib Utilities
@@ -332,6 +350,17 @@ description: Full codebase reference for the unified sales channel & stock manag
 - `cn(...inputs)` — clsx + tailwind-merge
 - `fmt(n: number)` — Thai locale number format (no decimals)
 
+### `geo.ts`
+- `calculateDistanceKm(lat1, lng1, lat2, lng2)` — Haversine GPS distance in kilometers
+- `formatDistanceThai(distanceKm)` — Formats distance in meters (if `< 1` km) or km
+- `parseGoogleMapsCoords(input)` — Extracts `{ lat, lng }` from Google Maps URLs (`!3d..!4d..`, `@lat,lng`, `?q=lat,lng`) or plain `lat, lng` strings
+- `isValidLatLng(lat, lng)` — Validates finite latitude (`-90..90`) and longitude (`-180..180`)
+
+### `payroll-period.ts`
+- `getCurrentPeriodMonth()` / `getPeriodDateRange(periodMonth)` — Computes `YYYY-MM` period and start/end dates
+- `formatPeriodMonthThai(periodMonth)` — Formats `YYYY-MM` into Thai month & Buddhist year with `(รอบจ่ายวันที่ 30)`
+- `getSelectablePeriodMonths(count)` — Generates selectable monthly periods for Branch payroll dropdowns
+
 ### `invoice-pdf.ts` / `withholding-tax-pdf.ts` / `thai-baht-text.ts`
 - jsPDF-based PDF generation for invoices and withholding tax certificates
 - Thai Baht text conversion (number → Thai words)
@@ -351,7 +380,7 @@ description: Full codebase reference for the unified sales channel & stock manag
 - JWT validation on every request
 - **Menu-based RBAC**: checks `allowedMenus[]` against `ROUTE_TO_MENU_KEY` mapping
 - Cross-access patterns: supply_chain can view `/channels/xxx/packing`
-- Employee routes (`/workspace`, `/channel`) open to ADMIN/MANAGER/STAFF/PC
+- Employee routes (`/workspace`, `/channel`) open to all 7 roles (`ADMIN`, `MANAGER`, `WAREHOUSE`, `FINANCE`, `HR`, `STAFF`, `PC`) so both field and Head Office staff can Check-in / Check-out
 - Fallback role-based protection when no allowedMenus configured
 
 ### Password Default
@@ -367,10 +396,10 @@ description: Full codebase reference for the unified sales channel & stock manag
 |---|---|---|
 | `front_office` | หน้าร้าน | `/pc/pos`, `/pc/sales`, `/pc/receive`, `/pc/refill`, `/pc/close` |
 | `sales_channel` | ช่องทางขาย | `/`, `/channels`, `/channels/create`, `/channels/approvals`, `/channels/expenses` |
-| `supply_chain` | คลังสินค้า | `/warehouse/packing`, `/warehouse/shipments`, `/warehouse/return` |
-| `finance` | บัญชี | `/dashboard/owner`, `/finance/customers`, `/finance/invoices` |
-| `hr` | บุคคล | `/hr/employees`, `/hr/payroll` |
-| `system_admin` | ตั้งค่า | `/admin/products`, `/admin/users` |
+| `supply_chain` | คลังสินค้า | `/warehouse/packing`, `/warehouse/shipments`, `/warehouse/stock-adjustment`, `/warehouse/stock-transfer`, `/warehouse/return` |
+| `finance` | บัญชี | `/dashboard/owner`, `/reports`, `/finance/customers`, `/finance/invoices` |
+| `hr` | บุคคล | `/hr/employees`, `/hr/attendance`, `/hr/payroll`, `/hr/payroll/report` |
+| `system_admin` | ตั้งค่า | `/admin/company`, `/admin/products`, `/admin/product-categories`, `/admin/expense-categories`, `/admin/users` |
 
 ### 7 Roles
 `ADMIN`, `MANAGER`, `WAREHOUSE`, `FINANCE`, `HR`, `STAFF`, `PC`
@@ -406,7 +435,8 @@ draft → submitted → approved → [Stock flow: allocated → packed → shipp
 | `GET /api/dashboard` | Dashboard aggregate data |
 | `GET /api/dashboard/owner` | Owner dashboard data |
 | `GET /api/invoices/[invoiceId]` | Invoice detail |
-| `POST /api/payroll/upload` | Upload payroll attachment to R2 |
+| `POST /api/payroll/upload` | Upload payroll attachment to R2 (supports `periodMonth` for Branch claims) |
+| `POST /api/attendance/upload` | Upload live Check-in / Check-out camera photo to Cloudflare R2 |
 | `GET /api/products` | List products |
 | `GET /api/products/export` | Export products to Excel |
 | `POST /api/products/import` | Import products from Excel |
@@ -429,12 +459,14 @@ draft → submitted → approved → [Stock flow: allocated → packed → shipp
 - `SalesChart.tsx`, `BranchChart.tsx`, `ExpenseChart.tsx` — Chart components
 - `EventTable.tsx`, `BranchTable.tsx`, `ProductInsight.tsx` — Data tables
 
-### Shared
+### Shared & Attendance
 - `ConfirmDialog.tsx` — Custom modal replacing native confirm
 - `FormInput.tsx` — Labeled input with `border-0 border-b` style
 - `PageHeader.tsx` — Page title with breadcrumbs
 - `EmptyState.tsx` — Empty data placeholder
 - `Spinner.tsx` — Loading indicator
+- `GpsCoordinatePicker.tsx` — Reusable GPS coordinate & radius picker (supports Google Maps URL parsing, coordinate pasting, and current browser geolocation)
+- `CheckInOutCard.tsx` (`src/components/attendance/CheckInOutCard.tsx`) — Mobile Check-in / Check-out card with live WebRTC camera modal, photo timestamp/GPS watermarking, Haversine distance geofence check, and Forgot Check-out (`ลืม Check-out`) exception flow
 
 ### UI (shadcn-style)
 `button`, `dialog`, `input`, `label`, `select`, `textarea`, `toast`, `alert-dialog`
@@ -507,15 +539,20 @@ import { cn, fmt } from '@/lib/utils';
 | `/channels/approvals` | Approval queue |
 | `/channels/approvals/payment` | Payment approval queue |
 | `/channels/expenses` | Cross-channel expense overview |
+| `/admin/company` | Store / Company info & Head Office (`สำนักงานใหญ่`) GPS coordinates + check-in radius |
 | `/admin/products` | Product CRUD with import/export |
 | `/admin/users` | Role permissions + per-staff settings |
 | `/finance/customers` | Customer CRUD |
 | `/finance/invoices` | Invoice management by channel |
-| `/hr/employees` | Staff management |
-| `/hr/payroll` | Payroll by channel |
+| `/reports` | Reports hub (`TopProductsReport` with model-aggregated chart & color-grouped S–3XL table, `ChannelStockReport`, `TotalStockReport` with point-of-sale Excel exports) |
+| `/hr/employees` | Staff management (supports `isHeadOffice` flag & `monthly`/`daily` payment types) |
+| `/hr/attendance` | HR Attendance dashboard — inspect Check-in / Check-out photos, GPS distances, Forgot Check-out flags, quick GPS config modal, and Excel export |
+| `/hr/payroll` | Payroll by channel (split tabs: `🎪 Event (จบงาน)` vs `🏪 สาขา (รายเดือน - จ่ายวันที่ 30)`) |
+| `/hr/payroll/report` | Cross-channel payroll & WHT report (combines one-time Event payrolls and monthly Branch `ChannelStaffPeriod` records) |
 | `/dashboard/owner` | Owner financial dashboard |
 | `/warehouse/packing` | Packing queue |
 | `/warehouse/shipments` | Shipment tracking |
+| `/warehouse/stock-transfer` | Stock transfer between Warehouse & Channels (with Excel Export/Import + SKU + strict stock validation) |
 | `/warehouse/return` | Return receiving |
 | `/pc/pos` | Point of Sale |
 | `/pc/sales` | Sales history |
@@ -529,17 +566,28 @@ import { cn, fmt } from '@/lib/utils';
 
 | Route | Purpose |
 |---|---|
-| `/workspace` | Employee home — channel assignment view |
-| `/channel/[id]/*` | Employee channel-scoped operations (POS, expenses, payroll self-service) |
+| `/workspace` | Employee home — Head Office (`สำนักงานใหญ่`) Check-in / Check-out card + assigned Event/Branch channel cards with direct Check-in / Check-out |
+| `/workspace/attendance` | Employee personal Check-in / Check-out history with month selector (defaults to current month), summary cards, and photo preview |
+| `/channel/[id]/*` | Employee channel-scoped operations (Check-in / Check-out card, POS, expenses, and Event/Branch monthly payroll self-service) |
 
 ---
 
 ## 14. Business & Payroll Rules
 
-### Withholding Tax (หัก ณ ที่จ่าย 3%)
+### 14.1 Event vs. Monthly Branch Payroll (`type = "EVENT"` vs `"BRANCH"`)
+1. **Event (`type = "EVENT"`)**:
+   - One-time payroll per event lifecycle, stored directly on `ChannelStaff`, `ChannelExpense` (`periodMonth = null`), and `PayrollAttachment` (`periodMonth = null`).
+2. **Branch (`type = "BRANCH"`) — Monthly Pay Cycle (30th of Every Month)**:
+   - Branches remain permanently `active` (never closed to process payroll).
+   - Claims are scoped by `periodMonth` (`YYYY-MM`, e.g., `"2026-11"`) and stored in `ChannelStaffPeriod` (`channel_staff_periods`), `ChannelExpense.periodMonth`, and `PayrollAttachment.periodMonth`.
+   - Supports two staff compensation types in the same branch:
+     - **Fixed Monthly (`paymentType = 'monthly'`)**: Base salary = `effectiveRate` (`dailyRateOverride ?? staff.dailyRate`) for the month (not multiplied by `daysWorked`) + `commission` + `expenses`.
+     - **Daily / Regular (`paymentType = 'daily'`)**: Wage = `daysWorked × effectiveRate` + `commission` + `expenses`.
+
+### 14.2 Withholding Tax (หัก ณ ที่จ่าย 3%)
 1. **Tax Applicability**: A staff member's compensation is subject to Withholding Tax (ภ.ง.ด.3) at a rate of **3%** only if their **days worked is strictly greater than 10 days** (`daysWorked > 10`).
 2. **Taxable Income**:
-   - **Wage (ม.40(1))**: `daysWorked * dailyRate`.
+   - **Wage (ม.40(1))**: `daysWorked * dailyRate` (or fixed monthly amount if applicable).
    - **Commission (ม.40(2))**: The base commission (`totalCommission`) plus any target incentive withdrawals (`targetIncentive`).
 3. **Target Incentive (ค่าเป้า)**:
    - "ค่าเป้า" is set up as an employee-facing expense category (`type: 'emp'`).
@@ -548,4 +596,20 @@ import { cn, fmt } from '@/lib/utils';
 4. **Net Payout Calculation**:
    - `ยอดโอนรวม` (Net Transfer Amount) = `ค่าแรงรวม + ค่าคอม + เบิกค่าใช้จ่ายทั้งหมด - หัก ณ ที่จ่าย`.
    - Both the summary Excel and the KCASH bank transfer file use the net payout.
+
+### 14.3 Employee Check-in / Check-out System (`StaffCheckIn`)
+1. **Supported Locations & Default Shift Schedules**:
+   - **Event & Branch (`SalesChannel`)**: Mandatory `latitude`, `longitude`, and `checkInRadiusKm` (default `0.5` km) + default work shift **`10:00 – 21:00`** (`workStartTime`, `workEndTime`) when creating a new channel (`/channels/create`), editable per Event/Branch.
+   - **Head Office (`สำนักงานใหญ่` / `CompanySetting`)**: Configured in `/admin/company` or `/hr/attendance` with default work shift **`09:00 – 18:00`** (`workStartTime`, `workEndTime`). Staff with `isHeadOffice = true` can check in at `"สำนักงานใหญ่"` on `/workspace`.
+2. **1 Person per 1 Location per Day**:
+   - Enforced by `@@unique([staffId, date])` on `StaffCheckIn` (using `Asia/Bangkok` calendar date).
+3. **Check-in Validation & Late Tracking**:
+   - Requires live WebRTC camera photo capture (no gallery upload allowed; auto-watermarked with location, timestamp, and GPS coordinates, uploaded to Cloudflare R2) + real-time GPS distance check (`distanceKm <= checkInRadiusKm`). Out-of-range check-in is blocked.
+   - Snapshots the location's shift (`shiftStartTime`, `shiftEndTime`) and computes `lateMinutes` automatically if checked in after `shiftStartTime`.
+4. **Check-out & Forgot Check-out Exception**:
+   - Requires live camera photo + GPS.
+   - If the employee is outside `checkInRadiusKm` when checking out, they must check **`☑️ ลืม Check-out จากหน้างาน (ยืนยันการ Check-out นอกพื้นที่)`** (`isForgotCheckOut = true`) with an optional reason note so HR can inspect it in `/hr/attendance`.
+5. **Decoupled from Payroll Days Worked**:
+   - Stored in `staff_check_ins` (`StaffCheckIn`), completely separate from `attendance` (`Attendance`), so payroll `daysWorked` calculations remain unaffected until linked in a future phase.
+
 

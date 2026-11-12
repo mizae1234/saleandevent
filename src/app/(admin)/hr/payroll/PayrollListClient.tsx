@@ -3,13 +3,29 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { Banknote, Calendar, MapPin, ArrowRight, Users, Search, Store, CheckCircle2, Clock, CircleDot } from "lucide-react";
+import {
+    Banknote,
+    Calendar,
+    MapPin,
+    ArrowRight,
+    Users,
+    Search,
+    Store,
+    CheckCircle2,
+    Clock,
+    CircleDot,
+    CalendarDays,
+    Building2,
+} from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PageHeader, EmptyState } from "@/components/shared";
 import { getChannelStatus } from "@/config/status";
+import { formatPeriodMonthThai } from "@/lib/payroll-period";
 
 interface PayrollEvent {
     id: string;
+    type: string;
     name: string;
     code: string;
     location: string;
@@ -36,16 +52,27 @@ function getPayStatus(e: PayrollEvent): 'paid' | 'partial' | 'unpaid' {
     return 'unpaid';
 }
 
-export function PayrollListClient({ events }: { events: PayrollEvent[] }) {
+interface Props {
+    events: PayrollEvent[];
+    periodMonth: string;
+    periodOptions: { value: string; label: string }[];
+}
+
+export function PayrollListClient({ events, periodMonth, periodOptions }: Props) {
+    const router = useRouter();
     const [search, setSearch] = useState('');
+    const [typeFilter, setTypeFilter] = useState<'all' | 'EVENT' | 'BRANCH'>('all');
     const [statusFilter, setStatusFilter] = useState('all');
     const [payFilter, setPayFilter] = useState('all');
+
+    const eventCount = useMemo(() => events.filter(e => e.type !== 'BRANCH').length, [events]);
+    const branchCount = useMemo(() => events.filter(e => e.type === 'BRANCH').length, [events]);
 
     // Dynamic status tabs from events data
     const statusTabs = useMemo(() => {
         const counts = new Map<string, number>();
         events.forEach(e => counts.set(e.status, (counts.get(e.status) || 0) + 1));
-        const tabs: { key: string; label: string; count: number }[] = [{ key: 'all', label: 'ทั้งหมด', count: events.length }];
+        const tabs: { key: string; label: string; count: number }[] = [{ key: 'all', label: 'สถานะ: ทั้งหมด', count: events.length }];
         counts.forEach((count, status) => {
             const config = getChannelStatus(status);
             tabs.push({ key: status, label: config.label, count });
@@ -55,6 +82,8 @@ export function PayrollListClient({ events }: { events: PayrollEvent[] }) {
 
     const filtered = useMemo(() => {
         return events.filter(e => {
+            if (typeFilter === 'EVENT' && e.type === 'BRANCH') return false;
+            if (typeFilter === 'BRANCH' && e.type !== 'BRANCH') return false;
             if (statusFilter !== 'all' && e.status !== statusFilter) return false;
             if (payFilter !== 'all' && getPayStatus(e) !== payFilter) return false;
             if (search) {
@@ -65,15 +94,74 @@ export function PayrollListClient({ events }: { events: PayrollEvent[] }) {
             }
             return true;
         });
-    }, [events, search, statusFilter, payFilter]);
+    }, [events, typeFilter, search, statusFilter, payFilter]);
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
-            <PageHeader
-                icon={Banknote}
-                title="สรุปค่าแรง / ค่าคอม"
-                subtitle="เลือก Event เพื่อดูสรุปค่าแรงและข้อมูลโอนเงิน"
-            />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <PageHeader
+                    icon={Banknote}
+                    title="สรุปค่าแรง / เงินเดือน / ค่าคอม"
+                    subtitle="เลือก Event หรือ สาขา (รายเดือน รอบจ่ายวันที่ 30) เพื่อดูสรุปและทำรายการโอนเงิน"
+                />
+
+                {/* Month selector for Branch payrolls */}
+                <div className="flex items-center gap-2 bg-indigo-50/70 border border-indigo-200 rounded-xl px-3 py-2">
+                    <CalendarDays className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                    <div>
+                        <p className="text-[10px] font-semibold text-indigo-600 uppercase leading-none mb-0.5">
+                            งวดเบิกสาขา (รายเดือน)
+                        </p>
+                        <select
+                            value={periodMonth}
+                            onChange={(e) => router.push(`/hr/payroll?period=${e.target.value}`)}
+                            className="bg-transparent text-xs font-bold text-indigo-950 focus:outline-none cursor-pointer"
+                        >
+                            {periodOptions.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            {/* Type Tabs */}
+            <div className="flex flex-wrap gap-2">
+                <button
+                    type="button"
+                    onClick={() => setTypeFilter('all')}
+                    className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                        typeFilter === 'all'
+                            ? 'bg-teal-600 text-white shadow-sm'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    }`}
+                >
+                    ทั้งหมด ({events.length})
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setTypeFilter('EVENT')}
+                    className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                        typeFilter === 'EVENT'
+                            ? 'bg-teal-600 text-white shadow-sm'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    }`}
+                >
+                    Event ({eventCount})
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setTypeFilter('BRANCH')}
+                    className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                        typeFilter === 'BRANCH'
+                            ? 'bg-indigo-600 text-white shadow-sm'
+                            : 'bg-white text-indigo-700 border border-indigo-200 hover:bg-indigo-50'
+                    }`}
+                >
+                    <Building2 className="h-3.5 w-3.5" />
+                    สาขา — รายเดือน ({branchCount})
+                </button>
+            </div>
 
             {/* Search + Filter */}
             <div className="rounded-2xl bg-white border border-slate-100 p-4">
@@ -109,37 +197,53 @@ export function PayrollListClient({ events }: { events: PayrollEvent[] }) {
                         ))}
                     </select>
                 </div>
-                {(search || statusFilter !== 'all' || payFilter !== 'all') && (
-                    <p className="text-xs text-slate-400 mt-2">พบ {filtered.length} จาก {events.length} Event</p>
+                {(search || typeFilter !== 'all' || statusFilter !== 'all' || payFilter !== 'all') && (
+                    <p className="text-xs text-slate-400 mt-2">พบ {filtered.length} จาก {events.length} รายการ</p>
                 )}
             </div>
 
-            {/* Event List */}
+            {/* Event / Branch List */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                 {filtered.length === 0 ? (
                     <div className="p-8">
                         <EmptyState
                             icon={Store}
-                            message={search || statusFilter !== 'all' || payFilter !== 'all' ? "ไม่พบ Event ที่ตรงกับตัวกรอง" : "ไม่พบ Event"}
+                            message={search || typeFilter !== 'all' || statusFilter !== 'all' || payFilter !== 'all' ? "ไม่พบรายการที่ตรงกับตัวกรอง" : "ไม่พบข้อมูล"}
                         />
                     </div>
                 ) : (
                     <div className="divide-y divide-slate-50">
                         {filtered.map(event => {
+                            const isBranch = event.type === 'BRANCH';
                             const status = getChannelStatus(event.status);
                             const wagePercent = event.staffCount > 0 ? Math.round((event.wagePaid / event.staffCount) * 100) : 0;
+                            const href = isBranch
+                                ? `/hr/payroll/${event.id}?period=${periodMonth}`
+                                : `/hr/payroll/${event.id}`;
+
                             return (
                                 <Link
                                     key={event.id}
-                                    href={`/hr/payroll/${event.id}`}
+                                    href={href}
                                     className="flex items-center gap-3 sm:gap-4 p-4 sm:p-5 hover:bg-slate-50/80 transition-colors group"
                                 >
-                                    <div className="hidden sm:block flex-shrink-0 p-2.5 rounded-xl bg-teal-50">
-                                        <Banknote className="h-5 w-5 text-teal-600" />
+                                    <div className={`hidden sm:block flex-shrink-0 p-2.5 rounded-xl ${isBranch ? 'bg-indigo-50' : 'bg-teal-50'}`}>
+                                        {isBranch ? (
+                                            <Building2 className="h-5 w-5 text-indigo-600" />
+                                        ) : (
+                                            <Banknote className="h-5 w-5 text-teal-600" />
+                                        )}
                                     </div>
 
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
+                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                                isBranch
+                                                    ? 'bg-indigo-100 text-indigo-700'
+                                                    : 'bg-teal-100 text-teal-700'
+                                            }`}>
+                                                {isBranch ? `สาขา • งวด ${formatPeriodMonthThai(periodMonth, true)}` : 'Event'}
+                                            </span>
                                             <h3 className="text-sm font-bold text-slate-900 truncate group-hover:text-teal-700 transition-colors">
                                                 {event.name}
                                             </h3>
@@ -151,7 +255,15 @@ export function PayrollListClient({ events }: { events: PayrollEvent[] }) {
                                             <span className="flex items-center gap-1">
                                                 <MapPin className="h-3 w-3" /> {event.location}
                                             </span>
-                                            {event.startDate && (
+                                            {isBranch ? (
+                                                <>
+                                                    <span className="hidden sm:inline text-slate-200">·</span>
+                                                    <span className="flex items-center gap-1 text-indigo-600 font-medium">
+                                                        <CalendarDays className="h-3 w-3" />
+                                                        รอบจ่ายวันที่ 30 ({formatPeriodMonthThai(periodMonth)})
+                                                    </span>
+                                                </>
+                                            ) : event.startDate && (
                                                 <>
                                                     <span className="hidden sm:inline text-slate-200">·</span>
                                                     <span className="flex items-center gap-1">
@@ -178,7 +290,7 @@ export function PayrollListClient({ events }: { events: PayrollEvent[] }) {
                                                             : 'bg-slate-50 text-slate-500'
                                                 }`}>
                                                     {event.wagePaid >= event.staffCount ? <CheckCircle2 className="h-3 w-3" /> : event.wagePaid > 0 ? <Clock className="h-3 w-3" /> : <CircleDot className="h-3 w-3" />}
-                                                    ค่าแรง {event.wagePaid}/{event.staffCount}
+                                                    {isBranch ? 'เงินเดือน/ค่าแรง' : 'ค่าแรง'} {event.wagePaid}/{event.staffCount}
                                                 </span>
                                                 <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                                                     event.comPaid >= event.staffCount

@@ -4,3 +4,4 @@ export { EmptyState } from './EmptyState';
 export { ConfirmDialog } from './ConfirmDialog';
 export { PageHeader } from './PageHeader';
 export { FormInput, FormTextarea, FormSelect } from './FormInput';
+export { GpsCoordinatePicker } from './GpsCoordinatePicker';

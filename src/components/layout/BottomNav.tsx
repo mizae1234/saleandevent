@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, ShoppingCart, Wallet, User } from "lucide-react";
+import { Home, ShoppingCart, Wallet, User, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -17,6 +17,12 @@ export function BottomNav() {
 
     const NAV_ITEMS = [
         { href: "/workspace", icon: Home, label: "หน้าหลัก" },
+        {
+            href: "/workspace/attendance",
+            icon: Clock,
+            label: "เวลาเข้างาน",
+            matchPrefix: "/workspace/attendance",
+        },
         {
             href: currentChannelId ? `/channel/${currentChannelId}/pos/sell` : "#",
             icon: ShoppingCart,

@@ -14,6 +14,15 @@ export async function updateChannelWithDetails(channelId: string, formData: Form
     const phone = formData.get('phone') as string | null;
     const customerId = formData.get('customerId') as string | null;
     const staffJson = formData.get('staff') as string | null;
+    const latitudeStr = formData.get('latitude') as string | null;
+    const longitudeStr = formData.get('longitude') as string | null;
+    const checkInRadiusKmStr = formData.get('checkInRadiusKm') as string | null;
+    const workStartTime = (formData.get('workStartTime') as string | null)?.trim() || '10:00';
+    const workEndTime = (formData.get('workEndTime') as string | null)?.trim() || '21:00';
+
+    const latitude = latitudeStr && latitudeStr.trim() !== '' ? parseFloat(latitudeStr) : null;
+    const longitude = longitudeStr && longitudeStr.trim() !== '' ? parseFloat(longitudeStr) : null;
+    const checkInRadiusKm = checkInRadiusKmStr && checkInRadiusKmStr.trim() !== '' ? parseFloat(checkInRadiusKmStr) : 0.5;
 
     const staff: StaffSelection[] = staffJson ? JSON.parse(staffJson) : [];
 
@@ -31,6 +40,11 @@ export async function updateChannelWithDetails(channelId: string, formData: Form
                 responsiblePersonName: responsiblePersonName || null,
                 phone: phone || null,
                 customerId: customerId || null,
+                latitude: latitude !== null && !Number.isNaN(latitude) ? latitude : null,
+                longitude: longitude !== null && !Number.isNaN(longitude) ? longitude : null,
+                checkInRadiusKm: !Number.isNaN(checkInRadiusKm) ? checkInRadiusKm : 0.5,
+                workStartTime,
+                workEndTime,
             },
         });
 

@@ -1,23 +1,32 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, User2, Banknote, Receipt, CheckCircle2, Clock, FileCheck } from "lucide-react";
+import { ArrowLeft, User2, Banknote, Receipt, CheckCircle2, Clock, CalendarDays } from "lucide-react";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import StaffPayrollEditor from "./StaffPayrollEditor";
 import { WithholdingTaxButton } from "./WithholdingTaxButton";
+import {
+    getCurrentPeriodMonth,
+    isValidPeriodMonth,
+    getPeriodMonthDateRange,
+    formatPeriodMonthThai,
+} from "@/lib/payroll-period";
 
 export default async function StaffPayrollDetailPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ id: string; staffId: string }>;
+    searchParams: Promise<{ period?: string }>;
 }) {
     const { id: channelId, staffId } = await params;
+    const resolvedSearchParams = await searchParams;
 
-    const [channel, staffRecord, assignment, expenses, attendanceDays, expenseCategories, attachments] = await Promise.all([
+    const [channel, staffRecord, assignment, expenseCategories] = await Promise.all([
         db.salesChannel.findUnique({
             where: { id: channelId },
-            select: { id: true, name: true, code: true, startDate: true, endDate: true },
+            select: { id: true, type: true, name: true, code: true, startDate: true, endDate: true },
         }),
         db.staff.findUnique({
             where: { id: staffId },
@@ -31,35 +40,87 @@ export default async function StaffPayrollDetailPage({
         db.channelStaff.findFirst({
             where: { channelId, staffId },
         }),
-        db.channelExpense.findMany({
-            where: { channelId, createdBy: staffId },
-            orderBy: { createdAt: 'desc' },
-        }),
-        db.attendance.count({
-            where: { channelId, staffId },
-        }),
         db.expenseCategory.findMany({
             where: { isActive: true },
             orderBy: { sortOrder: 'asc' },
             select: { name: true, whtType: true },
         }),
+    ]);
+
+    if (!channel || !staffRecord || !assignment) notFound();
+
+    const isBranch = channel.type === 'BRANCH';
+    const currentMonth = getCurrentPeriodMonth();
+    const periodMonth = isBranch
+        ? (isValidPeriodMonth(resolvedSearchParams.period) ? resolvedSearchParams.period : currentMonth)
+        : null;
+
+    const [periodRecord, expenses, attendanceDays, attachments] = await Promise.all([
+        isBranch && periodMonth
+            ? db.channelStaffPeriod.findUnique({
+                where: {
+                    channelStaffId_periodMonth: {
+                        channelStaffId: assignment.id,
+                        periodMonth,
+                    },
+                },
+            })
+            : Promise.resolve(null),
+        db.channelExpense.findMany({
+            where: {
+                channelId,
+                createdBy: staffId,
+                ...(isBranch && periodMonth
+                    ? {
+                        OR: [
+                            { periodMonth },
+                            ...(periodMonth === currentMonth ? [{ periodMonth: null }] : []),
+                        ],
+                    }
+                    : {}),
+            },
+            orderBy: { createdAt: 'desc' },
+        }),
+        (() => {
+            if (isBranch && periodMonth) {
+                const { start, end } = getPeriodMonthDateRange(periodMonth);
+                return db.attendance.count({
+                    where: { channelId, staffId, date: { gte: start, lte: end } },
+                });
+            }
+            return db.attendance.count({
+                where: { channelId, staffId },
+            });
+        })(),
         db.payrollAttachment.findMany({
             where: {
                 channelStaff: { channelId, staffId },
+                ...(isBranch && periodMonth
+                    ? {
+                        OR: [
+                            { periodMonth },
+                            ...(periodMonth === currentMonth ? [{ periodMonth: null }] : []),
+                        ],
+                    }
+                    : {}),
             },
             orderBy: { createdAt: 'desc' },
         }),
     ]);
 
-    if (!channel || !staffRecord || !assignment) notFound();
+    const paymentType = staffRecord.paymentType || 'daily';
+    const isMonthly = paymentType === 'monthly';
+    const stateSource = isBranch ? periodRecord : assignment;
 
-    const dailyRate = assignment.dailyRateOverride !== null && assignment.dailyRateOverride !== undefined
-        ? Number(assignment.dailyRateOverride)
+    const dailyRate = stateSource?.dailyRateOverride !== null && stateSource?.dailyRateOverride !== undefined
+        ? Number(stateSource.dailyRateOverride)
         : Number(staffRecord.dailyRate || 0);
-    const daysWorked = assignment.daysWorkedOverride ?? attendanceDays;
-    const commission = Number(assignment.commissionOverride ?? staffRecord.commissionAmount ?? 0);
+    const daysWorked = isMonthly
+        ? (stateSource?.daysWorkedOverride ?? 1)
+        : (stateSource?.daysWorkedOverride ?? attendanceDays);
+    const commission = Number(stateSource?.commissionOverride ?? staffRecord.commissionAmount ?? 0);
     const totalWage = dailyRate * daysWorked;
-    
+
     const categoryWhtMap = new Map(expenseCategories.map(c => [c.name, c.whtType]));
     const totalExpense = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
     const grandTotal = totalWage + commission + totalExpense;
@@ -73,30 +134,47 @@ export default async function StaffPayrollDetailPage({
         createdAt: e.createdAt.toISOString(),
     }));
 
+    const backHref = periodMonth
+        ? `/hr/payroll/${channelId}?period=${periodMonth}`
+        : `/hr/payroll/${channelId}`;
+
     return (
         <div className="space-y-6">
             {/* Header */}
             <div>
                 <Link
-                    href={`/hr/payroll/${channelId}`}
+                    href={backHref}
                     className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1 mb-3"
                 >
                     <ArrowLeft className="h-4 w-4" /> กลับ
                 </Link>
-                <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                    <User2 className="h-6 w-6 text-blue-600" />
-                    {staffRecord.name}
-                </h1>
-                <p className="text-sm text-slate-500 mt-1">
-                    {staffRecord.code} — {channel.name} ({channel.code})
+                <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <User2 className="h-6 w-6 text-blue-600" />
+                        {staffRecord.name}
+                    </h1>
+                    <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                        isMonthly ? 'bg-indigo-100 text-indigo-700' : 'bg-blue-100 text-blue-700'
+                    }`}>
+                        {isMonthly ? 'พนักงานรายเดือน' : 'พนักงานรายวัน'}
+                    </span>
+                </div>
+                <p className="text-sm text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
+                    <span>{staffRecord.code} — {channel.name} ({channel.code})</span>
+                    {periodMonth && (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
+                            <CalendarDays className="h-3.5 w-3.5" />
+                            งวด {formatPeriodMonthThai(periodMonth)} (รอบจ่ายวันที่ 30)
+                        </span>
+                    )}
                 </p>
             </div>
 
             {/* Status Badges */}
             <div className="flex flex-wrap gap-2">
-                {assignment.isSubmitted ? (
+                {stateSource?.isSubmitted ? (
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> ส่งเบิกแล้ว ({assignment.submittedAt ? format(assignment.submittedAt, 'd MMM yyyy HH:mm', { locale: th }) : '-'})
+                        <CheckCircle2 className="h-3.5 w-3.5" /> ส่งเบิกแล้ว ({stateSource.submittedAt ? format(stateSource.submittedAt, 'd MMM yyyy HH:mm', { locale: th }) : '-'})
                     </span>
                 ) : (
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
@@ -104,19 +182,19 @@ export default async function StaffPayrollDetailPage({
                     </span>
                 )}
 
-                {assignment.isWagePaid ? (
+                {stateSource?.isWagePaid ? (
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
-                        <Banknote className="h-3.5 w-3.5" /> โอนค่าแรงแล้ว ({assignment.wagePaidAt ? format(assignment.wagePaidAt, 'd MMM yyyy HH:mm', { locale: th }) : '-'})
+                        <Banknote className="h-3.5 w-3.5" /> {isMonthly ? 'โอนเงินเดือนแล้ว' : 'โอนค่าแรงแล้ว'} ({stateSource.wagePaidAt ? format(stateSource.wagePaidAt, 'd MMM yyyy HH:mm', { locale: th }) : '-'})
                     </span>
                 ) : (
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
-                        <Banknote className="h-3.5 w-3.5" /> ยังไม่โอนค่าแรง
+                        <Banknote className="h-3.5 w-3.5" /> {isMonthly ? 'ยังไม่โอนเงินเดือน' : 'ยังไม่โอนค่าแรง'}
                     </span>
                 )}
 
-                {assignment.isCommissionPaid ? (
+                {stateSource?.isCommissionPaid ? (
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
-                        <Receipt className="h-3.5 w-3.5" /> โอนคอมแล้ว ({assignment.commissionPaidAt ? format(assignment.commissionPaidAt, 'd MMM yyyy HH:mm', { locale: th }) : '-'})
+                        <Receipt className="h-3.5 w-3.5" /> โอนคอมแล้ว ({stateSource.commissionPaidAt ? format(stateSource.commissionPaidAt, 'd MMM yyyy HH:mm', { locale: th }) : '-'})
                     </span>
                 ) : (
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
@@ -168,6 +246,8 @@ export default async function StaffPayrollDetailPage({
             <StaffPayrollEditor
                 channelId={channelId}
                 staffId={staffId}
+                periodMonth={periodMonth}
+                paymentType={paymentType}
                 categories={expenseCategories.map(c => c.name)}
                 wage={{
                     dailyRate,
@@ -190,20 +270,22 @@ export default async function StaffPayrollDetailPage({
             {/* Withholding Tax Download */}
             <WithholdingTaxButton
                 channelStaffId={assignment.id}
+                periodMonth={periodMonth}
+                paymentType={paymentType}
                 staffName={staffRecord.name}
                 staffCode={staffRecord.code || staffId.slice(0, 8)}
                 staffTaxId={staffRecord.taxId || undefined}
                 staffAddress={staffRecord.address || undefined}
-                channelName={channel.name}
+                channelName={periodMonth ? `${channel.name} (งวด ${formatPeriodMonthThai(periodMonth)})` : channel.name}
                 channelCode={channel.code || channelId.slice(0, 8)}
                 daysWorked={daysWorked}
                 dailyRate={dailyRate}
                 totalWage={totalWage}
                 commission={commission}
                 expenses={expenseData}
-                whtIssued={assignment.whtIssued}
-                whtDocNo={assignment.whtDocNo || undefined}
-                whtPaidDate={assignment.whtPaidDate ? assignment.whtPaidDate.toISOString().slice(0, 10) : undefined}
+                whtIssued={stateSource?.whtIssued || false}
+                whtDocNo={stateSource?.whtDocNo || undefined}
+                whtPaidDate={stateSource?.whtPaidDate ? stateSource.whtPaidDate.toISOString().slice(0, 10) : undefined}
             />
         </div>
     );

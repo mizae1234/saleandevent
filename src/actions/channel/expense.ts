@@ -6,7 +6,7 @@ import { deleteFromR2 } from "@/lib/r2";
 
 export async function addChannelExpense(
     channelId: string,
-    data: { category: string; amount: number; description: string },
+    data: { category: string; amount: number; description: string; periodMonth?: string | null },
     staffId?: string
 ) {
     await db.channelExpense.create({
@@ -16,6 +16,7 @@ export async function addChannelExpense(
             amount: data.amount,
             description: data.description,
             status: 'approved',
+            periodMonth: data.periodMonth || null,
             createdBy: staffId || null,
         },
     });
@@ -30,7 +31,10 @@ export async function addChannelExpense(
     });
 
     revalidatePath(`/channels/${channelId}`);
+    revalidatePath(`/channel/${channelId}/payroll`);
     revalidatePath(`/hr/payroll/${channelId}`);
+    revalidatePath('/hr/payroll');
+    revalidatePath('/hr/payroll/report');
 }
 
 export async function removeChannelExpense(expenseId: string, channelId: string) {
@@ -48,12 +52,16 @@ export async function removeChannelExpense(expenseId: string, channelId: string)
     });
 
     revalidatePath(`/channels/${channelId}`);
+    revalidatePath(`/channel/${channelId}/payroll`);
+    revalidatePath(`/hr/payroll/${channelId}`);
+    revalidatePath('/hr/payroll');
+    revalidatePath('/hr/payroll/report');
 }
 
 export async function deletePayrollAttachment(attachmentId: string) {
     const attachment = await db.payrollAttachment.findUnique({
         where: { id: attachmentId },
-        include: { channelStaff: { select: { channelId: true } } },
+        include: { channelStaff: { select: { channelId: true, staffId: true } } },
     });
 
     if (!attachment) return;
@@ -70,5 +78,7 @@ export async function deletePayrollAttachment(attachmentId: string) {
         where: { id: attachmentId },
     });
 
+    revalidatePath(`/channel/${attachment.channelStaff.channelId}/payroll`);
     revalidatePath(`/hr/payroll/${attachment.channelStaff.channelId}`);
+    revalidatePath(`/hr/payroll/${attachment.channelStaff.channelId}/staff/${attachment.channelStaff.staffId}`);
 }

@@ -147,6 +147,7 @@ export async function getAvailableStock(channelId: string) {
             product: {
                 select: {
                     barcode: true,
+                    sku: true,
                     code: true,
                     name: true,
                     size: true,
@@ -170,6 +171,7 @@ export async function getAvailableStock(channelId: string) {
             soldQuantity: s.soldQuantity,
             remaining: s.quantity - s.soldQuantity - s.returnedQuantity,
             product: {
+                sku: s.product.sku,
                 code: s.product.code,
                 name: s.product.name,
                 size: s.product.size,

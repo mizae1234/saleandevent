@@ -94,7 +94,8 @@ export async function GET(request: NextRequest) {
             SELECT si.barcode, p.name, p.code, p.sku, p.size, p.color,
                    SUM(si.quantity) as qty_sold,
                    SUM(si.total_amount) as revenue,
-                   COUNT(DISTINCT s.id) as bill_count
+                   COUNT(DISTINCT s.id) as bill_count,
+                   STRING_AGG(DISTINCT ('[' || sc.code || '] ' || sc.name), ', ') as channels_sold
             FROM sale_items si
             JOIN sales s ON s.id = si.sale_id
             JOIN sales_channels sc ON sc.id = s.channel_id AND sc.is_active = true
@@ -171,6 +172,7 @@ export async function GET(request: NextRequest) {
                 name: true,
                 code: true,
                 type: true,
+                location: true,
                 status: true,
                 isActive: true,
                 stock: {
@@ -242,13 +244,21 @@ export async function GET(request: NextRequest) {
                 p.size,
                 ${warehouseQtySql},
                 COALESCE(cs_agg.channel_remaining, 0) as channel_qty,
-                ${totalQtySql}
+                ${totalQtySql},
+                cs_agg.channel_details
             FROM products p
             LEFT JOIN warehouse_stock ws ON ws.barcode = p.barcode
             LEFT JOIN (
                 SELECT
                     cs.barcode,
-                    SUM(cs.quantity - cs.sold_quantity - cs.returned_quantity) as channel_remaining
+                    SUM(cs.quantity - cs.sold_quantity - cs.returned_quantity) as channel_remaining,
+                    STRING_AGG(
+                        DISTINCT CASE
+                            WHEN (cs.quantity - cs.sold_quantity - cs.returned_quantity) > 0
+                            THEN ('[' || sc.code || '] ' || sc.name || ' (' || (cs.quantity - cs.sold_quantity - cs.returned_quantity) || ')')
+                        END,
+                        ', '
+                    ) as channel_details
                 FROM channel_stock cs
                 JOIN sales_channels sc ON sc.id = cs.channel_id
                 WHERE sc.is_active = true
@@ -295,6 +305,7 @@ export async function GET(request: NextRequest) {
         qtySold: Number(p.qty_sold),
         revenue: Number(p.revenue),
         billCount: Number(p.bill_count),
+        channelsSold: p.channels_sold || "-",
     }));
 
     // Format channel revenue
@@ -364,6 +375,7 @@ export async function GET(request: NextRequest) {
             name: c.name,
             code: c.code,
             type: c.type,
+            location: c.location || "-",
             status: c.status,
             isActive: c.isActive,
             totalSent,
@@ -386,6 +398,7 @@ export async function GET(request: NextRequest) {
         warehouseQty: Number(p.warehouse_qty),
         channelQty: Number(p.channel_qty),
         totalQty: Number(p.total_qty),
+        channelDetails: p.channel_details || "-",
     }));
 
     // Format model sales

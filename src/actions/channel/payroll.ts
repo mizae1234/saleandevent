@@ -3,143 +3,404 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
-export async function updateStaffDailyRate(channelStaffId: string, dailyRate: number | null) {
-    await db.channelStaff.update({
-        where: { id: channelStaffId },
-        data: { dailyRateOverride: dailyRate },
-    });
-    const cs = await db.channelStaff.findUnique({ 
-        where: { id: channelStaffId }, 
-        select: { channelId: true, staffId: true } 
-    });
-    if (cs) {
-        revalidatePath(`/hr/payroll/${cs.channelId}`);
-        revalidatePath(`/hr/payroll/${cs.channelId}/staff/${cs.staffId}`);
-        revalidatePath('/hr/payroll');
-        revalidatePath('/hr/payroll/report');
-        revalidatePath(`/channel/${cs.channelId}/payroll`);
-    }
-}
-
-export async function toggleWagePaid(channelStaffId: string, isWagePaid: boolean) {
-    await db.channelStaff.update({
-        where: { id: channelStaffId },
-        data: {
-            isWagePaid,
-            wagePaidAt: isWagePaid ? new Date() : null,
-        },
-    });
-    const cs = await db.channelStaff.findUnique({ 
-        where: { id: channelStaffId }, 
-        select: { channelId: true, staffId: true } 
-    });
-    if (cs) {
-        revalidatePath(`/hr/payroll/${cs.channelId}`);
-        revalidatePath(`/hr/payroll/${cs.channelId}/staff/${cs.staffId}`);
-        revalidatePath('/hr/payroll');
-        revalidatePath('/hr/payroll/report');
-        revalidatePath(`/channel/${cs.channelId}/payroll`);
-    }
-}
-
-export async function toggleCommissionPaid(channelStaffId: string, isCommissionPaid: boolean) {
-    await db.channelStaff.update({
-        where: { id: channelStaffId },
-        data: {
-            isCommissionPaid,
-            commissionPaidAt: isCommissionPaid ? new Date() : null,
-        },
-    });
-    const cs = await db.channelStaff.findUnique({ 
-        where: { id: channelStaffId }, 
-        select: { channelId: true, staffId: true } 
-    });
-    if (cs) {
-        revalidatePath(`/hr/payroll/${cs.channelId}`);
-        revalidatePath(`/hr/payroll/${cs.channelId}/staff/${cs.staffId}`);
-        revalidatePath('/hr/payroll');
-        revalidatePath('/hr/payroll/report');
-        revalidatePath(`/channel/${cs.channelId}/payroll`);
-    }
-}
-
-export async function markAllWagePaid(channelId: string, isWagePaid: boolean) {
-    await db.channelStaff.updateMany({
-        where: { channelId },
-        data: { isWagePaid, wagePaidAt: isWagePaid ? new Date() : null },
-    });
+function revalidatePayrollPaths(channelId: string, staffId?: string) {
     revalidatePath(`/hr/payroll/${channelId}`);
+    if (staffId) {
+        revalidatePath(`/hr/payroll/${channelId}/staff/${staffId}`);
+    }
     revalidatePath('/hr/payroll');
     revalidatePath('/hr/payroll/report');
     revalidatePath(`/channel/${channelId}/payroll`);
 }
 
-export async function markAllCommissionPaid(channelId: string, isCommissionPaid: boolean) {
-    await db.channelStaff.updateMany({
-        where: { channelId },
-        data: { isCommissionPaid, commissionPaidAt: isCommissionPaid ? new Date() : null },
+export async function updateStaffDailyRate(
+    channelStaffId: string,
+    dailyRate: number | null,
+    periodMonth?: string | null
+) {
+    const cs = await db.channelStaff.findUnique({
+        where: { id: channelStaffId },
+        select: { id: true, channelId: true, staffId: true },
     });
-    revalidatePath(`/hr/payroll/${channelId}`);
-    revalidatePath('/hr/payroll');
-    revalidatePath('/hr/payroll/report');
-    revalidatePath(`/channel/${channelId}/payroll`);
+    if (!cs) return;
+
+    if (periodMonth) {
+        await db.channelStaffPeriod.upsert({
+            where: {
+                channelStaffId_periodMonth: {
+                    channelStaffId: cs.id,
+                    periodMonth,
+                },
+            },
+            create: {
+                channelStaffId: cs.id,
+                channelId: cs.channelId,
+                staffId: cs.staffId,
+                periodMonth,
+                dailyRateOverride: dailyRate,
+            },
+            update: {
+                dailyRateOverride: dailyRate,
+            },
+        });
+    } else {
+        await db.channelStaff.update({
+            where: { id: channelStaffId },
+            data: { dailyRateOverride: dailyRate },
+        });
+    }
+
+    revalidatePayrollPaths(cs.channelId, cs.staffId);
 }
 
-export async function submitPayroll(channelId: string, staffId: string) {
-    await db.channelStaff.updateMany({
-        where: { channelId, staffId },
-        data: {
-            isSubmitted: true,
-            submittedAt: new Date(),
-        },
+export async function toggleWagePaid(
+    channelStaffId: string,
+    isWagePaid: boolean,
+    periodMonth?: string | null
+) {
+    const cs = await db.channelStaff.findUnique({
+        where: { id: channelStaffId },
+        select: { id: true, channelId: true, staffId: true },
     });
-    revalidatePath(`/hr/payroll/${channelId}`);
-    revalidatePath(`/hr/payroll/${channelId}/staff/${staffId}`);
-    revalidatePath('/hr/payroll');
-    revalidatePath('/hr/payroll/report');
-    revalidatePath(`/channel/${channelId}/payroll`);
+    if (!cs) return;
+
+    const now = isWagePaid ? new Date() : null;
+
+    if (periodMonth) {
+        await db.channelStaffPeriod.upsert({
+            where: {
+                channelStaffId_periodMonth: {
+                    channelStaffId: cs.id,
+                    periodMonth,
+                },
+            },
+            create: {
+                channelStaffId: cs.id,
+                channelId: cs.channelId,
+                staffId: cs.staffId,
+                periodMonth,
+                isWagePaid,
+                wagePaidAt: now,
+            },
+            update: {
+                isWagePaid,
+                wagePaidAt: now,
+            },
+        });
+    } else {
+        await db.channelStaff.update({
+            where: { id: channelStaffId },
+            data: {
+                isWagePaid,
+                wagePaidAt: now,
+            },
+        });
+    }
+
+    revalidatePayrollPaths(cs.channelId, cs.staffId);
+}
+
+export async function toggleCommissionPaid(
+    channelStaffId: string,
+    isCommissionPaid: boolean,
+    periodMonth?: string | null
+) {
+    const cs = await db.channelStaff.findUnique({
+        where: { id: channelStaffId },
+        select: { id: true, channelId: true, staffId: true },
+    });
+    if (!cs) return;
+
+    const now = isCommissionPaid ? new Date() : null;
+
+    if (periodMonth) {
+        await db.channelStaffPeriod.upsert({
+            where: {
+                channelStaffId_periodMonth: {
+                    channelStaffId: cs.id,
+                    periodMonth,
+                },
+            },
+            create: {
+                channelStaffId: cs.id,
+                channelId: cs.channelId,
+                staffId: cs.staffId,
+                periodMonth,
+                isCommissionPaid,
+                commissionPaidAt: now,
+            },
+            update: {
+                isCommissionPaid,
+                commissionPaidAt: now,
+            },
+        });
+    } else {
+        await db.channelStaff.update({
+            where: { id: channelStaffId },
+            data: {
+                isCommissionPaid,
+                commissionPaidAt: now,
+            },
+        });
+    }
+
+    revalidatePayrollPaths(cs.channelId, cs.staffId);
+}
+
+export async function markAllWagePaid(
+    channelId: string,
+    isWagePaid: boolean,
+    periodMonth?: string | null
+) {
+    const now = isWagePaid ? new Date() : null;
+
+    if (periodMonth) {
+        const staffs = await db.channelStaff.findMany({
+            where: { channelId },
+            select: { id: true, channelId: true, staffId: true },
+        });
+        await db.$transaction(
+            staffs.map((cs) =>
+                db.channelStaffPeriod.upsert({
+                    where: {
+                        channelStaffId_periodMonth: {
+                            channelStaffId: cs.id,
+                            periodMonth,
+                        },
+                    },
+                    create: {
+                        channelStaffId: cs.id,
+                        channelId: cs.channelId,
+                        staffId: cs.staffId,
+                        periodMonth,
+                        isWagePaid,
+                        wagePaidAt: now,
+                    },
+                    update: {
+                        isWagePaid,
+                        wagePaidAt: now,
+                    },
+                })
+            )
+        );
+    } else {
+        await db.channelStaff.updateMany({
+            where: { channelId },
+            data: { isWagePaid, wagePaidAt: now },
+        });
+    }
+
+    revalidatePayrollPaths(channelId);
+}
+
+export async function markAllCommissionPaid(
+    channelId: string,
+    isCommissionPaid: boolean,
+    periodMonth?: string | null
+) {
+    const now = isCommissionPaid ? new Date() : null;
+
+    if (periodMonth) {
+        const staffs = await db.channelStaff.findMany({
+            where: { channelId },
+            select: { id: true, channelId: true, staffId: true },
+        });
+        await db.$transaction(
+            staffs.map((cs) =>
+                db.channelStaffPeriod.upsert({
+                    where: {
+                        channelStaffId_periodMonth: {
+                            channelStaffId: cs.id,
+                            periodMonth,
+                        },
+                    },
+                    create: {
+                        channelStaffId: cs.id,
+                        channelId: cs.channelId,
+                        staffId: cs.staffId,
+                        periodMonth,
+                        isCommissionPaid,
+                        commissionPaidAt: now,
+                    },
+                    update: {
+                        isCommissionPaid,
+                        commissionPaidAt: now,
+                    },
+                })
+            )
+        );
+    } else {
+        await db.channelStaff.updateMany({
+            where: { channelId },
+            data: { isCommissionPaid, commissionPaidAt: now },
+        });
+    }
+
+    revalidatePayrollPaths(channelId);
+}
+
+export async function submitPayroll(
+    channelId: string,
+    staffId: string,
+    periodMonth?: string | null
+) {
+    if (periodMonth) {
+        const cs = await db.channelStaff.findFirst({
+            where: { channelId, staffId },
+            select: { id: true },
+        });
+        if (!cs) return;
+
+        await db.channelStaffPeriod.upsert({
+            where: {
+                channelStaffId_periodMonth: {
+                    channelStaffId: cs.id,
+                    periodMonth,
+                },
+            },
+            create: {
+                channelStaffId: cs.id,
+                channelId,
+                staffId,
+                periodMonth,
+                isSubmitted: true,
+                submittedAt: new Date(),
+            },
+            update: {
+                isSubmitted: true,
+                submittedAt: new Date(),
+            },
+        });
+    } else {
+        await db.channelStaff.updateMany({
+            where: { channelId, staffId },
+            data: {
+                isSubmitted: true,
+                submittedAt: new Date(),
+            },
+        });
+    }
+
+    revalidatePayrollPaths(channelId, staffId);
+}
+
+export async function unlockPayrollSubmission(
+    channelStaffId: string,
+    periodMonth?: string | null
+) {
+    const cs = await db.channelStaff.findUnique({
+        where: { id: channelStaffId },
+        select: { id: true, channelId: true, staffId: true },
+    });
+    if (!cs) return;
+
+    if (periodMonth) {
+        await db.channelStaffPeriod.upsert({
+            where: {
+                channelStaffId_periodMonth: {
+                    channelStaffId: cs.id,
+                    periodMonth,
+                },
+            },
+            create: {
+                channelStaffId: cs.id,
+                channelId: cs.channelId,
+                staffId: cs.staffId,
+                periodMonth,
+                isSubmitted: false,
+                submittedAt: null,
+            },
+            update: {
+                isSubmitted: false,
+                submittedAt: null,
+            },
+        });
+    } else {
+        await db.channelStaff.update({
+            where: { id: channelStaffId },
+            data: {
+                isSubmitted: false,
+                submittedAt: null,
+            },
+        });
+    }
+
+    revalidatePayrollPaths(cs.channelId, cs.staffId);
 }
 
 /**
  * Toggle WHT issuance for a specific channel staff.
  * When toggling ON, auto-generate a running doc number if none exists.
  */
-export async function toggleWhtIssued(channelStaffId: string, issued: boolean) {
+export async function toggleWhtIssued(
+    channelStaffId: string,
+    issued: boolean,
+    periodMonth?: string | null
+) {
     const current = await db.channelStaff.findUnique({
         where: { id: channelStaffId },
-        select: { channelId: true, staffId: true, whtDocNo: true },
+        select: { id: true, channelId: true, staffId: true, whtDocNo: true },
     });
     if (!current) return;
 
-    const data: { whtIssued: boolean; whtDocNo?: string } = { whtIssued: issued };
+    if (periodMonth) {
+        const existingPeriod = await db.channelStaffPeriod.findUnique({
+            where: {
+                channelStaffId_periodMonth: {
+                    channelStaffId: current.id,
+                    periodMonth,
+                },
+            },
+            select: { whtDocNo: true },
+        });
 
-    // Auto-generate doc number when toggling ON and no doc number exists
-    if (issued && !current.whtDocNo) {
-        data.whtDocNo = await generateWhtDocNo();
+        const data: { whtIssued: boolean; whtDocNo?: string } = { whtIssued: issued };
+        if (issued && !existingPeriod?.whtDocNo) {
+            data.whtDocNo = await generateWhtDocNo();
+        }
+
+        await db.channelStaffPeriod.upsert({
+            where: {
+                channelStaffId_periodMonth: {
+                    channelStaffId: current.id,
+                    periodMonth,
+                },
+            },
+            create: {
+                channelStaffId: current.id,
+                channelId: current.channelId,
+                staffId: current.staffId,
+                periodMonth,
+                ...data,
+            },
+            update: data,
+        });
+    } else {
+        const data: { whtIssued: boolean; whtDocNo?: string } = { whtIssued: issued };
+        if (issued && !current.whtDocNo) {
+            data.whtDocNo = await generateWhtDocNo();
+        }
+
+        await db.channelStaff.update({
+            where: { id: channelStaffId },
+            data,
+        });
     }
 
-    await db.channelStaff.update({
-        where: { id: channelStaffId },
-        data,
-    });
-
-    revalidatePath(`/hr/payroll/${current.channelId}`);
-    revalidatePath(`/hr/payroll/${current.channelId}/staff/${current.staffId}`);
-    revalidatePath('/hr/payroll');
-    revalidatePath('/hr/payroll/report');
-    revalidatePath(`/channel/${current.channelId}/payroll`);
+    revalidatePayrollPaths(current.channelId, current.staffId);
 }
 
 /**
  * Update WHT document number and/or paid date
  */
 export async function updateWhtDetails(
-    channelStaffId: string, 
-    details: { docNo?: string; paidDate?: string | null }
+    channelStaffId: string,
+    details: { docNo?: string; paidDate?: string | null },
+    periodMonth?: string | null
 ) {
     const current = await db.channelStaff.findUnique({
         where: { id: channelStaffId },
-        select: { channelId: true, staffId: true },
+        select: { id: true, channelId: true, staffId: true },
     });
     if (!current) return;
 
@@ -151,22 +412,37 @@ export async function updateWhtDetails(
         data.whtPaidDate = details.paidDate ? new Date(details.paidDate) : null;
     }
 
-    await db.channelStaff.update({
-        where: { id: channelStaffId },
-        data,
-    });
+    if (periodMonth) {
+        await db.channelStaffPeriod.upsert({
+            where: {
+                channelStaffId_periodMonth: {
+                    channelStaffId: current.id,
+                    periodMonth,
+                },
+            },
+            create: {
+                channelStaffId: current.id,
+                channelId: current.channelId,
+                staffId: current.staffId,
+                periodMonth,
+                ...data,
+            },
+            update: data,
+        });
+    } else {
+        await db.channelStaff.update({
+            where: { id: channelStaffId },
+            data,
+        });
+    }
 
-    revalidatePath(`/hr/payroll/${current.channelId}`);
-    revalidatePath(`/hr/payroll/${current.channelId}/staff/${current.staffId}`);
-    revalidatePath('/hr/payroll');
-    revalidatePath('/hr/payroll/report');
-    revalidatePath(`/channel/${current.channelId}/payroll`);
+    revalidatePayrollPaths(current.channelId, current.staffId);
 }
 
 /**
  * Generate next WHT document number.
  * Format: WHT-YYYY-MM-NNNN (e.g. WHT-2026-09-0001)
- * Uses MAX existing doc number for the current month to determine next sequence.
+ * Uses MAX existing doc number across both channel_staff and channel_staff_periods.
  */
 async function generateWhtDocNo(): Promise<string> {
     const now = new Date();
@@ -174,24 +450,31 @@ async function generateWhtDocNo(): Promise<string> {
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const prefix = `WHT-${year}-${month}-`;
 
-    // Find max existing doc number with this prefix
-    const existing = await db.channelStaff.findMany({
-        where: {
-            whtDocNo: { startsWith: prefix },
-        },
-        select: { whtDocNo: true },
-        orderBy: { whtDocNo: 'desc' },
-        take: 1,
-    });
+    const [existingEvent, existingPeriod] = await Promise.all([
+        db.channelStaff.findMany({
+            where: { whtDocNo: { startsWith: prefix } },
+            select: { whtDocNo: true },
+            orderBy: { whtDocNo: 'desc' },
+            take: 1,
+        }),
+        db.channelStaffPeriod.findMany({
+            where: { whtDocNo: { startsWith: prefix } },
+            select: { whtDocNo: true },
+            orderBy: { whtDocNo: 'desc' },
+            take: 1,
+        }),
+    ]);
 
-    let nextSeq = 1;
-    if (existing.length > 0 && existing[0].whtDocNo) {
-        const lastNum = existing[0].whtDocNo.replace(prefix, '');
-        const parsed = parseInt(lastNum, 10);
-        if (!isNaN(parsed)) {
-            nextSeq = parsed + 1;
+    let maxSeq = 0;
+    for (const item of [...existingEvent, ...existingPeriod]) {
+        if (item.whtDocNo) {
+            const lastNum = item.whtDocNo.replace(prefix, '');
+            const parsed = parseInt(lastNum, 10);
+            if (!isNaN(parsed) && parsed > maxSeq) {
+                maxSeq = parsed;
+            }
         }
     }
 
-    return `${prefix}${String(nextSeq).padStart(4, '0')}`;
+    return `${prefix}${String(maxSeq + 1).padStart(4, '0')}`;
 }

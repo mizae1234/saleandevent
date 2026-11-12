@@ -31,7 +31,7 @@ const CROSS_ACCESS_PATTERNS: [RegExp, string][] = [
 ];
 
 // Admin roles that can access admin routes (fallback when no allowedMenus)
-const ADMIN_ROLES = ['ADMIN', 'MANAGER', 'WAREHOUSE', 'FINANCE'];
+const ADMIN_ROLES = ['ADMIN', 'MANAGER', 'WAREHOUSE', 'FINANCE', 'HR'];
 
 // Employee route prefixes
 const EMPLOYEE_ROUTE_PREFIXES = [
@@ -40,7 +40,7 @@ const EMPLOYEE_ROUTE_PREFIXES = [
 ];
 
 // Employee roles that can access employee routes
-const EMPLOYEE_ROLES = ['ADMIN', 'MANAGER', 'STAFF', 'PC'];
+const EMPLOYEE_ROLES = ['ADMIN', 'MANAGER', 'WAREHOUSE', 'FINANCE', 'HR', 'STAFF', 'PC'];
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;

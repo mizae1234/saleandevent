@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition, useRef, useEffect } from "react";
-import { Pencil, Save, X, Search, ChevronDown } from "lucide-react";
-import { Spinner } from "@/components/shared";
+import { Pencil, Save, X, Search, ChevronDown, MapPin, ExternalLink } from "lucide-react";
+import { Spinner, GpsCoordinatePicker } from "@/components/shared";
 import { useRouter } from "next/navigation";
 
 interface Customer {
@@ -22,6 +22,11 @@ interface Props {
     salesTarget: number | null;
     customerId: string | null;
     isCashBooth: boolean;
+    latitude?: number | null;
+    longitude?: number | null;
+    checkInRadiusKm?: number | null;
+    workStartTime?: string | null;
+    workEndTime?: string | null;
 }
 
 export default function ChannelBasicInfoEditor(props: Props) {
@@ -39,6 +44,11 @@ export default function ChannelBasicInfoEditor(props: Props) {
     const [salesTarget, setSalesTarget] = useState(props.salesTarget?.toString() || "");
     const [customerId, setCustomerId] = useState(props.customerId || "");
     const [isCashBooth, setIsCashBooth] = useState(props.isCashBooth || false);
+    const [latitude, setLatitude] = useState(props.latitude !== null && props.latitude !== undefined ? String(props.latitude) : "");
+    const [longitude, setLongitude] = useState(props.longitude !== null && props.longitude !== undefined ? String(props.longitude) : "");
+    const [checkInRadiusKm, setCheckInRadiusKm] = useState(props.checkInRadiusKm !== null && props.checkInRadiusKm !== undefined ? String(props.checkInRadiusKm) : "0.5");
+    const [workStartTime, setWorkStartTime] = useState(props.workStartTime || "10:00");
+    const [workEndTime, setWorkEndTime] = useState(props.workEndTime || "21:00");
 
     // Customer dropdown state
     const [customerList, setCustomerList] = useState<Customer[]>([]);
@@ -80,6 +90,11 @@ export default function ChannelBasicInfoEditor(props: Props) {
         setSalesTarget(props.salesTarget?.toString() || "");
         setCustomerId(props.customerId || "");
         setIsCashBooth(props.isCashBooth || false);
+        setLatitude(props.latitude !== null && props.latitude !== undefined ? String(props.latitude) : "");
+        setLongitude(props.longitude !== null && props.longitude !== undefined ? String(props.longitude) : "");
+        setCheckInRadiusKm(props.checkInRadiusKm !== null && props.checkInRadiusKm !== undefined ? String(props.checkInRadiusKm) : "0.5");
+        setWorkStartTime(props.workStartTime || "10:00");
+        setWorkEndTime(props.workEndTime || "21:00");
         setIsEditing(false);
     };
 
@@ -99,6 +114,11 @@ export default function ChannelBasicInfoEditor(props: Props) {
                         salesTarget: salesTarget ? parseFloat(salesTarget) : null,
                         customerId: customerId || null,
                         isCashBooth,
+                        latitude: latitude.trim() !== "" ? parseFloat(latitude) : null,
+                        longitude: longitude.trim() !== "" ? parseFloat(longitude) : null,
+                        checkInRadiusKm: checkInRadiusKm.trim() !== "" ? parseFloat(checkInRadiusKm) : 0.5,
+                        workStartTime: workStartTime || "10:00",
+                        workEndTime: workEndTime || "21:00",
                     }),
                 });
                 if (res.ok) {
@@ -161,6 +181,32 @@ export default function ChannelBasicInfoEditor(props: Props) {
                         <span className="text-slate-900">฿{props.salesTarget.toLocaleString()}</span>
                     </div>
                 )}
+                <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                        <span className="text-slate-500">เวลาเข้า-ออกงาน</span>
+                        <span className="text-slate-900 font-mono font-medium">
+                            {props.workStartTime || "10:00"} – {props.workEndTime || "21:00"} น.
+                        </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <span className="text-slate-500 flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5 text-teal-600" /> พิกัด Check-in
+                        </span>
+                        {props.latitude !== null && props.latitude !== undefined && props.longitude !== null && props.longitude !== undefined ? (
+                            <a
+                                href={`https://www.google.com/maps?q=${props.latitude},${props.longitude}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs font-mono text-teal-700 hover:underline"
+                            >
+                                {props.latitude.toFixed(5)}, {props.longitude.toFixed(5)} ({props.checkInRadiusKm || 0.5} กม.)
+                                <ExternalLink className="h-3 w-3" />
+                            </a>
+                        ) : (
+                            <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">ยังไม่ระบุพิกัด</span>
+                        )}
+                    </div>
+                </div>
             </div>
         );
     }
@@ -185,6 +231,23 @@ export default function ChannelBasicInfoEditor(props: Props) {
                     <label className="block text-xs font-medium text-slate-600 mb-1">สถานที่</label>
                     <input type="text" value={location} onChange={e => setLocation(e.target.value)} className={inputClass} />
                 </div>
+                <GpsCoordinatePicker
+                    latitude={latitude}
+                    longitude={longitude}
+                    checkInRadiusKm={checkInRadiusKm}
+                    workStartTime={workStartTime}
+                    workEndTime={workEndTime}
+                    onChange={(vals) => {
+                        setLatitude(vals.latitude);
+                        setLongitude(vals.longitude);
+                        setCheckInRadiusKm(vals.checkInRadiusKm);
+                        if (vals.workStartTime !== undefined) setWorkStartTime(vals.workStartTime);
+                        if (vals.workEndTime !== undefined) setWorkEndTime(vals.workEndTime);
+                    }}
+                    compact
+                    title="พิกัด GPS & กะเวลาทำงาน"
+                    subtitle=""
+                />
                 {/* Customer Dropdown */}
                 <div ref={customerDropdownRef} className="relative">
                     <label className="block text-xs font-medium text-slate-600 mb-1">ลูกค้า</label>
