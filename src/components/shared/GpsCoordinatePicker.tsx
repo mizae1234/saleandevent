@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MapPin, Navigation, ExternalLink, Sparkles, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import { parseGoogleMapsCoords, isValidLatLng } from "@/lib/geo";
+import { RADIUS_PRESETS, SHIFT_PRESETS } from "@/config/attendance";
 
 interface GpsCoordinatePickerProps {
     latitude: string;
@@ -23,21 +24,6 @@ interface GpsCoordinatePickerProps {
     compact?: boolean;
     showShiftTime?: boolean;
 }
-
-const RADIUS_PRESETS = [
-    { label: "100 ม. (0.1 กม.)", value: "0.1" },
-    { label: "200 ม. (0.2 กม.)", value: "0.2" },
-    { label: "500 ม. (0.5 กม.)", value: "0.5" },
-    { label: "1 กม.", value: "1" },
-    { label: "2 กม.", value: "2" },
-];
-
-const SHIFT_PRESETS = [
-    { label: "09:00 – 18:00 (สำนักงานใหญ่)", start: "09:00", end: "18:00" },
-    { label: "10:00 – 21:00 (ห้าง/Event)", start: "10:00", end: "21:00" },
-    { label: "10:00 – 22:00 (ห้างปิดดึก)", start: "10:00", end: "22:00" },
-    { label: "08:00 – 20:00", start: "08:00", end: "20:00" },
-];
 
 export function GpsCoordinatePicker({
     latitude,
@@ -143,6 +129,7 @@ export function GpsCoordinatePicker({
     const handleGetCurrentLocation = () => {
         if (!navigator.geolocation) {
             setParseStatus({
+                
                 type: "error",
                 message: "เบราว์เซอร์นี้ไม่รองรับการดึงพิกัด GPS",
             });

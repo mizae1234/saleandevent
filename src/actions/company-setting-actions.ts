@@ -4,6 +4,14 @@ import { db } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { getSession } from '@/lib/auth';
 import { uploadToR2, isR2Configured } from '@/lib/r2';
+import {
+    DEFAULT_CHECK_IN_RADIUS_KM,
+    DEFAULT_HQ_BRANCH_CODE,
+    DEFAULT_HQ_NAME,
+    DEFAULT_WORK_SHIFTS,
+    resolveCheckInRadius,
+    resolveShiftTimes,
+} from '@/config/attendance';
 
 export interface CompanySettingData {
     id: string;
@@ -46,9 +54,9 @@ const DEFAULT_COMPANY: Omit<CompanySettingData, 'id' | 'updatedAt'> = {
     footerNote: '',
     latitude: null,
     longitude: null,
-    checkInRadiusKm: 0.5,
-    workStartTime: '09:00',
-    workEndTime: '18:00',
+    checkInRadiusKm: DEFAULT_CHECK_IN_RADIUS_KM,
+    workStartTime: DEFAULT_WORK_SHIFTS.HQ.start,
+    workEndTime: DEFAULT_WORK_SHIFTS.HQ.end,
 };
 
 // ============ GET COMPANY SETTING ============
@@ -84,9 +92,9 @@ export async function getCompanySetting(): Promise<CompanySettingData> {
             footerNote: setting.footerNote,
             latitude: setting.latitude,
             longitude: setting.longitude,
-            checkInRadiusKm: setting.checkInRadiusKm ?? 0.5,
-            workStartTime: setting.workStartTime || '09:00',
-            workEndTime: setting.workEndTime || '18:00',
+            checkInRadiusKm: resolveCheckInRadius(setting.checkInRadiusKm),
+            workStartTime: setting.workStartTime || DEFAULT_WORK_SHIFTS.HQ.start,
+            workEndTime: setting.workEndTime || DEFAULT_WORK_SHIFTS.HQ.end,
             updatedAt: setting.updatedAt,
         };
     } catch (error) {
@@ -114,19 +122,22 @@ export async function updateCompanySetting(formData: FormData) {
         const latitudeStr = (formData.get('latitude') as string)?.trim();
         const longitudeStr = (formData.get('longitude') as string)?.trim();
         const checkInRadiusKmStr = (formData.get('checkInRadiusKm') as string)?.trim();
-        const workStartTime = (formData.get('workStartTime') as string)?.trim() || '09:00';
-        const workEndTime = (formData.get('workEndTime') as string)?.trim() || '18:00';
+        const { shiftStart: workStartTime, shiftEnd: workEndTime } = resolveShiftTimes({
+            isHeadOffice: true,
+            workStartTime: formData.get('workStartTime') as string | null,
+            workEndTime: formData.get('workEndTime') as string | null,
+        });
 
         const latitude = latitudeStr ? parseFloat(latitudeStr) : null;
         const longitude = longitudeStr ? parseFloat(longitudeStr) : null;
-        const checkInRadiusKm = checkInRadiusKmStr ? parseFloat(checkInRadiusKmStr) : 0.5;
+        const checkInRadiusKm = resolveCheckInRadius(checkInRadiusKmStr);
 
         const dataToSave = {
             name,
             nameEn: (formData.get('nameEn') as string)?.trim() || null,
             taxId: (formData.get('taxId') as string)?.trim() || null,
-            branchName: (formData.get('branchName') as string)?.trim() || 'สำนักงานใหญ่',
-            branchCode: (formData.get('branchCode') as string)?.trim() || '00000',
+            branchName: (formData.get('branchName') as string)?.trim() || DEFAULT_HQ_NAME,
+            branchCode: (formData.get('branchCode') as string)?.trim() || DEFAULT_HQ_BRANCH_CODE,
             address: (formData.get('address') as string)?.trim() || null,
             phone: (formData.get('phone') as string)?.trim() || null,
             email: (formData.get('email') as string)?.trim() || null,
@@ -138,7 +149,7 @@ export async function updateCompanySetting(formData: FormData) {
             footerNote: (formData.get('footerNote') as string)?.trim() || null,
             latitude: latitude !== null && !Number.isNaN(latitude) ? latitude : null,
             longitude: longitude !== null && !Number.isNaN(longitude) ? longitude : null,
-            checkInRadiusKm: !Number.isNaN(checkInRadiusKm) ? checkInRadiusKm : 0.5,
+            checkInRadiusKm,
             workStartTime,
             workEndTime,
             updatedBy: session?.staffId || null,

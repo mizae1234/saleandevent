@@ -4,13 +4,22 @@ import { db } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { calculateDistanceKm, formatDistanceThai, isValidLatLng } from '@/lib/geo';
+import {
+    ATTENDANCE_TIMEZONE,
+    DEFAULT_CHECK_IN_RADIUS_KM,
+    DEFAULT_HQ_NAME,
+    DEFAULT_WORK_SHIFTS,
+    LOCATION_TYPES,
+    resolveCheckInRadius,
+    resolveShiftTimes,
+} from '@/config/attendance';
 
 /**
  * Returns today's date string in YYYY-MM-DD in Asia/Bangkok timezone
  */
 export async function getBangkokDateString(date: Date = new Date()): Promise<string> {
     const formatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Asia/Bangkok',
+        timeZone: ATTENDANCE_TIMEZONE,
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -23,7 +32,7 @@ export async function getBangkokDateString(date: Date = new Date()): Promise<str
  */
 function getBangkokMinutesFromMidnight(date: Date): number {
     const parts = new Intl.DateTimeFormat('en-GB', {
-        timeZone: 'Asia/Bangkok',
+        timeZone: ATTENDANCE_TIMEZONE,
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
@@ -92,12 +101,12 @@ export async function performCheckIn(input: PerformCheckInInput) {
         // 2. Load target location GPS, allowed radius, and shift times
         let targetLat: number | null = null;
         let targetLng: number | null = null;
-        let radiusKm = 0.5;
-        let locationType = 'EVENT';
+        let radiusKm = DEFAULT_CHECK_IN_RADIUS_KM;
+        let locationType: string = LOCATION_TYPES.EVENT;
         let locationName = '';
         let channelId: string | null = null;
-        let shiftStartTime = '10:00';
-        let shiftEndTime = '21:00';
+        let shiftStartTime: string = DEFAULT_WORK_SHIFTS.CHANNEL.start;
+        let shiftEndTime: string = DEFAULT_WORK_SHIFTS.CHANNEL.end;
 
         if (input.isHeadOffice || !input.channelId) {
             const company = await db.companySetting.findFirst({
@@ -110,12 +119,17 @@ export async function performCheckIn(input: PerformCheckInInput) {
             }
             targetLat = company.latitude;
             targetLng = company.longitude;
-            radiusKm = company.checkInRadiusKm ?? 0.5;
-            locationType = 'HQ';
-            locationName = company.branchName || 'สำนักงานใหญ่';
+            radiusKm = resolveCheckInRadius(company.checkInRadiusKm);
+            locationType = LOCATION_TYPES.HQ;
+            locationName = company.branchName || DEFAULT_HQ_NAME;
             channelId = null;
-            shiftStartTime = company.workStartTime || '09:00';
-            shiftEndTime = company.workEndTime || '18:00';
+            const resolved = resolveShiftTimes({
+                isHeadOffice: true,
+                workStartTime: company.workStartTime,
+                workEndTime: company.workEndTime,
+            });
+            shiftStartTime = resolved.shiftStart;
+            shiftEndTime = resolved.shiftEnd;
         } else {
             const channel = await db.salesChannel.findUnique({
                 where: { id: input.channelId },
@@ -130,12 +144,17 @@ export async function performCheckIn(input: PerformCheckInInput) {
             }
             targetLat = channel.latitude;
             targetLng = channel.longitude;
-            radiusKm = channel.checkInRadiusKm ?? 0.5;
-            locationType = channel.type || 'EVENT';
+            radiusKm = resolveCheckInRadius(channel.checkInRadiusKm);
+            locationType = channel.type || LOCATION_TYPES.EVENT;
             locationName = `${channel.name} (${channel.code})`;
             channelId = channel.id;
-            shiftStartTime = channel.workStartTime || '10:00';
-            shiftEndTime = channel.workEndTime || '21:00';
+            const resolved = resolveShiftTimes({
+                isHeadOffice: false,
+                workStartTime: channel.workStartTime,
+                workEndTime: channel.workEndTime,
+            });
+            shiftStartTime = resolved.shiftStart;
+            shiftEndTime = resolved.shiftEnd;
         }
 
         // 3. Calculate distance and enforce radius
@@ -240,14 +259,17 @@ export async function performCheckOut(input: PerformCheckOutInput) {
         // Load target coordinates & shift end time
         let targetLat: number | null = null;
         let targetLng: number | null = null;
-        let radiusKm = 0.5;
-        let shiftEndTime = record.shiftEndTime || '21:00';
+        let radiusKm = DEFAULT_CHECK_IN_RADIUS_KM;
+        let shiftEndTime: string = record.shiftEndTime || DEFAULT_WORK_SHIFTS.CHANNEL.end;
 
         if (record.channelId && record.channel) {
             targetLat = record.channel.latitude;
             targetLng = record.channel.longitude;
-            radiusKm = record.channel.checkInRadiusKm ?? 0.5;
-            shiftEndTime = record.shiftEndTime || record.channel.workEndTime || '21:00';
+            radiusKm = resolveCheckInRadius(record.channel.checkInRadiusKm);
+            shiftEndTime =
+                record.shiftEndTime ||
+                record.channel.workEndTime ||
+                DEFAULT_WORK_SHIFTS.CHANNEL.end;
         } else {
             const company = await db.companySetting.findFirst({
                 orderBy: { createdAt: 'asc' },
@@ -255,8 +277,11 @@ export async function performCheckOut(input: PerformCheckOutInput) {
             if (company) {
                 targetLat = company.latitude;
                 targetLng = company.longitude;
-                radiusKm = company.checkInRadiusKm ?? 0.5;
-                shiftEndTime = record.shiftEndTime || company.workEndTime || '18:00';
+                radiusKm = resolveCheckInRadius(company.checkInRadiusKm);
+                shiftEndTime =
+                    record.shiftEndTime ||
+                    company.workEndTime ||
+                    DEFAULT_WORK_SHIFTS.HQ.end;
             }
         }
 
@@ -345,9 +370,14 @@ export async function updateLocationGpsConfig(input: {
             return { error: 'พิกัด Latitude / Longitude ไม่ถูกต้อง' };
         }
 
-        const radius = input.checkInRadiusKm > 0 ? input.checkInRadiusKm : 0.5;
+        const radius = resolveCheckInRadius(input.checkInRadiusKm);
 
         if (input.targetType === 'HQ') {
+            const { shiftStart, shiftEnd } = resolveShiftTimes({
+                isHeadOffice: true,
+                workStartTime: input.workStartTime,
+                workEndTime: input.workEndTime,
+            });
             const existing = await db.companySetting.findFirst({
                 orderBy: { createdAt: 'asc' },
             });
@@ -358,22 +388,27 @@ export async function updateLocationGpsConfig(input: {
                         latitude: input.latitude,
                         longitude: input.longitude,
                         checkInRadiusKm: radius,
-                        workStartTime: input.workStartTime || '09:00',
-                        workEndTime: input.workEndTime || '18:00',
+                        workStartTime: shiftStart,
+                        workEndTime: shiftEnd,
                         updatedBy: session.staffId,
                     },
                 });
             }
             revalidatePath('/admin/company');
         } else if (input.targetType === 'CHANNEL' && input.channelId) {
+            const { shiftStart, shiftEnd } = resolveShiftTimes({
+                isHeadOffice: false,
+                workStartTime: input.workStartTime,
+                workEndTime: input.workEndTime,
+            });
             await db.salesChannel.update({
                 where: { id: input.channelId },
                 data: {
                     latitude: input.latitude,
                     longitude: input.longitude,
                     checkInRadiusKm: radius,
-                    workStartTime: input.workStartTime || '10:00',
-                    workEndTime: input.workEndTime || '21:00',
+                    workStartTime: shiftStart,
+                    workEndTime: shiftEnd,
                     updatedBy: session.staffId,
                 },
             });

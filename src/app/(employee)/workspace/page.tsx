@@ -6,7 +6,14 @@ import { format } from "date-fns";
 import Link from "next/link";
 import { getCompanySetting } from "@/actions/company-setting-actions";
 import { getBangkokDateString } from "@/actions/attendance-actions";
-import { CheckInOutCard, type SerializedCheckIn } from "@/components/attendance/CheckInOutCard";
+import { CheckInOutCard } from "@/components/attendance";
+import {
+    DEFAULT_HQ_NAME,
+    LOCATION_TYPES,
+    resolveCheckInRadius,
+    resolveShiftTimes,
+    serializeStaffCheckIn,
+} from "@/config/attendance";
 
 async function getAssignedChannels(staffId: string) {
     const assignments = await db.channelStaff.findMany({
@@ -67,37 +74,17 @@ export default async function WorkspacePage() {
         }),
     ]);
 
-    const serializedCheckIn: SerializedCheckIn | null = todayCheckInRow
-        ? {
-              id: todayCheckInRow.id,
-              channelId: todayCheckInRow.channelId,
-              locationType: todayCheckInRow.locationType,
-              locationName: todayCheckInRow.locationName,
-              checkInAt: todayCheckInRow.checkInAt.toISOString(),
-              checkInLat: todayCheckInRow.checkInLat,
-              checkInLng: todayCheckInRow.checkInLng,
-              checkInDistanceKm: todayCheckInRow.checkInDistanceKm,
-              checkInPhotoUrl: todayCheckInRow.checkInPhotoUrl,
-              checkInNote: todayCheckInRow.checkInNote,
-              checkOutAt: todayCheckInRow.checkOutAt ? todayCheckInRow.checkOutAt.toISOString() : null,
-              checkOutLat: todayCheckInRow.checkOutLat,
-              checkOutLng: todayCheckInRow.checkOutLng,
-              checkOutDistanceKm: todayCheckInRow.checkOutDistanceKm,
-              checkOutPhotoUrl: todayCheckInRow.checkOutPhotoUrl,
-              isForgotCheckOut: todayCheckInRow.isForgotCheckOut,
-              forgotCheckOutReason: todayCheckInRow.forgotCheckOutReason,
-              hoursWorked: todayCheckInRow.hoursWorked ? Number(todayCheckInRow.hoursWorked) : null,
-              shiftStartTime: todayCheckInRow.shiftStartTime,
-              shiftEndTime: todayCheckInRow.shiftEndTime,
-              lateMinutes: todayCheckInRow.lateMinutes,
-              earlyLeaveMinutes: todayCheckInRow.earlyLeaveMinutes,
-          }
-        : null;
+    const serializedCheckIn = serializeStaffCheckIn(todayCheckInRow);
 
     // Show Head Office check-in card only if staff.isHeadOffice is true (or already checked in at HQ today)
     const showHeadOfficeCard = Boolean(
-        staff?.isHeadOffice || todayCheckInRow?.locationType === "HQ"
+        staff?.isHeadOffice || todayCheckInRow?.locationType === LOCATION_TYPES.HQ
     );
+    const hqShift = resolveShiftTimes({
+        isHeadOffice: true,
+        workStartTime: companySetting.workStartTime,
+        workEndTime: companySetting.workEndTime,
+    });
 
     return (
         <div className="space-y-6">
@@ -120,12 +107,12 @@ export default async function WorkspacePage() {
                     </div>
                     <CheckInOutCard
                         isHeadOffice={true}
-                        locationName={companySetting.branchName || "สำนักงานใหญ่"}
+                        locationName={companySetting.branchName || DEFAULT_HQ_NAME}
                         targetLat={companySetting.latitude}
                         targetLng={companySetting.longitude}
-                        radiusKm={companySetting.checkInRadiusKm ?? 0.5}
-                        workStartTime={companySetting.workStartTime || "09:00"}
-                        workEndTime={companySetting.workEndTime || "18:00"}
+                        radiusKm={resolveCheckInRadius(companySetting.checkInRadiusKm)}
+                        workStartTime={hqShift.shiftStart}
+                        workEndTime={hqShift.shiftEnd}
                         todayCheckIn={serializedCheckIn}
                     />
                 </div>
@@ -212,9 +199,9 @@ export default async function WorkspacePage() {
                                         locationName={`${channel.name} (${channel.code})`}
                                         targetLat={channel.latitude}
                                         targetLng={channel.longitude}
-                                        radiusKm={channel.checkInRadiusKm ?? 0.5}
-                                        workStartTime={channel.workStartTime || "10:00"}
-                                        workEndTime={channel.workEndTime || "21:00"}
+                                        radiusKm={resolveCheckInRadius(channel.checkInRadiusKm)}
+                                        workStartTime={channel.workStartTime}
+                                        workEndTime={channel.workEndTime}
                                         todayCheckIn={serializedCheckIn}
                                     />
                                 </div>

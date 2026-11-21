@@ -1,7 +1,16 @@
 import { db } from "@/lib/db";
 import { getCompanySetting } from "@/actions/company-setting-actions";
 import { getBangkokDateString } from "@/actions/attendance-actions";
-import { AttendanceAdminClient, type AdminCheckInItem, type LocationConfigItem } from "./AttendanceAdminClient";
+import {
+    DEFAULT_HQ_NAME,
+    resolveCheckInRadius,
+    resolveShiftTimes,
+} from "@/config/attendance";
+import {
+    AttendanceAdminClient,
+    type AdminCheckInItem,
+    type LocationConfigItem,
+} from "./AttendanceAdminClient";
 
 export const dynamic = "force-dynamic";
 
@@ -73,30 +82,43 @@ export default async function HrAttendancePage() {
         earlyLeaveMinutes: row.earlyLeaveMinutes,
     }));
 
-    const serializedChannels: LocationConfigItem[] = channels.map((ch) => ({
-        id: ch.id,
-        code: ch.code,
-        name: ch.name,
-        type: ch.type,
-        location: ch.location,
-        latitude: ch.latitude,
-        longitude: ch.longitude,
-        checkInRadiusKm: ch.checkInRadiusKm,
-        workStartTime: ch.workStartTime || "10:00",
-        workEndTime: ch.workEndTime || "21:00",
-    }));
+    const serializedChannels: LocationConfigItem[] = channels.map((ch) => {
+        const { shiftStart, shiftEnd } = resolveShiftTimes({
+            isHeadOffice: false,
+            workStartTime: ch.workStartTime,
+            workEndTime: ch.workEndTime,
+        });
+        return {
+            id: ch.id,
+            code: ch.code,
+            name: ch.name,
+            type: ch.type,
+            location: ch.location,
+            latitude: ch.latitude,
+            longitude: ch.longitude,
+            checkInRadiusKm: ch.checkInRadiusKm,
+            workStartTime: shiftStart,
+            workEndTime: shiftEnd,
+        };
+    });
+
+    const hqShift = resolveShiftTimes({
+        isHeadOffice: true,
+        workStartTime: companySetting.workStartTime,
+        workEndTime: companySetting.workEndTime,
+    });
 
     return (
         <AttendanceAdminClient
             initialCheckIns={serializedCheckIns}
             todayStr={todayStr}
             headOfficeConfig={{
-                branchName: companySetting.branchName || "สำนักงานใหญ่",
+                branchName: companySetting.branchName || DEFAULT_HQ_NAME,
                 latitude: companySetting.latitude,
                 longitude: companySetting.longitude,
-                checkInRadiusKm: companySetting.checkInRadiusKm ?? 0.5,
-                workStartTime: companySetting.workStartTime || "09:00",
-                workEndTime: companySetting.workEndTime || "18:00",
+                checkInRadiusKm: resolveCheckInRadius(companySetting.checkInRadiusKm),
+                workStartTime: hqShift.shiftStart,
+                workEndTime: hqShift.shiftEnd,
             }}
             channels={serializedChannels}
         />

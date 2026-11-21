@@ -3,8 +3,9 @@ import { getSession } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { ShoppingCart, Wallet, MapPin, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { CheckInOutCard, type SerializedCheckIn } from "@/components/attendance/CheckInOutCard";
+import { CheckInOutCard } from "@/components/attendance";
 import { getBangkokDateString } from "@/actions/attendance-actions";
+import { resolveCheckInRadius, serializeStaffCheckIn } from "@/config/attendance";
 
 async function validateChannelAccess(channelId: string, staffId: string) {
     const assignment = await db.channelStaff.findFirst({
@@ -45,32 +46,7 @@ export default async function ChannelWorkModePage({ params }: { params: Promise<
         },
     });
 
-    const serializedCheckIn: SerializedCheckIn | null = todayCheckInRow
-        ? {
-              id: todayCheckInRow.id,
-              channelId: todayCheckInRow.channelId,
-              locationType: todayCheckInRow.locationType,
-              locationName: todayCheckInRow.locationName,
-              checkInAt: todayCheckInRow.checkInAt.toISOString(),
-              checkInLat: todayCheckInRow.checkInLat,
-              checkInLng: todayCheckInRow.checkInLng,
-              checkInDistanceKm: todayCheckInRow.checkInDistanceKm,
-              checkInPhotoUrl: todayCheckInRow.checkInPhotoUrl,
-              checkInNote: todayCheckInRow.checkInNote,
-              checkOutAt: todayCheckInRow.checkOutAt ? todayCheckInRow.checkOutAt.toISOString() : null,
-              checkOutLat: todayCheckInRow.checkOutLat,
-              checkOutLng: todayCheckInRow.checkOutLng,
-              checkOutDistanceKm: todayCheckInRow.checkOutDistanceKm,
-              checkOutPhotoUrl: todayCheckInRow.checkOutPhotoUrl,
-              isForgotCheckOut: todayCheckInRow.isForgotCheckOut,
-              forgotCheckOutReason: todayCheckInRow.forgotCheckOutReason,
-              hoursWorked: todayCheckInRow.hoursWorked ? Number(todayCheckInRow.hoursWorked) : null,
-              shiftStartTime: todayCheckInRow.shiftStartTime,
-              shiftEndTime: todayCheckInRow.shiftEndTime,
-              lateMinutes: todayCheckInRow.lateMinutes,
-              earlyLeaveMinutes: todayCheckInRow.earlyLeaveMinutes,
-          }
-        : null;
+    const serializedCheckIn = serializeStaffCheckIn(todayCheckInRow);
 
     const WORK_MODES = [
         {
@@ -117,9 +93,9 @@ export default async function ChannelWorkModePage({ params }: { params: Promise<
                 locationName={`${channel.name} (${channel.code})`}
                 targetLat={channel.latitude}
                 targetLng={channel.longitude}
-                radiusKm={channel.checkInRadiusKm ?? 0.5}
-                workStartTime={channel.workStartTime || "10:00"}
-                workEndTime={channel.workEndTime || "21:00"}
+                radiusKm={resolveCheckInRadius(channel.checkInRadiusKm)}
+                workStartTime={channel.workStartTime}
+                workEndTime={channel.workEndTime}
                 todayCheckIn={serializedCheckIn}
             />
 

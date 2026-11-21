@@ -4,6 +4,12 @@ import { useState, useTransition, useRef, useEffect } from "react";
 import { Pencil, Save, X, Search, ChevronDown, MapPin, ExternalLink } from "lucide-react";
 import { Spinner, GpsCoordinatePicker } from "@/components/shared";
 import { useRouter } from "next/navigation";
+import {
+    DEFAULT_CHECK_IN_RADIUS_KM,
+    DEFAULT_WORK_SHIFTS,
+    resolveCheckInRadius,
+    resolveShiftTimes,
+} from "@/config/attendance";
 
 interface Customer {
     id: string;
@@ -46,9 +52,9 @@ export default function ChannelBasicInfoEditor(props: Props) {
     const [isCashBooth, setIsCashBooth] = useState(props.isCashBooth || false);
     const [latitude, setLatitude] = useState(props.latitude !== null && props.latitude !== undefined ? String(props.latitude) : "");
     const [longitude, setLongitude] = useState(props.longitude !== null && props.longitude !== undefined ? String(props.longitude) : "");
-    const [checkInRadiusKm, setCheckInRadiusKm] = useState(props.checkInRadiusKm !== null && props.checkInRadiusKm !== undefined ? String(props.checkInRadiusKm) : "0.5");
-    const [workStartTime, setWorkStartTime] = useState(props.workStartTime || "10:00");
-    const [workEndTime, setWorkEndTime] = useState(props.workEndTime || "21:00");
+    const [checkInRadiusKm, setCheckInRadiusKm] = useState(props.checkInRadiusKm !== null && props.checkInRadiusKm !== undefined ? String(props.checkInRadiusKm) : String(DEFAULT_CHECK_IN_RADIUS_KM));
+    const [workStartTime, setWorkStartTime] = useState(props.workStartTime || DEFAULT_WORK_SHIFTS.CHANNEL.start);
+    const [workEndTime, setWorkEndTime] = useState(props.workEndTime || DEFAULT_WORK_SHIFTS.CHANNEL.end);
 
     // Customer dropdown state
     const [customerList, setCustomerList] = useState<Customer[]>([]);
@@ -92,13 +98,18 @@ export default function ChannelBasicInfoEditor(props: Props) {
         setIsCashBooth(props.isCashBooth || false);
         setLatitude(props.latitude !== null && props.latitude !== undefined ? String(props.latitude) : "");
         setLongitude(props.longitude !== null && props.longitude !== undefined ? String(props.longitude) : "");
-        setCheckInRadiusKm(props.checkInRadiusKm !== null && props.checkInRadiusKm !== undefined ? String(props.checkInRadiusKm) : "0.5");
-        setWorkStartTime(props.workStartTime || "10:00");
-        setWorkEndTime(props.workEndTime || "21:00");
+        setCheckInRadiusKm(props.checkInRadiusKm !== null && props.checkInRadiusKm !== undefined ? String(props.checkInRadiusKm) : String(DEFAULT_CHECK_IN_RADIUS_KM));
+        setWorkStartTime(props.workStartTime || DEFAULT_WORK_SHIFTS.CHANNEL.start);
+        setWorkEndTime(props.workEndTime || DEFAULT_WORK_SHIFTS.CHANNEL.end);
         setIsEditing(false);
     };
 
     const handleSave = () => {
+        const { shiftStart, shiftEnd } = resolveShiftTimes({
+            isHeadOffice: false,
+            workStartTime,
+            workEndTime,
+        });
         startTransition(async () => {
             try {
                 const res = await fetch(`/api/channels/${props.channelId}`, {
@@ -116,9 +127,9 @@ export default function ChannelBasicInfoEditor(props: Props) {
                         isCashBooth,
                         latitude: latitude.trim() !== "" ? parseFloat(latitude) : null,
                         longitude: longitude.trim() !== "" ? parseFloat(longitude) : null,
-                        checkInRadiusKm: checkInRadiusKm.trim() !== "" ? parseFloat(checkInRadiusKm) : 0.5,
-                        workStartTime: workStartTime || "10:00",
-                        workEndTime: workEndTime || "21:00",
+                        checkInRadiusKm: resolveCheckInRadius(checkInRadiusKm),
+                        workStartTime: shiftStart,
+                        workEndTime: shiftEnd,
                     }),
                 });
                 if (res.ok) {

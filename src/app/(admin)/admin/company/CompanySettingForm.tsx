@@ -7,6 +7,12 @@ import { Save, CheckCircle2, Clock } from "lucide-react";
 import { updateCompanySetting, type CompanySettingData } from "@/actions/company-setting-actions";
 import { useToast } from "@/components/ui/toast";
 import { Spinner, GpsCoordinatePicker } from "@/components/shared";
+import {
+    DEFAULT_CHECK_IN_RADIUS_KM,
+    DEFAULT_HQ_BRANCH_CODE,
+    DEFAULT_HQ_NAME,
+    DEFAULT_WORK_SHIFTS,
+} from "@/config/attendance";
 
 import { GeneralInfoSection } from "./components/GeneralInfoSection";
 import { LogoUploadSection } from "./components/LogoUploadSection";
@@ -27,8 +33,8 @@ export function CompanySettingForm({ initialData }: Props) {
     const [name, setName] = useState(initialData.name || "");
     const [nameEn, setNameEn] = useState(initialData.nameEn || "");
     const [taxId, setTaxId] = useState(initialData.taxId || "");
-    const [branchName, setBranchName] = useState(initialData.branchName || "สำนักงานใหญ่");
-    const [branchCode, setBranchCode] = useState(initialData.branchCode || "00000");
+    const [branchName, setBranchName] = useState(initialData.branchName || DEFAULT_HQ_NAME);
+    const [branchCode, setBranchCode] = useState(initialData.branchCode || DEFAULT_HQ_BRANCH_CODE);
     const [address, setAddress] = useState(initialData.address || "");
     const [phone, setPhone] = useState(initialData.phone || "");
     const [email, setEmail] = useState(initialData.email || "");
@@ -40,9 +46,9 @@ export function CompanySettingForm({ initialData }: Props) {
     const [footerNote, setFooterNote] = useState(initialData.footerNote || "");
     const [latitude, setLatitude] = useState(initialData.latitude !== null && initialData.latitude !== undefined ? String(initialData.latitude) : "");
     const [longitude, setLongitude] = useState(initialData.longitude !== null && initialData.longitude !== undefined ? String(initialData.longitude) : "");
-    const [checkInRadiusKm, setCheckInRadiusKm] = useState(initialData.checkInRadiusKm !== null && initialData.checkInRadiusKm !== undefined ? String(initialData.checkInRadiusKm) : "0.5");
-    const [workStartTime, setWorkStartTime] = useState(initialData.workStartTime || "09:00");
-    const [workEndTime, setWorkEndTime] = useState(initialData.workEndTime || "18:00");
+    const [checkInRadiusKm, setCheckInRadiusKm] = useState(initialData.checkInRadiusKm !== null && initialData.checkInRadiusKm !== undefined ? String(initialData.checkInRadiusKm) : String(DEFAULT_CHECK_IN_RADIUS_KM));
+    const [workStartTime, setWorkStartTime] = useState(initialData.workStartTime || DEFAULT_WORK_SHIFTS.HQ.start);
+    const [workEndTime, setWorkEndTime] = useState(initialData.workEndTime || DEFAULT_WORK_SHIFTS.HQ.end);
     const [lastUpdated, setLastUpdated] = useState<Date>(initialData.updatedAt || new Date());
 
     const handleSubmit = async (e: React.FormEvent) => {

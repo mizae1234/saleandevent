@@ -2,36 +2,13 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getBangkokDateString } from "@/actions/attendance-actions";
+import { formatPeriodMonthThai } from "@/lib/payroll-period";
 import {
     EmployeeAttendanceClient,
     type EmployeeAttendanceRecord,
 } from "./EmployeeAttendanceClient";
 
 export const dynamic = "force-dynamic";
-
-const THAI_MONTH_NAMES = [
-    "มกราคม",
-    "กุมภาพันธ์",
-    "มีนาคม",
-    "เมษายน",
-    "พฤษภาคม",
-    "มิถุนายน",
-    "กรกฎาคม",
-    "สิงหาคม",
-    "กันยายน",
-    "ตุลาคม",
-    "พฤศจิกายน",
-    "ธันวาคม",
-];
-
-function formatMonthThaiLabel(periodMonth: string): string {
-    const [yStr, mStr] = periodMonth.split("-");
-    const year = parseInt(yStr, 10);
-    const monthIdx = parseInt(mStr, 10) - 1;
-    if (Number.isNaN(year) || monthIdx < 0 || monthIdx > 11) return periodMonth;
-    const buddhistYear = year + 543;
-    return `${THAI_MONTH_NAMES[monthIdx]} ${buddhistYear}`;
-}
 
 export default async function EmployeeAttendancePage() {
     const session = await getSession();
@@ -85,7 +62,7 @@ export default async function EmployeeAttendancePage() {
     const sortedMonths = Array.from(monthSet).sort((a, b) => b.localeCompare(a));
     const monthOptions = sortedMonths.map((ym) => ({
         value: ym,
-        label: formatMonthThaiLabel(ym),
+        label: formatPeriodMonthThai(ym),
     }));
 
     return (
@@ -97,4 +74,3 @@ export default async function EmployeeAttendancePage() {
         />
     );
 }
-

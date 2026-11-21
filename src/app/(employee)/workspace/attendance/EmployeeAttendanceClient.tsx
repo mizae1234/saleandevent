@@ -7,14 +7,20 @@ import {
     ChevronLeft,
     ChevronRight,
     MapPin,
-    CheckCircle2,
-    AlertTriangle,
-    Building2,
-    Store,
-    CalendarDays,
-    X,
 } from "lucide-react";
 import { formatDistanceThai } from "@/lib/geo";
+import {
+    formatBangkokTime,
+    formatThaiFullDate,
+    resolveShiftTimes,
+} from "@/config/attendance";
+import {
+    LocationTypeIcon,
+    CheckInTimingBadge,
+    AttendanceCompletionBadge,
+    PhotoLightboxModal,
+    type PhotoLightboxData,
+} from "@/components/attendance";
 
 export interface EmployeeAttendanceRecord {
     id: string;
@@ -57,11 +63,7 @@ export function EmployeeAttendanceClient({
     staffName,
 }: Props) {
     const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
-    const [previewPhoto, setPreviewPhoto] = useState<{
-        url: string;
-        title: string;
-        subtitle: string;
-    } | null>(null);
+    const [previewPhoto, setPreviewPhoto] = useState<PhotoLightboxData | null>(null);
 
     const currentMonthIdx = monthOptions.findIndex((m) => m.value === selectedMonth);
 
@@ -95,25 +97,6 @@ export function EmployeeAttendanceClient({
             forgotDays,
         };
     }, [filteredRecords]);
-
-    const formatThaiFullDate = (dateStr: string) => {
-        const [y, m, d] = dateStr.split("-").map(Number);
-        const dt = new Date(y, m - 1, d);
-        return dt.toLocaleDateString("th-TH", {
-            weekday: "short",
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-        });
-    };
-
-    const formatThaiTime = (iso: string) => {
-        return new Date(iso).toLocaleTimeString("th-TH", {
-            timeZone: "Asia/Bangkok",
-            hour: "2-digit",
-            minute: "2-digit",
-        });
-    };
 
     const selectedMonthLabel =
         monthOptions.find((m) => m.value === selectedMonth)?.label || selectedMonth;
@@ -218,169 +201,152 @@ export function EmployeeAttendanceClient({
                     รายการลงเวลาประจำเดือน {selectedMonthLabel} ({filteredRecords.length} วัน)
                 </h2>
 
-                {filteredRecords.map((item) => (
-                    <div
-                        key={item.id}
-                        className="rounded-2xl bg-white p-4 shadow-sm border border-slate-100 space-y-3"
-                    >
-                        {/* Top row: Date & Status Badge */}
-                        <div className="flex items-start justify-between gap-2">
-                            <div>
-                                <div className="font-bold text-slate-900 text-sm">
-                                    {formatThaiFullDate(item.dateStr)}
-                                </div>
-                                <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 mt-0.5">
-                                    {item.locationType === "HQ" ? (
-                                        <Building2 className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
-                                    ) : item.locationType === "BRANCH" ? (
-                                        <Store className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                                    ) : (
-                                        <CalendarDays className="h-3.5 w-3.5 text-teal-600 shrink-0" />
-                                    )}
-                                    <span className="font-medium text-slate-700">
-                                        {item.locationName}
-                                    </span>
-                                    {(item.shiftStartTime || item.shiftEndTime) && (
-                                        <span className="text-[11px] text-slate-400">
-                                            (กะ {item.shiftStartTime || "10:00"}–{item.shiftEndTime || "21:00"} น.)
+                {filteredRecords.map((item) => {
+                    const { shiftStart, shiftEnd } = resolveShiftTimes({
+                        locationType: item.locationType,
+                        workStartTime: item.shiftStartTime,
+                        workEndTime: item.shiftEndTime,
+                    });
+
+                    return (
+                        <div
+                            key={item.id}
+                            className="rounded-2xl bg-white p-4 shadow-sm border border-slate-100 space-y-3"
+                        >
+                            {/* Top row: Date & Status Badge */}
+                            <div className="flex items-start justify-between gap-2">
+                                <div>
+                                    <div className="font-bold text-slate-900 text-sm">
+                                        {formatThaiFullDate(item.dateStr)}
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 mt-0.5">
+                                        <LocationTypeIcon locationType={item.locationType} />
+                                        <span className="font-medium text-slate-700">
+                                            {item.locationName}
                                         </span>
+                                        <span className="text-[11px] text-slate-400">
+                                            (กะ {shiftStart}–{shiftEnd} น.)
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <AttendanceCompletionBadge
+                                    checkOutAt={item.checkOutAt}
+                                    isForgotCheckOut={item.isForgotCheckOut}
+                                />
+                            </div>
+
+                            {/* Check-in & Check-out Grid */}
+                            <div className="grid grid-cols-2 gap-2.5 bg-slate-50 rounded-xl p-3 border border-slate-100">
+                                {/* Check-in */}
+                                <div className="flex items-center gap-2.5">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setPreviewPhoto({
+                                                url: item.checkInPhotoUrl,
+                                                title: `รูปเข้างาน (${formatThaiFullDate(item.dateStr)})`,
+                                                subtitle: `${item.locationName} • เวลา ${formatBangkokTime(
+                                                    item.checkInAt
+                                                )} น.`,
+                                            })
+                                        }
+                                        className="h-12 w-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-200 shrink-0"
+                                    >
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                            src={item.checkInPhotoUrl}
+                                            alt="Check-in"
+                                            className="h-full w-full object-cover"
+                                        />
+                                    </button>
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-1">
+                                            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                                                เข้างาน
+                                            </span>
+                                            <CheckInTimingBadge lateMinutes={item.lateMinutes} />
+                                        </div>
+                                        <p className="text-sm font-bold text-slate-900 mt-0.5">
+                                            {formatBangkokTime(item.checkInAt)} น.
+                                        </p>
+                                        {item.checkInDistanceKm !== null && (
+                                            <p className="text-[11px] text-slate-400 truncate">
+                                                ห่าง {formatDistanceThai(item.checkInDistanceKm)}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Check-out */}
+                                <div className="flex items-center gap-2.5 border-l border-slate-200 pl-2.5">
+                                    {item.checkOutAt ? (
+                                        <>
+                                            {item.checkOutPhotoUrl && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setPreviewPhoto({
+                                                            url: item.checkOutPhotoUrl!,
+                                                            title: `รูปออกงาน (${formatThaiFullDate(
+                                                                item.dateStr
+                                                            )})`,
+                                                            subtitle: `${item.locationName} • เวลา ${formatBangkokTime(
+                                                                item.checkOutAt!
+                                                            )} น.`,
+                                                        })
+                                                    }
+                                                    className="h-12 w-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-200 shrink-0"
+                                                >
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img
+                                                        src={item.checkOutPhotoUrl}
+                                                        alt="Check-out"
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                </button>
+                                            )}
+                                            <div className="min-w-0">
+                                                <span
+                                                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                                        item.isForgotCheckOut
+                                                            ? "text-amber-700 bg-amber-50"
+                                                            : "text-blue-700 bg-blue-50"
+                                                    }`}
+                                                >
+                                                    ออกงาน
+                                                </span>
+                                                <p className="text-sm font-bold text-slate-900 mt-0.5">
+                                                    {formatBangkokTime(item.checkOutAt)} น.
+                                                </p>
+                                                {item.checkOutDistanceKm !== null && (
+                                                    <p className="text-[11px] text-slate-400 truncate">
+                                                        ห่าง {formatDistanceThai(item.checkOutDistanceKm)}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="text-xs text-amber-600 font-medium">
+                                            ยังไม่ได้กด Check-out
+                                        </div>
                                     )}
                                 </div>
                             </div>
 
-                            {item.isForgotCheckOut ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 shrink-0">
-                                    <AlertTriangle className="h-3 w-3" /> ลืม Check-out
-                                </span>
-                            ) : item.checkOutAt ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700 shrink-0">
-                                    <CheckCircle2 className="h-3 w-3" /> เข้า-ออกครบแล้ว
-                                </span>
-                            ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700 shrink-0">
-                                    กำลังปฏิบัติงาน
-                                </span>
-                            )}
-                        </div>
-
-                        {/* Check-in & Check-out Grid */}
-                        <div className="grid grid-cols-2 gap-2.5 bg-slate-50 rounded-xl p-3 border border-slate-100">
-                            {/* Check-in */}
-                            <div className="flex items-center gap-2.5">
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setPreviewPhoto({
-                                            url: item.checkInPhotoUrl,
-                                            title: `รูปเข้างาน (${formatThaiFullDate(item.dateStr)})`,
-                                            subtitle: `${item.locationName} • เวลา ${formatThaiTime(
-                                                item.checkInAt
-                                            )} น.`,
-                                        })
-                                    }
-                                    className="h-12 w-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-200 shrink-0"
-                                >
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                        src={item.checkInPhotoUrl}
-                                        alt="Check-in"
-                                        className="h-full w-full object-cover"
-                                    />
-                                </button>
-                                <div className="min-w-0">
-                                    <div className="flex flex-wrap items-center gap-1">
-                                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                                            เข้างาน
-                                        </span>
-                                        {item.lateMinutes > 0 ? (
-                                            <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded">
-                                                สาย {item.lateMinutes} นาที
-                                            </span>
-                                        ) : (
-                                            <span className="text-[10px] font-semibold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded">
-                                                ตรงเวลา
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p className="text-sm font-bold text-slate-900 mt-0.5">
-                                        {formatThaiTime(item.checkInAt)} น.
-                                    </p>
-                                    {item.checkInDistanceKm !== null && (
-                                        <p className="text-[11px] text-slate-400 truncate">
-                                            ห่าง {formatDistanceThai(item.checkInDistanceKm)}
+                            {(item.checkInNote || item.forgotCheckOutReason) && (
+                                <div className="text-xs text-slate-500 space-y-0.5 pt-1 border-t border-slate-50">
+                                    {item.checkInNote && <p>หมายเหตุเข้างาน: {item.checkInNote}</p>}
+                                    {item.forgotCheckOutReason && (
+                                        <p className="text-amber-700">
+                                            หมายเหตุออกงานนอกพื้นที่: {item.forgotCheckOutReason}
                                         </p>
                                     )}
                                 </div>
-                            </div>
-
-                            {/* Check-out */}
-                            <div className="flex items-center gap-2.5 border-l border-slate-200 pl-2.5">
-                                {item.checkOutAt ? (
-                                    <>
-                                        {item.checkOutPhotoUrl && (
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    setPreviewPhoto({
-                                                        url: item.checkOutPhotoUrl!,
-                                                        title: `รูปออกงาน (${formatThaiFullDate(
-                                                            item.dateStr
-                                                        )})`,
-                                                        subtitle: `${item.locationName} • เวลา ${formatThaiTime(
-                                                            item.checkOutAt!
-                                                        )} น.`,
-                                                    })
-                                                }
-                                                className="h-12 w-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-200 shrink-0"
-                                            >
-                                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                <img
-                                                    src={item.checkOutPhotoUrl}
-                                                    alt="Check-out"
-                                                    className="h-full w-full object-cover"
-                                                />
-                                            </button>
-                                        )}
-                                        <div className="min-w-0">
-                                            <span
-                                                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                                                    item.isForgotCheckOut
-                                                        ? "text-amber-700 bg-amber-50"
-                                                        : "text-blue-700 bg-blue-50"
-                                                }`}
-                                            >
-                                                ออกงาน
-                                            </span>
-                                            <p className="text-sm font-bold text-slate-900 mt-0.5">
-                                                {formatThaiTime(item.checkOutAt)} น.
-                                            </p>
-                                            {item.checkOutDistanceKm !== null && (
-                                                <p className="text-[11px] text-slate-400 truncate">
-                                                    ห่าง {formatDistanceThai(item.checkOutDistanceKm)}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className="text-xs text-amber-600 font-medium">
-                                        ยังไม่ได้กด Check-out
-                                    </div>
-                                )}
-                            </div>
+                            )}
                         </div>
-
-                        {(item.checkInNote || item.forgotCheckOutReason) && (
-                            <div className="text-xs text-slate-500 space-y-0.5 pt-1 border-t border-slate-50">
-                                {item.checkInNote && <p>หมายเหตุเข้างาน: {item.checkInNote}</p>}
-                                {item.forgotCheckOutReason && (
-                                    <p className="text-amber-700">
-                                        หมายเหตุออกงานนอกพื้นที่: {item.forgotCheckOutReason}
-                                    </p>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                ))}
+                    );
+                })}
 
                 {filteredRecords.length === 0 && (
                     <div className="rounded-2xl bg-white p-10 text-center border border-slate-100 shadow-sm">
@@ -395,39 +361,7 @@ export function EmployeeAttendanceClient({
                 )}
             </div>
 
-            {/* Photo Lightbox Modal */}
-            {previewPhoto && (
-                <div
-                    className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-                    onClick={() => setPreviewPhoto(null)}
-                >
-                    <div
-                        className="bg-white rounded-2xl overflow-hidden max-w-md w-full shadow-2xl"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between">
-                            <div>
-                                <h4 className="text-sm font-bold">{previewPhoto.title}</h4>
-                                <p className="text-xs text-slate-300">{previewPhoto.subtitle}</p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setPreviewPhoto(null)}
-                                className="p-1 text-slate-300 hover:text-white"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                            src={previewPhoto.url}
-                            alt={previewPhoto.title}
-                            className="w-full max-h-[75vh] object-contain bg-black"
-                        />
-                    </div>
-                </div>
-            )}
+            <PhotoLightboxModal photo={previewPhoto} onClose={() => setPreviewPhoto(null)} />
         </div>
     );
 }
-

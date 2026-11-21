@@ -5,6 +5,7 @@ import { createChannelWithDetails } from '@/actions/channel';
 import { Package, MapPin, Calendar, Users, ChevronRight, Store, CalendarDays, Target, Phone, User, FileText, Hash, Search, ChevronDown } from 'lucide-react';
 import { GpsCoordinatePicker } from '@/components/shared';
 import { isValidLatLng } from '@/lib/geo';
+import { DEFAULT_CHECK_IN_RADIUS_KM, DEFAULT_WORK_SHIFTS } from '@/config/attendance';
 
 interface Staff {
     id: string;
@@ -47,9 +48,9 @@ export default function CreateChannelForm({ staffList, customerList }: Props) {
     const [isCashBooth, setIsCashBooth] = useState(false);
     const [latitude, setLatitude] = useState('');
     const [longitude, setLongitude] = useState('');
-    const [checkInRadiusKm, setCheckInRadiusKm] = useState('0.5');
-    const [workStartTime, setWorkStartTime] = useState('10:00');
-    const [workEndTime, setWorkEndTime] = useState('21:00');
+    const [checkInRadiusKm, setCheckInRadiusKm] = useState(String(DEFAULT_CHECK_IN_RADIUS_KM));
+    const [workStartTime, setWorkStartTime] = useState<string>(DEFAULT_WORK_SHIFTS.CHANNEL.start);
+    const [workEndTime, setWorkEndTime] = useState<string>(DEFAULT_WORK_SHIFTS.CHANNEL.end);
 
     const customerDropdownRef = useRef<HTMLDivElement>(null);
 

@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import type { StaffSelection } from "@/types/channel";
+import { resolveCheckInRadius, resolveShiftTimes } from "@/config/attendance";
 
 export async function updateChannelWithDetails(channelId: string, formData: FormData) {
     const name = formData.get('name') as string;
@@ -17,12 +18,15 @@ export async function updateChannelWithDetails(channelId: string, formData: Form
     const latitudeStr = formData.get('latitude') as string | null;
     const longitudeStr = formData.get('longitude') as string | null;
     const checkInRadiusKmStr = formData.get('checkInRadiusKm') as string | null;
-    const workStartTime = (formData.get('workStartTime') as string | null)?.trim() || '10:00';
-    const workEndTime = (formData.get('workEndTime') as string | null)?.trim() || '21:00';
+    const { shiftStart: workStartTime, shiftEnd: workEndTime } = resolveShiftTimes({
+        isHeadOffice: false,
+        workStartTime: formData.get('workStartTime') as string | null,
+        workEndTime: formData.get('workEndTime') as string | null,
+    });
 
     const latitude = latitudeStr && latitudeStr.trim() !== '' ? parseFloat(latitudeStr) : null;
     const longitude = longitudeStr && longitudeStr.trim() !== '' ? parseFloat(longitudeStr) : null;
-    const checkInRadiusKm = checkInRadiusKmStr && checkInRadiusKmStr.trim() !== '' ? parseFloat(checkInRadiusKmStr) : 0.5;
+    const checkInRadiusKm = resolveCheckInRadius(checkInRadiusKmStr);
 
     const staff: StaffSelection[] = staffJson ? JSON.parse(staffJson) : [];
 
